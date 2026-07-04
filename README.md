@@ -2,8 +2,8 @@
 
 Static, single-file (`index.html`) web app for the Supabase-backed CRM: a
 dedicated login screen, role-based dashboard, pipeline/project boards, daily
-activities, document upload & preview, an approval workflow, and team/role
-management.
+activities, document upload & preview, an approval workflow, team/role
+management, and an admin pricing calculator.
 
 ## GitHub Pages
 
@@ -32,21 +32,23 @@ Set:
 
 The frontend uses a publishable Supabase key only. Do not add a service role key to this repository.
 
-### One-time setup for documents + roles
+### One-time setup for documents + roles + pricing
 
 The app expects these tables to already exist from the original build:
 `profiles`, `crm_board_items`, `crm_daily_activities`, `crm_change_requests`.
 
-To enable the Documents tab and the expanded role model (admin / manager /
-owner / viewer), run `supabase-schema.sql` once in the Supabase SQL editor.
-It:
+To enable the Documents tab, the expanded role model (admin / manager /
+owner / viewer), and the admin Pricing calculator, run `supabase-schema.sql`
+once in the Supabase SQL editor. It:
 
 - Creates the `crm_documents` table + row-level security policies.
 - Creates a private `crm-documents` storage bucket + storage policies.
 - Widens the `profiles.role` check constraint to include `admin` and `viewer`.
 - Adds policies so an `admin` can read/update every teammate's profile (used
   by the Team page).
-- Adds `crm_documents` to the realtime publication.
+- Creates the `crm_services` table (the pricing calculator's service
+  catalog), restricted entirely to the `admin` role.
+- Adds `crm_documents` and `crm_services` to the realtime publication.
 
 ### Roles
 
@@ -72,3 +74,13 @@ or project; linked files also show up in that record's detail panel. Images
 and PDFs preview inline (via a short-lived signed URL); other file types
 show a download link. Signed out, the Documents tab shows read-only sample
 files so you can see the layout before connecting Supabase.
+
+### Pricing calculator
+
+Admin-only. The **Pricing** tab (hidden for every other role) lets an admin
+manage a service catalog — name, unit price, and how it's billed (flat /
+hourly / per seat / monthly) — stored in `crm_services`. Below the catalog,
+a quote calculator lets the admin set a quantity per service plus a discount
+% and tax %, and see a live subtotal/discount/tax/total. The calculator is
+scratch space only — nothing about a quote is saved; it's meant for working
+out a number while on a call, not for quote history.

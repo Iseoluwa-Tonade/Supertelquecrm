@@ -1,9 +1,10 @@
--- SuperTelque CRM - additive schema for Documents + expanded roles.
+-- SuperTelque CRM - additive schema for Documents, expanded roles, and the
+-- admin pricing calculator's service catalog.
 -- Run this once in the Supabase SQL editor for your project.
 -- It assumes the existing tables (profiles, crm_board_items, crm_daily_activities,
 -- crm_change_requests) already exist, as created for the original CRM build.
--- This script only adds what's new: documents + role/status support. It is
--- written to be safe to re-run (IF NOT EXISTS / OR REPLACE / drop-then-add).
+-- This script only adds what's new. It is written to be safe to re-run
+-- (IF NOT EXISTS / OR REPLACE / drop-then-add).
 
 -- 1. Documents table -----------------------------------------------------
 
@@ -111,12 +112,49 @@ create policy "profiles_admin_update_all"
     )
   );
 
--- 4. Realtime for the new table (optional, matches the existing tables) --
--- If this errors because the table is already in the publication, that's fine.
+-- 4. Service catalog for the admin pricing calculator ---------------------
+
+create table if not exists public.crm_services (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  unit_price numeric not null default 0,
+  unit_label text not null default 'flat',
+  created_at timestamptz not null default now()
+);
+
+alter table public.crm_services enable row level security;
+
+-- Admin-only: the catalog and the calculator itself are restricted to admins.
+drop policy if exists "services_admin_all" on public.crm_services;
+create policy "services_admin_all"
+  on public.crm_services for all
+  to authenticated
+  using (
+    exists (
+      select 1 from public.profiles p
+      where p.user_id = auth.uid() and p.role = 'admin'
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.profiles p
+      where p.user_id = auth.uid() and p.role = 'admin'
+    )
+  );
+
+-- 5. Realtime for the new tables (optional, matches the existing tables) --
+-- If this errors because a table is already in the publication, that's fine.
 
 do $$
 begin
   alter publication supabase_realtime add table public.crm_documents;
+exception when duplicate_object then
+  null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.crm_services;
 exception when duplicate_object then
   null;
 end $$;

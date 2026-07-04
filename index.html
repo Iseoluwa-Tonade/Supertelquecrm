@@ -1105,9 +1105,55 @@
     .team-row strong { font-size: 13px; display: block; }
     .team-row span { color: var(--muted); }
 
+    .calc-grid {
+      display: grid;
+      gap: 8px;
+    }
+    .calc-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 130px 80px 100px;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+    .calc-row strong { font-size: 13px; display: block; }
+    .calc-row span { color: var(--muted); }
+    .calc-row input {
+      height: 32px;
+      padding: 0 8px;
+    }
+    .calc-line-total {
+      font-weight: 700;
+      color: var(--text) !important;
+      text-align: right;
+    }
+    .calc-summary {
+      display: grid;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .calc-summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px 10px;
+    }
+    .calc-summary-row.total {
+      font-size: 15px;
+      font-weight: 800;
+      background: var(--panel-strong);
+    }
+
     @media (max-width: 760px) {
       .team-row { grid-template-columns: 1fr; gap: 4px; }
       .doc-grid { grid-template-columns: 1fr; }
+      .calc-row { grid-template-columns: 1fr; gap: 4px; }
     }
 
     @media (max-width: 1120px) {
@@ -1243,6 +1289,9 @@
         </button>
         <button data-view="team" title="Team" id="teamNavBtn" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span>Team</span>
+        </button>
+        <button data-view="pricing" title="Pricing" id="pricingNavBtn" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg><span>Pricing</span>
         </button>
       </nav>
       <div class="sidebar-footer">
@@ -1406,6 +1455,11 @@
       items: [],
       documents: [],
       teamProfiles: [],
+      services: [],
+      editingServiceId: null,
+      calcQty: {},
+      calcDiscount: 0,
+      calcTax: 0,
       demoPreview: false,
       theme: localStorage.getItem("crm-theme") || "light",
       authTab: "signin",
@@ -1539,7 +1593,8 @@
         documents: ["Documents", "Upload, organize, and preview files linked to accounts and projects."],
         approvals: ["Approval Queue", "Review team changes before they become approved CRM records."],
         focus: ["Focus Queue", "High-priority and near-due work across the whole book."],
-        team: ["Team", "Manage teammate roles and access."]
+        team: ["Team", "Manage teammate roles and access."],
+        pricing: ["Pricing Calculator", "Manage the service catalog and quote a client."]
       };
       document.getElementById("viewTitle").textContent = copy[state.view][0];
       document.getElementById("viewSubtitle").textContent = copy[state.view][1];
@@ -1555,7 +1610,8 @@
         approvalCount.classList.toggle("show", Boolean(state.session && pendingRequests().length));
       }
       document.getElementById("teamNavBtn").hidden = !isAdmin();
-      document.querySelector(".toolbar").hidden = ["overview", "activity", "documents", "approvals", "team"].includes(state.view);
+      document.getElementById("pricingNavBtn").hidden = !isAdmin();
+      document.querySelector(".toolbar").hidden = ["overview", "activity", "documents", "approvals", "team", "pricing"].includes(state.view);
     }
 
     function renderTopbar() {
@@ -1610,6 +1666,11 @@
 
       if (state.view === "team") {
         renderTeamView();
+        return;
+      }
+
+      if (state.view === "pricing") {
+        renderPricingView();
         return;
       }
 
@@ -2183,6 +2244,235 @@
       state.teamProfiles = state.teamProfiles.map(profile => profile.user_id === userId ? { ...profile, status } : profile);
       render();
       flash(status === "suspended" ? "Teammate suspended" : "Teammate reinstated");
+    }
+
+    const SERVICE_UNITS = ["flat", "hourly", "per seat", "monthly"];
+
+    function renderPricingView() {
+      if (!isAdmin()) {
+        board.innerHTML = `<section class="overview"><div class="empty">Only admins can access the pricing calculator.</div></section>`;
+        return;
+      }
+
+      const editing = state.services.find(service => service.id === state.editingServiceId);
+
+      board.innerHTML = `
+        <section class="overview" aria-label="Service pricing calculator">
+          <div class="activity-panel">
+            <h2>${editing ? "Edit service" : "Add a service"}</h2>
+            <form class="form" id="serviceForm">
+              <label>Service name<input name="name" value="${editing ? escapeAttr(editing.name) : ""}" placeholder="e.g. Website build" required></label>
+              <div class="form-grid">
+                <label>Unit price (USD)<input name="unit_price" type="number" min="0" step="1" value="${editing ? Number(editing.unit_price) : ""}" required></label>
+                <label>Billed
+                  <select name="unit_label">
+                    ${SERVICE_UNITS.map(unit => option(unit, editing?.unit_label || "flat", label(unit))).join("")}
+                  </select>
+                </label>
+              </div>
+              <div class="form-actions">
+                ${editing ? `<button type="button" id="cancelEditService">Cancel</button>` : ""}
+                <button type="submit" class="primary">${editing ? "Save changes" : "Add service"}</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="activity-panel">
+            <h2>Service catalog (${state.services.length})</h2>
+            <div style="display:grid;gap:8px;">
+              <div class="team-row header"><span>Service</span><span>Billed</span><span>Price</span><span></span></div>
+              ${state.services.map(renderServiceRow).join("") || `<div class="empty">No services yet. Add your first service above.</div>`}
+            </div>
+          </div>
+
+          <div class="activity-panel">
+            <h2>Quote calculator</h2>
+            <div class="calc-grid" id="calcGrid">
+              ${state.services.map(renderCalcRow).join("") || `<div class="empty">Add services to the catalog to start calculating a quote.</div>`}
+            </div>
+            <div class="calc-summary">
+              <div class="form-grid">
+                <label>Discount %<input type="number" min="0" max="100" step="1" id="calcDiscount" value="${state.calcDiscount}"></label>
+                <label>Tax %<input type="number" min="0" max="100" step="1" id="calcTax" value="${state.calcTax}"></label>
+              </div>
+              <div class="calc-summary-row"><span>Subtotal</span><strong id="calcSubtotal">$0</strong></div>
+              <div class="calc-summary-row"><span>Discount</span><strong id="calcDiscountAmount">-$0</strong></div>
+              <div class="calc-summary-row"><span>Tax</span><strong id="calcTaxAmount">+$0</strong></div>
+              <div class="calc-summary-row total"><span>Total</span><strong id="calcTotal">$0</strong></div>
+              <div class="form-actions"><button type="button" id="calcResetBtn">Reset calculator</button></div>
+            </div>
+          </div>
+        </section>
+      `;
+      bindPricingControls();
+      updateCalculatorSummary();
+    }
+
+    function renderServiceRow(service) {
+      return `
+        <div class="team-row" data-service-id="${service.id}">
+          <strong>${escapeHtml(service.name)}</strong>
+          <span>${label(service.unit_label)}</span>
+          <span>${money(service.unit_price)}</span>
+          <div style="display:flex;gap:6px;justify-content:flex-end;">
+            <button type="button" class="service-edit-btn" data-service-id="${service.id}">Edit</button>
+            <button type="button" class="mini-delete service-delete-btn" data-service-id="${service.id}" title="Delete">&times;</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCalcRow(service) {
+      const qty = state.calcQty[service.id] || 0;
+      return `
+        <div class="calc-row" data-service-id="${service.id}">
+          <strong>${escapeHtml(service.name)}</strong>
+          <span>${money(service.unit_price)} / ${label(service.unit_label)}</span>
+          <input type="number" min="0" step="1" class="calc-qty-input" data-service-id="${service.id}" value="${qty}" aria-label="Quantity for ${escapeAttr(service.name)}">
+          <span class="calc-line-total" data-service-id="${service.id}">${money(qty * Number(service.unit_price))}</span>
+        </div>
+      `;
+    }
+
+    function computeCalculatorTotals() {
+      const subtotal = state.services.reduce((sum, service) => {
+        const qty = Number(state.calcQty[service.id]) || 0;
+        return sum + qty * Number(service.unit_price || 0);
+      }, 0);
+      const discountAmount = subtotal * (Number(state.calcDiscount) || 0) / 100;
+      const taxable = subtotal - discountAmount;
+      const taxAmount = taxable * (Number(state.calcTax) || 0) / 100;
+      return { subtotal, discountAmount, taxAmount, total: taxable + taxAmount };
+    }
+
+    function updateCalculatorSummary() {
+      const subtotalEl = document.getElementById("calcSubtotal");
+      if (!subtotalEl) return;
+      const { subtotal, discountAmount, taxAmount, total } = computeCalculatorTotals();
+      subtotalEl.textContent = money(subtotal);
+      document.getElementById("calcDiscountAmount").textContent = `-${money(discountAmount)}`;
+      document.getElementById("calcTaxAmount").textContent = `+${money(taxAmount)}`;
+      document.getElementById("calcTotal").textContent = money(total);
+    }
+
+    function bindPricingControls() {
+      document.getElementById("serviceForm").addEventListener("submit", saveServiceFromForm);
+      const cancelBtn = document.getElementById("cancelEditService");
+      if (cancelBtn) {
+        cancelBtn.addEventListener("click", () => {
+          state.editingServiceId = null;
+          renderBoard();
+        });
+      }
+
+      document.querySelectorAll(".service-edit-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          state.editingServiceId = button.dataset.serviceId;
+          renderBoard();
+        });
+      });
+      document.querySelectorAll(".service-delete-btn").forEach(button => {
+        button.addEventListener("click", () => deleteService(button.dataset.serviceId));
+      });
+
+      document.querySelectorAll(".calc-qty-input").forEach(input => {
+        input.addEventListener("input", event => {
+          const id = event.target.dataset.serviceId;
+          const qty = Math.max(0, Number(event.target.value) || 0);
+          state.calcQty[id] = qty;
+          const service = state.services.find(candidate => candidate.id === id);
+          const lineTotalEl = document.querySelector(`.calc-line-total[data-service-id="${id}"]`);
+          if (lineTotalEl && service) lineTotalEl.textContent = money(qty * Number(service.unit_price));
+          updateCalculatorSummary();
+        });
+      });
+
+      document.getElementById("calcDiscount").addEventListener("input", event => {
+        state.calcDiscount = Math.min(100, Math.max(0, Number(event.target.value) || 0));
+        updateCalculatorSummary();
+      });
+      document.getElementById("calcTax").addEventListener("input", event => {
+        state.calcTax = Math.min(100, Math.max(0, Number(event.target.value) || 0));
+        updateCalculatorSummary();
+      });
+      document.getElementById("calcResetBtn").addEventListener("click", () => {
+        state.calcQty = {};
+        state.calcDiscount = 0;
+        state.calcTax = 0;
+        renderBoard();
+      });
+    }
+
+    async function saveServiceFromForm(event) {
+      event.preventDefault();
+      if (!isAdmin()) return;
+      const form = new FormData(event.currentTarget);
+      const payload = {
+        name: form.get("name").trim(),
+        unit_label: form.get("unit_label"),
+        unit_price: Number(form.get("unit_price") || 0)
+      };
+      if (!payload.name) {
+        flash("Enter a service name");
+        return;
+      }
+
+      if (state.editingServiceId) {
+        const { data, error } = await supabaseClient
+          .from("crm_services")
+          .update(payload)
+          .eq("id", state.editingServiceId)
+          .select("id,name,unit_price,unit_label,created_at")
+          .single();
+        if (error) {
+          flash(error.message);
+          return;
+        }
+        state.services = state.services.map(service => service.id === data.id ? data : service);
+        state.editingServiceId = null;
+        render();
+        flash("Service updated");
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("crm_services")
+        .insert(payload)
+        .select("id,name,unit_price,unit_label,created_at")
+        .single();
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      state.services.push(data);
+      render();
+      flash("Service added");
+    }
+
+    async function deleteService(id) {
+      if (!isAdmin()) return;
+      const { error } = await supabaseClient.from("crm_services").delete().eq("id", id);
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      state.services = state.services.filter(service => service.id !== id);
+      delete state.calcQty[id];
+      render();
+      flash("Service deleted");
+    }
+
+    async function loadServices() {
+      if (!isAdmin()) {
+        state.services = [];
+        return;
+      }
+      const { data, error } = await supabaseClient
+        .from("crm_services")
+        .select("id,name,unit_price,unit_label,created_at")
+        .order("name", { ascending: true });
+      if (error) throw error;
+      state.services = data || [];
     }
 
     function renderKpi(labelText, value) {
@@ -2976,6 +3266,7 @@
         await loadChangeRequests();
         await loadDocuments();
         await loadTeamProfiles();
+        await loadServices();
       } catch (error) {
         flash(error.message);
       } finally {
@@ -3005,6 +3296,9 @@
         .on("postgres_changes", { event: "*", schema: "public", table: "crm_documents" }, () => {
           loadDocuments().then(render).catch(error => flash(error.message));
         })
+        .on("postgres_changes", { event: "*", schema: "public", table: "crm_services" }, () => {
+          loadServices().then(render).catch(error => flash(error.message));
+        })
         .subscribe();
     }
 
@@ -3019,6 +3313,7 @@
         await loadChangeRequests();
         await loadDocuments();
         await loadTeamProfiles();
+        await loadServices();
         subscribeToChanges();
       } catch (error) {
         flash(error.message);
@@ -3037,6 +3332,8 @@
           state.changeRequests = [];
           state.documents = [];
           state.teamProfiles = [];
+          state.services = [];
+          state.editingServiceId = null;
         }
         subscribeToChanges();
         await refreshFromDatabase();
