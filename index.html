@@ -44,15 +44,32 @@
       min-height: 34px;
       border-radius: 6px;
       cursor: pointer;
+      transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease, filter .15s ease, background .15s ease;
     }
 
     button:hover { border-color: #a7b4c3; }
+    button:active { transform: translateY(1px); }
     button.primary {
-      background: var(--accent);
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
       color: white;
-      border-color: var(--accent);
+      border-color: transparent;
+      font-weight: 600;
     }
-    button.primary:hover { background: var(--accent-strong); }
+    button.primary:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(15,118,110,.28);
+    }
+    button.primary:active { transform: translateY(0); box-shadow: none; }
+    button.primary:disabled {
+      background: var(--panel-strong);
+      color: var(--muted);
+      border-color: var(--line);
+      filter: none;
+      transform: none;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
     button.icon {
       width: 34px;
       display: grid;
@@ -702,6 +719,12 @@
       padding: 8px 9px;
       color: var(--text);
       background: var(--panel);
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15,118,110,.15);
     }
     textarea {
       min-height: 84px;
@@ -867,13 +890,98 @@
       background: var(--bg);
       padding: 24px;
     }
-    .login-card {
-      width: min(380px, 100%);
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 12px;
+    .login-shell {
+      width: min(940px, 100%);
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      border-radius: 20px;
+      overflow: hidden;
       box-shadow: var(--shadow);
-      padding: 28px;
+      background: var(--panel);
+      animation: login-rise .45s cubic-bezier(.16,1,.3,1) both;
+    }
+    @keyframes login-rise {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .login-shell { animation: none; }
+    }
+
+    .login-hero {
+      position: relative;
+      padding: 48px 42px;
+      background: linear-gradient(155deg, #14b8a6 0%, #0f766e 45%, #0b3d3a 100%);
+      color: #eafffa;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+    .login-hero-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(46px);
+      pointer-events: none;
+    }
+    .login-hero-blob.b1 { width: 260px; height: 260px; background: #5eead4; top: -70px; right: -60px; opacity: .55; }
+    .login-hero-blob.b2 { width: 220px; height: 220px; background: #facc15; bottom: -90px; left: -50px; opacity: .2; }
+    .login-hero-content { position: relative; z-index: 1; display: grid; gap: 18px; }
+    .login-hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-size: 11px;
+      font-weight: 800;
+      color: #99f6e4;
+    }
+    .login-hero-content h2 {
+      margin: 0;
+      font-size: 27px;
+      line-height: 1.28;
+      letter-spacing: -0.01em;
+    }
+    .login-hero-content > p {
+      margin: 0;
+      color: rgba(234,255,250,.82);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .login-hero-features {
+      list-style: none;
+      margin: 6px 0 0;
+      padding: 0;
+      display: grid;
+      gap: 12px;
+    }
+    .login-hero-features li {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-size: 13px;
+      color: rgba(234,255,250,.94);
+    }
+    .login-hero-features li span {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.16);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      flex: 0 0 auto;
+    }
+
+    .login-panel {
+      padding: 46px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 340px;
       display: grid;
       gap: 18px;
     }
@@ -898,24 +1006,37 @@
     .login-tabs {
       display: inline-grid;
       grid-auto-flow: column;
-      border: 1px solid var(--line);
-      border-radius: 7px;
+      border-radius: 999px;
       overflow: hidden;
       background: var(--panel-strong);
+      padding: 4px;
+      gap: 2px;
     }
     .login-tabs button {
       border: 0;
-      border-radius: 0;
+      border-radius: 999px;
       background: transparent;
       color: var(--muted);
-      min-height: 34px;
+      min-height: 32px;
+      font-weight: 650;
+      transition: background .15s ease, color .15s ease;
     }
     .login-tabs button.active {
-      background: var(--panel);
-      color: var(--text);
-      box-shadow: inset 0 -2px 0 var(--accent);
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(15,118,110,.3);
     }
     .login-form { display: grid; gap: 10px; }
+    .field-icon { position: relative; }
+    .field-icon svg {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .field-icon input { padding-left: 34px; }
     .link-btn {
       border: 0;
       background: transparent;
@@ -926,6 +1047,7 @@
       font-size: 12px;
       cursor: pointer;
     }
+    .link-btn:hover { color: var(--accent-strong); }
     .login-error {
       border: 1px solid #fecdd3;
       background: #fff1f2;
@@ -965,6 +1087,12 @@
       padding: 0;
       font-weight: 600;
       cursor: pointer;
+    }
+
+    @media (max-width: 860px) {
+      .login-shell { grid-template-columns: 1fr; border-radius: 16px; }
+      .login-hero { display: none; }
+      .login-panel { padding: 34px 26px; }
     }
     .demo-banner {
       background: #eef6f5;
@@ -1231,28 +1359,57 @@
 </head>
 <body>
   <div class="login-screen" id="loginScreen" hidden>
-    <div class="login-card">
-      <div class="login-brand">
-        <div class="mark"><img src="supertelque-logo.png" alt="SuperTelque"></div>
-        <div>
-          <h1>SuperTelque CRM</h1>
-          <p>Client journey, delivery, and documents in one workspace.</p>
+    <div class="login-shell">
+      <div class="login-hero" aria-hidden="true">
+        <div class="login-hero-blob b1"></div>
+        <div class="login-hero-blob b2"></div>
+        <div class="login-hero-content">
+          <span class="login-hero-kicker">SuperTelque CRM</span>
+          <h2>One calm workspace for your whole client journey</h2>
+          <p>Pipeline, delivery, documents, and reporting — without switching tools.</p>
+          <ul class="login-hero-features">
+            <li><span>&#10003;</span> Pipeline &amp; project boards with drag-and-drop</li>
+            <li><span>&#10003;</span> Role-based access for admins, managers, and reps</li>
+            <li><span>&#10003;</span> Document upload with inline preview</li>
+            <li><span>&#10003;</span> Admin pricing calculator for fast quotes</li>
+          </ul>
         </div>
       </div>
-      <div class="login-tabs" role="tablist" aria-label="Login or create account">
-        <button class="active" data-auth-tab="signin" type="button">Sign in</button>
-        <button data-auth-tab="signup" type="button">Create account</button>
+      <div class="login-panel">
+        <div class="login-card">
+          <div class="login-brand">
+            <div class="mark"><img src="supertelque-logo.png" alt="SuperTelque"></div>
+            <div>
+              <h1>SuperTelque CRM</h1>
+              <p>Client journey, delivery, and documents in one workspace.</p>
+            </div>
+          </div>
+          <div class="login-tabs" role="tablist" aria-label="Login or create account">
+            <button class="active" data-auth-tab="signin" type="button">Sign in</button>
+            <button data-auth-tab="signup" type="button">Create account</button>
+          </div>
+          <form class="login-form" id="loginForm">
+            <label>Email
+              <div class="field-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
+                <input id="loginEmail" type="email" autocomplete="email" required>
+              </div>
+            </label>
+            <label>Password
+              <div class="field-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <input id="loginPassword" type="password" autocomplete="current-password" required>
+              </div>
+            </label>
+            <div id="loginError" class="login-error" hidden></div>
+            <button class="primary" type="submit" id="loginSubmit">Sign in</button>
+            <button type="button" class="link-btn" id="forgotPasswordBtn">Forgot your password?</button>
+          </form>
+          <div class="login-divider">or</div>
+          <button class="login-demo-btn" id="demoModeBtn" type="button">View live demo (no account needed)</button>
+          <p class="login-footer">Your CRM data is protected by Supabase Auth and row-level security. Only you and your team can access your workspace.</p>
+        </div>
       </div>
-      <form class="login-form" id="loginForm">
-        <label>Email<input id="loginEmail" type="email" autocomplete="email" required></label>
-        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required></label>
-        <div id="loginError" class="login-error" hidden></div>
-        <button class="primary" type="submit" id="loginSubmit">Sign in</button>
-        <button type="button" class="link-btn" id="forgotPasswordBtn">Forgot your password?</button>
-      </form>
-      <div class="login-divider">or</div>
-      <button class="login-demo-btn" id="demoModeBtn" type="button">View live demo (no account needed)</button>
-      <p class="login-footer">Your CRM data is protected by Supabase Auth and row-level security. Only you and your team can access your workspace.</p>
     </div>
   </div>
 
