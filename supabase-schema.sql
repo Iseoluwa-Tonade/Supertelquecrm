@@ -1,5 +1,6 @@
--- SuperTelque CRM - additive schema for Documents, expanded roles, and the
--- admin pricing calculator's service catalog.
+-- SuperTelque CRM - additive schema for Documents, expanded roles, per-teammate
+-- view assignment, HR profile fields, the admin pricing calculator's service
+-- catalog, and the sales document link on board items.
 -- Run this once in the Supabase SQL editor for your project.
 -- It assumes the existing tables (profiles, crm_board_items, crm_daily_activities,
 -- crm_change_requests) already exist, as created for the original CRM build.
@@ -47,6 +48,9 @@ create policy "documents_delete_own_or_manager"
   );
 
 -- 2. Storage bucket for uploaded files -----------------------------------
+-- If uploads fail with "Bucket not found", this step didn't run yet (or ran
+-- against a different project) — re-run this script, or create a private
+-- bucket named "crm-documents" by hand in Supabase → Storage.
 
 insert into storage.buckets (id, name, public)
 values ('crm-documents', 'crm-documents', false)
@@ -87,32 +91,81 @@ alter table public.profiles
 
 alter table public.profiles alter column status set default 'active';
 
--- Admins can view and update every teammate's profile (needed for the Team page).
+-- 4. Per-teammate view assignment + HR profile fields ---------------------
+
+alter table public.profiles add column if not exists allowed_views text[];
+alter table public.profiles add column if not exists phone text default '';
+alter table public.profiles add column if not exists department text default '';
+alter table public.profiles add column if not exists job_title text default '';
+alter table public.profiles add column if not exists start_date date;
+alter table public.profiles add column if not exists employee_id text default '';
+alter table public.profiles add column if not exists emergency_contact_name text default '';
+alter table public.profiles add column if not exists emergency_contact_phone text default '';
+alter table public.profiles add column if not exists address text default '';
+
+-- Managers and admins can view and update every teammate's profile (Team page).
+-- Everyone can also always read/update their own row (also covers the HR
+-- "My Profile" self-service form) — see the trigger below for why that's safe.
 drop policy if exists "profiles_admin_select_all" on public.profiles;
-create policy "profiles_admin_select_all"
+drop policy if exists "profiles_manager_select_all" on public.profiles;
+create policy "profiles_manager_select_all"
   on public.profiles for select
   to authenticated
   using (
     user_id = auth.uid()
     or exists (
       select 1 from public.profiles p
-      where p.user_id = auth.uid() and p.role = 'admin'
+      where p.user_id = auth.uid() and p.role in ('admin', 'manager')
     )
   );
 
 drop policy if exists "profiles_admin_update_all" on public.profiles;
-create policy "profiles_admin_update_all"
+drop policy if exists "profiles_manager_update_all" on public.profiles;
+create policy "profiles_manager_update_all"
   on public.profiles for update
   to authenticated
   using (
     user_id = auth.uid()
     or exists (
       select 1 from public.profiles p
-      where p.user_id = auth.uid() and p.role = 'admin'
+      where p.user_id = auth.uid() and p.role in ('admin', 'manager')
     )
   );
 
--- 4. Service catalog for the admin pricing calculator ---------------------
+-- Security: the update policy above lets a user update their OWN row (needed
+-- for self-service HR editing), which would otherwise let anyone grant
+-- themselves admin by editing their own `role`/`status`/`allowed_views` via a
+-- raw API call. This trigger blocks that: when you're updating your own row
+-- and you are not already an admin, role/status/allowed_views are silently
+-- reset to their previous value no matter what the request asked for.
+create or replace function public.prevent_self_role_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  acting_role text;
+begin
+  if new.user_id = auth.uid() then
+    select role into acting_role from public.profiles where user_id = auth.uid();
+    if acting_role is distinct from 'admin' then
+      new.role := old.role;
+      new.status := old.status;
+      new.allowed_views := old.allowed_views;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_prevent_self_role_escalation on public.profiles;
+create trigger trg_prevent_self_role_escalation
+before update on public.profiles
+for each row
+execute function public.prevent_self_role_escalation();
+
+-- 5. Service catalog for the admin pricing calculator ---------------------
 
 create table if not exists public.crm_services (
   id uuid primary key default gen_random_uuid(),
@@ -142,7 +195,11 @@ create policy "services_admin_all"
     )
   );
 
--- 5. Realtime for the new tables (optional, matches the existing tables) --
+-- 6. Sales document link on deals/projects ---------------------------------
+
+alter table public.crm_board_items add column if not exists document_url text default '';
+
+-- 7. Realtime for the new tables (optional, matches the existing tables) --
 -- If this errors because a table is already in the publication, that's fine.
 
 do $$

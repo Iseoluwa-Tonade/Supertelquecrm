@@ -3,7 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CRM Project Board</title>
+  <!--
+    Content-Security-Policy note: this app is a single static file with an
+    inline script block and an inline style block, so 'unsafe-inline' is
+    required for script-src and style-src below (there is no build step to
+    move them to hashed/external files or nonces). The real access-control
+    boundary is Supabase row-level security, not this policy — see
+    supabase-schema.sql. The frame-ancestors directive is included for
+    documentation but is ignored when delivered via a meta tag; GitHub
+    Pages does not support custom response headers, so it has no effect
+    there. Host this behind a server/CDN that lets you set real HTTP
+    security headers if that matters for your deployment.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://otpzsnsrxcfuysjfnguk.supabase.co; font-src 'self'; connect-src 'self' https://otpzsnsrxcfuysjfnguk.supabase.co wss://otpzsnsrxcfuysjfnguk.supabase.co; frame-src https://otpzsnsrxcfuysjfnguk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self';">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>SuperTelque CRM</title>
   <style>
     :root {
       color-scheme: light;
@@ -139,7 +153,16 @@
       gap: 10px;
       padding: 0 6px 10px;
       border-bottom: 1px solid rgba(255,255,255,.12);
+      width: 100%;
+      background: transparent;
+      border-left: 0;
+      border-right: 0;
+      border-top: 0;
+      text-align: left;
+      cursor: pointer;
+      min-height: auto;
     }
+    .brand:hover .mark { background: rgba(255,255,255,.14); }
 
     .mark {
       width: 38px;
@@ -1093,29 +1116,6 @@
     .login-brand .mark img { width: 36px; height: 36px; object-fit: contain; }
     .login-brand h1 { margin: 0; font-size: 18px; }
     .login-brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
-    .login-tabs {
-      display: inline-grid;
-      grid-auto-flow: column;
-      border-radius: 999px;
-      overflow: hidden;
-      background: var(--panel-strong);
-      padding: 4px;
-      gap: 2px;
-    }
-    .login-tabs button {
-      border: 0;
-      border-radius: 999px;
-      background: transparent;
-      color: var(--muted);
-      min-height: 32px;
-      font-weight: 650;
-      transition: background .15s ease, color .15s ease;
-    }
-    .login-tabs button.active {
-      background: var(--accent);
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(15,118,110,.3);
-    }
     .login-form { display: grid; gap: 10px; }
     .field-icon { position: relative; }
     .field-icon svg {
@@ -1147,22 +1147,6 @@
       font-size: 12px;
     }
     :root[data-theme="dark"] .login-error { background: rgba(251,113,133,.1); }
-    .login-divider {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-    .login-divider::before, .login-divider::after {
-      content: "";
-      flex: 1;
-      height: 1px;
-      background: var(--line);
-    }
-    .login-demo-btn { width: 100%; }
     .login-footer {
       color: var(--muted);
       font-size: 12px;
@@ -1184,18 +1168,6 @@
       .login-hero { display: none; }
       .login-panel { padding: 34px 26px; }
     }
-    .demo-banner {
-      background: #eef6f5;
-      border-bottom: 1px solid var(--line);
-      padding: 8px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    :root[data-theme="dark"] .demo-banner { background: rgba(45,212,191,.08); }
 
     .dropzone {
       border: 2px dashed var(--line);
@@ -1304,6 +1276,10 @@
       gap: 12px;
       justify-items: center;
     }
+    .confirm-modal { width: min(420px, 100%); }
+    .confirm-modal .modal-body { justify-items: stretch; }
+    .confirm-modal #confirmMessage { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .confirm-modal .form-actions { padding-top: 0; }
     .modal-body img {
       max-width: 100%;
       max-height: 60vh;
@@ -1318,7 +1294,7 @@
 
     .team-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 120px 130px 90px;
+      grid-template-columns: minmax(0, 1fr) 120px 100px 170px;
       gap: 10px;
       align-items: center;
       border: 1px solid var(--line);
@@ -1327,6 +1303,32 @@
       font-size: 12px;
       animation: fade-in-up .3s ease both;
     }
+    .team-views-panel {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 12px;
+      margin-top: -2px;
+      background: var(--panel-strong);
+      display: grid;
+      gap: 10px;
+      animation: fade-in .2s ease both;
+    }
+    .team-views-head strong { display: block; font-size: 13px; }
+    .team-views-head span { color: var(--muted); font-size: 12px; }
+    .team-views-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .team-view-check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .team-view-check input { width: 15px; height: 15px; }
     .team-row.header {
       background: var(--panel-strong);
       color: var(--muted);
@@ -1429,10 +1431,6 @@
         align-items: stretch;
         flex-direction: column;
       }
-      .demo-banner {
-        flex-direction: column;
-        align-items: stretch;
-      }
       .actions, .filters {
         width: 100%;
         flex-wrap: wrap;
@@ -1487,10 +1485,6 @@
               <p>Client journey, delivery, and documents in one workspace.</p>
             </div>
           </div>
-          <div class="login-tabs" role="tablist" aria-label="Login or create account">
-            <button class="active" data-auth-tab="signin" type="button">Sign in</button>
-            <button data-auth-tab="signup" type="button">Create account</button>
-          </div>
           <form class="login-form" id="loginForm">
             <label>Email
               <div class="field-icon">
@@ -1508,9 +1502,7 @@
             <button class="primary" type="submit" id="loginSubmit">Sign in</button>
             <button type="button" class="link-btn" id="forgotPasswordBtn">Forgot your password?</button>
           </form>
-          <div class="login-divider">or</div>
-          <button class="login-demo-btn" id="demoModeBtn" type="button">View live demo (no account needed)</button>
-          <p class="login-footer">Your CRM data is protected by Supabase Auth and row-level security. Only you and your team can access your workspace.</p>
+          <p class="login-footer">Access is invite-only. Your CRM data is protected by Supabase Auth and row-level security &mdash; only teammates invited by an admin can sign in.</p>
         </div>
       </div>
     </div>
@@ -1518,13 +1510,13 @@
 
   <div class="app" id="appRoot" hidden>
     <aside class="sidebar" aria-label="Workspace navigation">
-      <div class="brand">
+      <button type="button" class="brand" id="brandHomeBtn" title="Go to Overview">
         <div class="mark"><img src="supertelque-logo.png" alt="SuperTelque"></div>
         <div>
           <strong>SuperTelque CRM</strong>
           <span>Client journey and delivery</span>
         </div>
-      </div>
+      </button>
       <nav class="nav">
         <button class="active" data-view="overview" title="Overview">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="8"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="15" width="7" height="6"></rect></svg><span>Overview</span>
@@ -1552,6 +1544,9 @@
         </button>
         <button data-view="pricing" title="Pricing" id="pricingNavBtn" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg><span>Pricing</span>
+        </button>
+        <button data-view="profile" title="My Profile" id="profileNavBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><circle cx="9" cy="11" r="2.5"></circle><path d="M6 17c.5-2 1.5-3 3-3s2.5 1 3 3"></path><path d="M15 10h4M15 14h4"></path></svg><span>My Profile</span>
         </button>
       </nav>
       <div class="sidebar-footer">
@@ -1614,11 +1609,6 @@
         </div>
       </section>
 
-      <section class="demo-banner" id="demoBanner" hidden>
-        <span>Viewing demo data. Sign in to save real cards, activities, and documents.</span>
-        <button class="primary" id="demoSignInBtn">Sign in</button>
-      </section>
-
       <section class="board" id="board" aria-label="CRM project board"></section>
     </main>
 
@@ -1638,6 +1628,22 @@
         <button class="icon" id="closePreview" title="Close">&times;</button>
       </div>
       <div class="modal-body" id="previewBody"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="confirmOverlay" hidden>
+    <div class="modal confirm-modal">
+      <div class="modal-header">
+        <h2 id="confirmTitle">Are you sure?</h2>
+        <button class="icon" id="closeConfirm" title="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage"></p>
+        <div class="form-actions">
+          <button type="button" id="confirmCancelBtn">Cancel</button>
+          <button type="button" class="danger" id="confirmOkBtn">Delete</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1683,21 +1689,20 @@
       { id: "a7", type: "task", title: "Resolve data import blocker", company: "Mira Health", owner: "Noah", priority: "high", value: 0, due: "2026-07-06", status: "blocked", notes: "CSV includes mixed encodings. Validate normalized export before next import." }
     ];
 
-    const demoActivities = [
-      { id: "d1", activity_date: todayIso(), title: "Reply to new prospect email", channel: "email", notes: "", completed: true },
-      { id: "d2", activity_date: todayIso(), title: "Follow up on proposal with Orbit Labs", channel: "proposal", notes: "", completed: false },
-      { id: "d3", activity_date: todayIso(), title: "Prepare kickoff checklist for Mira Health", channel: "delivery", notes: "", completed: false },
-      { id: "d4", activity_date: "2026-07-03", title: "Discovery call notes cleaned up", channel: "meeting", notes: "", completed: true }
-    ];
-
-    const demoDocuments = [
-      { id: "doc1", board_item_id: "a1", file_name: "Enterprise-MSA.pdf", file_type: "application/pdf", file_size: 245000, description: "Signed master service agreement", uploaded_by_name: "Ava", created_at: "2026-06-28T10:00:00Z" },
-      { id: "doc2", board_item_id: "a2", file_name: "Client-portal-mockup.png", file_type: "image/png", file_size: 812000, description: "Latest approved UI mockup", uploaded_by_name: "Noah", created_at: "2026-06-30T14:30:00Z" },
-      { id: "doc3", board_item_id: "a3", file_name: "Renewal-proposal-v2.docx", file_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", file_size: 98000, description: "Latest renewal draft", uploaded_by_name: "Mina", created_at: "2026-07-02T09:15:00Z" }
-    ];
-
     const ROLES = ["admin", "manager", "owner", "viewer"];
     const ADMIN_BOOTSTRAP_EMAILS = ["iseo6lu@gmail.com", "iseolu6@gmail.com"];
+    const NAV_VIEWS = [
+      { id: "overview", label: "Overview" },
+      { id: "pipeline", label: "Pipeline" },
+      { id: "projects", label: "Projects" },
+      { id: "activity", label: "Activity" },
+      { id: "documents", label: "Documents" },
+      { id: "approvals", label: "Approvals" },
+      { id: "focus", label: "Focus" },
+      { id: "team", label: "Team" },
+      { id: "pricing", label: "Pricing" },
+      { id: "profile", label: "My Profile" }
+    ];
 
     const state = {
       view: "overview",
@@ -1715,15 +1720,13 @@
       items: [],
       documents: [],
       teamProfiles: [],
+      teamViewsOpenId: null,
       services: [],
       editingServiceId: null,
       calcQty: {},
       calcDiscount: 0,
       calcTax: 0,
-      demoPreview: false,
       theme: localStorage.getItem("crm-theme") || "light",
-      authTab: "signin",
-      authError: "",
       previewDoc: null,
       docFilterItem: "all"
     };
@@ -1741,7 +1744,6 @@
     const sideTitle = document.getElementById("sideTitle");
     const toast = document.getElementById("toast");
     const signOutBtn = document.getElementById("signOutBtn");
-    const demoBanner = document.getElementById("demoBanner");
     const loginForm = document.getElementById("loginForm");
     const loginEmail = document.getElementById("loginEmail");
     const loginPassword = document.getElementById("loginPassword");
@@ -1752,25 +1754,22 @@
     const previewOverlay = document.getElementById("previewOverlay");
     const previewTitle = document.getElementById("previewTitle");
     const previewBody = document.getElementById("previewBody");
+    const confirmOverlay = document.getElementById("confirmOverlay");
 
     function columns() {
       return state.view === "projects" ? projectColumns : pipelineColumns;
     }
 
-    function isDemoMode() {
-      return !state.session;
-    }
-
     function visibleItems() {
-      return isDemoMode() ? seedItems : state.items;
+      return state.items;
     }
 
     function visibleActivities() {
-      return isDemoMode() ? demoActivities : state.activities;
+      return state.activities;
     }
 
     function visibleDocuments() {
-      return isDemoMode() ? demoDocuments : state.documents;
+      return state.documents;
     }
 
     function pendingRequests() {
@@ -1782,7 +1781,7 @@
     }
 
     function currentRole() {
-      return state.profile?.role || (state.session ? "owner" : "demo");
+      return state.profile?.role || "owner";
     }
 
     function isAdmin() {
@@ -1799,6 +1798,24 @@
 
     function canEdit() {
       return Boolean(state.session) && !isViewer();
+    }
+
+    function roleAllowsView(view) {
+      if (view === "pricing") return isAdmin();
+      if (view === "team") return isManager();
+      return true;
+    }
+
+    function canSeeView(view) {
+      if (!roleAllowsView(view)) return false;
+      const allowed = state.profile?.allowed_views;
+      if (!allowed || !allowed.length) return true;
+      return allowed.includes(view);
+    }
+
+    function firstAllowedView() {
+      const match = NAV_VIEWS.find(entry => canSeeView(entry.id));
+      return match ? match.id : "overview";
     }
 
     function normalizeStatus(item) {
@@ -1821,9 +1838,12 @@
     }
 
     function render() {
-      if (!state.session && !state.demoPreview) {
+      if (!state.session) {
         showLoginScreen();
         return;
+      }
+      if (!state.loading && !canSeeView(state.view)) {
+        state.view = firstAllowedView();
       }
       showAppScreen();
       renderChrome();
@@ -1854,7 +1874,8 @@
         approvals: ["Approval Queue", "Review team changes before they become approved CRM records."],
         focus: ["Focus Queue", "High-priority and near-due work across the whole book."],
         team: ["Team", "Manage teammate roles and access."],
-        pricing: ["Pricing Calculator", "Manage the service catalog and quote a client."]
+        pricing: ["Pricing Calculator", "Manage the service catalog and quote a client."],
+        profile: ["My Profile", "Your account, contact, and HR details."]
       };
       document.getElementById("viewTitle").textContent = copy[state.view][0];
       document.getElementById("viewSubtitle").textContent = copy[state.view][1];
@@ -1869,9 +1890,11 @@
         approvalCount.textContent = pendingRequests().length;
         approvalCount.classList.toggle("show", Boolean(state.session && pendingRequests().length));
       }
-      document.getElementById("teamNavBtn").hidden = !isAdmin();
-      document.getElementById("pricingNavBtn").hidden = !isAdmin();
-      document.querySelector(".toolbar").hidden = ["overview", "activity", "documents", "approvals", "team", "pricing"].includes(state.view);
+      NAV_VIEWS.forEach(entry => {
+        const button = document.querySelector(`.nav button[data-view="${entry.id}"]`);
+        if (button) button.hidden = !canSeeView(entry.id);
+      });
+      document.querySelector(".toolbar").hidden = ["overview", "activity", "documents", "approvals", "team", "pricing", "profile"].includes(state.view);
     }
 
     function renderTopbar() {
@@ -1879,7 +1902,6 @@
       document.getElementById("addBtn").hidden = !["pipeline", "projects", "focus"].includes(state.view);
       document.getElementById("addBtn").disabled = !canEdit();
       profileMenu.hidden = !signedIn;
-      demoBanner.hidden = signedIn || !state.demoPreview;
 
       if (signedIn) {
         const email = state.session.user.email || "";
@@ -1931,6 +1953,11 @@
 
       if (state.view === "pricing") {
         renderPricingView();
+        return;
+      }
+
+      if (state.view === "profile") {
+        renderProfileView();
         return;
       }
 
@@ -1996,16 +2023,10 @@
       const todayActivities = activitiesForToday();
       const completedToday = todayActivities.filter(activity => activity.completed).length;
       const actualActivities = visibleActivities().filter(activity => activity.completed).length;
-      const demoBanner = isDemoMode()
-        ? `<div class="empty">Demo data is shown here so your team can preview the workflow. Sign in to read and write the live Supabase tables.</div>`
-        : "";
-      const roleBanner = state.session
-        ? `<div class="empty">${isManager() ? "Manager dashboard: you can see team CRM records allowed by Supabase policies and approve pending team edits." : "Personal dashboard: you see approved records. Your edits are sent for manager approval before they change the board."}</div>`
-        : "";
+      const roleBanner = `<div class="empty">${isManager() ? "Manager dashboard: you can see team CRM records allowed by Supabase policies and approve pending team edits." : "Personal dashboard: you see approved records. Your edits are sent for manager approval before they change the board."}</div>`;
 
       board.innerHTML = `
         <section class="overview" aria-label="CRM overview dashboard">
-          ${demoBanner}
           ${roleBanner}
           <div class="kpi-grid">
             ${renderKpi("Open accounts", activeCount)}
@@ -2069,7 +2090,7 @@
             <div class="activity-panel">
               <h2>Today</h2>
               ${renderActivityComposer()}
-              <div class="activity-list">${renderActivityItems(todayActivities, !isDemoMode())}</div>
+              <div class="activity-list">${renderActivityItems(todayActivities, true)}</div>
             </div>
           </div>
         </section>
@@ -2078,15 +2099,6 @@
     }
 
     function renderApprovalsView() {
-      if (isDemoMode()) {
-        board.innerHTML = `
-          <section class="overview" aria-label="Approval queue">
-            <div class="empty">Sign in to view pending CRM edits. Team changes are stored separately until a manager approves them.</div>
-          </section>
-        `;
-        return;
-      }
-
       const requests = pendingRequests();
       board.innerHTML = `
         <section class="overview" aria-label="Approval queue">
@@ -2142,7 +2154,7 @@
       if (request.action === "delete") {
         return `<div class="approval-field"><strong>Delete</strong><span>${escapeHtml(before.company || "Account")} - ${escapeHtml(before.title || "CRM item")}</span></div>`;
       }
-      return ["title", "company", "owner", "type", "priority", "status", "value", "due", "notes"].map(key => {
+      return ["title", "company", "owner", "type", "priority", "status", "value", "due", "notes", "document_url"].map(key => {
         const previous = before[key];
         const next = after[key];
         if (request.action === "update" && String(previous ?? "") === String(next ?? "")) return "";
@@ -2167,7 +2179,7 @@
           ${Object.keys(grouped).sort().reverse().map(date => `
             <div class="activity-panel">
               <h2>${dateLabel(date)}</h2>
-              <div class="activity-list">${renderActivityItems(grouped[date], !isDemoMode())}</div>
+              <div class="activity-list">${renderActivityItems(grouped[date], true)}</div>
             </div>
           `).join("") || `<div class="empty">No daily activities yet. Add your first email, call, meeting, or delivery task.</div>`}
         </section>
@@ -2182,19 +2194,18 @@
         .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
 
       const linkableItems = visibleItems();
-      const canUpload = state.session && !isViewer();
+      const canUpload = !isViewer();
 
       board.innerHTML = `
         <section class="overview" aria-label="Document library">
-          ${isDemoMode() ? `<div class="empty">Demo documents shown here. Sign in to upload real files to Supabase Storage.</div>` : ""}
           ${canUpload ? `
             <div class="activity-panel">
               <h2>Upload a document</h2>
               <div class="dropzone" id="dropzone" tabindex="0">
-                <strong>Drag & drop a file here, or click to browse</strong>
-                <span>PDF, images, and office documents up to 20 MB</span>
+                <strong>Drag & drop files here, or click to browse</strong>
+                <span>PDF, images, and office documents up to 20 MB each &mdash; select as many as you need</span>
               </div>
-              <input type="file" id="fileInput" hidden>
+              <input type="file" id="fileInput" multiple hidden>
               <label>Link to account or project
                 <select id="uploadLinkSelect">
                   <option value="">No linked account</option>
@@ -2261,7 +2272,7 @@
           if (event.key === "Enter" || event.key === " ") fileInput.click();
         });
         fileInput.addEventListener("change", () => {
-          if (fileInput.files[0]) uploadDocument(fileInput.files[0], linkSelect?.value || "");
+          uploadDocuments(fileInput.files, linkSelect?.value || "");
           fileInput.value = "";
         });
         dropzone.addEventListener("dragover", event => {
@@ -2272,8 +2283,7 @@
         dropzone.addEventListener("drop", event => {
           event.preventDefault();
           dropzone.classList.remove("drag-over");
-          const file = event.dataTransfer.files[0];
-          if (file) uploadDocument(file, linkSelect?.value || "");
+          uploadDocuments(event.dataTransfer.files, linkSelect?.value || "");
         });
       }
 
@@ -2291,30 +2301,30 @@
       document.querySelectorAll(".doc-delete-btn").forEach(button => {
         button.addEventListener("click", event => {
           event.stopPropagation();
-          deleteDocument(button.dataset.docId);
+          confirmAction("Delete this document? This can't be undone.", () => deleteDocument(button.dataset.docId));
         });
       });
     }
 
-    async function uploadDocument(file, boardItemId) {
-      if (!canEdit()) {
-        flash(isViewer() ? "Viewers have read-only access" : "Sign in to upload documents");
-        return;
+    function friendlyUploadError(message) {
+      if (/bucket/i.test(message) && /not\s*found/i.test(message)) {
+        return `Storage bucket not found. Ask your admin to run supabase-schema.sql (or create a private "crm-documents" bucket in Supabase → Storage) before uploading.`;
       }
+      return message;
+    }
+
+    async function uploadOneDocument(file, boardItemId) {
       if (file.size > 20 * 1024 * 1024) {
-        flash("Files must be smaller than 20 MB");
-        return;
+        return { ok: false, error: `${file.name}: files must be smaller than 20 MB` };
       }
 
-      flash("Uploading...");
-      const path = `${state.session.user.id}/${Date.now()}_${file.name}`;
+      const path = `${state.session.user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${file.name}`;
       const { error: uploadError } = await supabaseClient.storage
         .from("crm-documents")
         .upload(path, file);
 
       if (uploadError) {
-        flash(uploadError.message);
-        return;
+        return { ok: false, error: `${file.name}: ${friendlyUploadError(uploadError.message)}` };
       }
 
       const { data, error } = await supabaseClient
@@ -2331,20 +2341,43 @@
         .single();
 
       if (error) {
-        flash(error.message);
-        return;
+        return { ok: false, error: `${file.name}: ${error.message}` };
       }
 
-      state.documents.unshift(data);
+      return { ok: true, data };
+    }
+
+    async function uploadDocuments(fileList, boardItemId) {
+      if (!canEdit()) {
+        flash(isViewer() ? "Viewers have read-only access" : "Sign in to upload documents");
+        return;
+      }
+      const files = Array.from(fileList || []);
+      if (!files.length) return;
+
+      flash(files.length > 1 ? `Uploading ${files.length} files...` : "Uploading...");
+      let succeeded = 0;
+      const errors = [];
+      for (const file of files) {
+        const result = await uploadOneDocument(file, boardItemId);
+        if (result.ok) {
+          state.documents.unshift(result.data);
+          succeeded++;
+        } else {
+          errors.push(result.error);
+        }
+      }
+
       render();
-      flash("Document uploaded");
+      if (errors.length) {
+        const suffix = errors.length > 1 ? ` (+${errors.length - 1} more failed)` : "";
+        flash(`${succeeded ? `${succeeded} uploaded. ` : ""}${errors[0]}${suffix}`);
+      } else {
+        flash(succeeded === 1 ? "Document uploaded" : `${succeeded} documents uploaded`);
+      }
     }
 
     async function deleteDocument(id) {
-      if (isDemoMode()) {
-        flash("Sign in to manage real documents");
-        return;
-      }
       const doc = state.documents.find(candidate => candidate.id === id);
       if (!doc) return;
 
@@ -2373,11 +2406,6 @@
       previewTitle.textContent = doc.file_name;
       previewOverlay.hidden = false;
 
-      if (isDemoMode()) {
-        previewBody.innerHTML = `<div class="empty">This is a demo document. Sign in to upload and preview real files.</div>`;
-        return;
-      }
-
       previewBody.innerHTML = `<div class="empty">Loading preview...</div>`;
       const { data, error } = await supabaseClient.storage
         .from("crm-documents")
@@ -2404,6 +2432,21 @@
       previewBody.innerHTML = "";
     }
 
+    let confirmCallback = null;
+
+    function confirmAction(message, onConfirm, options = {}) {
+      confirmCallback = onConfirm;
+      document.getElementById("confirmTitle").textContent = options.title || "Are you sure?";
+      document.getElementById("confirmMessage").textContent = message;
+      document.getElementById("confirmOkBtn").textContent = options.confirmLabel || "Delete";
+      confirmOverlay.hidden = false;
+    }
+
+    function closeConfirm() {
+      confirmOverlay.hidden = true;
+      confirmCallback = null;
+    }
+
     async function loadDocuments() {
       if (!state.session) {
         state.documents = [];
@@ -2419,8 +2462,8 @@
     }
 
     function renderTeamView() {
-      if (!isAdmin()) {
-        board.innerHTML = `<section class="overview"><div class="empty">Only admins can manage the team.</div></section>`;
+      if (!isManager()) {
+        board.innerHTML = `<section class="overview"><div class="empty">Only managers and admins can manage the team.</div></section>`;
         return;
       }
 
@@ -2440,19 +2483,50 @@
 
     function renderTeamRow(profile) {
       const isSelf = profile.user_id === state.session?.user?.id;
+      const viewsOpen = state.teamViewsOpenId === profile.user_id;
+      const restricted = Array.isArray(profile.allowed_views) && profile.allowed_views.length > 0;
       return `
         <div class="team-row" data-user-id="${profile.user_id}">
           <div>
             <strong>${escapeHtml(profile.display_name || profile.email || "Teammate")}</strong>
             <span>${escapeHtml(profile.email || "")}</span>
+            ${profile.job_title || profile.department ? `<span>${[profile.job_title, profile.department].filter(Boolean).map(escapeHtml).join(" &middot; ")}</span>` : ""}
           </div>
           <select class="team-role-select" data-user-id="${profile.user_id}" ${isSelf ? "disabled" : ""}>
             ${ROLES.map(role => option(role, profile.role, label(role))).join("")}
           </select>
           <span>${label(profile.status || "active")}</span>
-          <button type="button" class="team-status-btn" data-user-id="${profile.user_id}" ${isSelf ? "disabled" : ""}>
-            ${profile.status === "suspended" ? "Reinstate" : "Suspend"}
-          </button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+            <button type="button" class="team-views-toggle" data-user-id="${profile.user_id}">${restricted ? "Views*" : "Views"}</button>
+            <button type="button" class="team-status-btn" data-user-id="${profile.user_id}" ${isSelf ? "disabled" : ""}>
+              ${profile.status === "suspended" ? "Reinstate" : "Suspend"}
+            </button>
+          </div>
+        </div>
+        ${viewsOpen ? renderTeamViewsPanel(profile, isSelf) : ""}
+      `;
+    }
+
+    function renderTeamViewsPanel(profile, isSelf) {
+      const allowed = profile.allowed_views;
+      const restricted = Array.isArray(allowed) && allowed.length > 0;
+      return `
+        <div class="team-views-panel" data-user-id="${profile.user_id}">
+          <div class="team-views-head">
+            <strong>Visible pages for ${escapeHtml(profile.display_name || profile.email || "this teammate")}</strong>
+            <span>${isSelf ? "You can't restrict your own access." : restricted ? "Restricted to the checked pages below." : "Unrestricted — sees every page their role allows."}</span>
+          </div>
+          <div class="team-views-grid">
+            ${NAV_VIEWS.map(entry => `
+              <label class="team-view-check">
+                <input type="checkbox" class="team-view-checkbox" data-user-id="${profile.user_id}" data-view-id="${entry.id}" ${(!restricted || allowed.includes(entry.id)) ? "checked" : ""} ${isSelf ? "disabled" : ""}>
+                ${escapeHtml(entry.label)}
+              </label>
+            `).join("")}
+          </div>
+          <div class="form-actions">
+            <button type="button" class="team-views-reset" data-user-id="${profile.user_id}" ${isSelf ? "disabled" : ""}>Reset to unrestricted</button>
+          </div>
         </div>
       `;
     }
@@ -2468,16 +2542,121 @@
           updateTeamStatus(button.dataset.userId, nextStatus);
         });
       });
+      document.querySelectorAll(".team-views-toggle").forEach(button => {
+        button.addEventListener("click", () => {
+          const id = button.dataset.userId;
+          state.teamViewsOpenId = state.teamViewsOpenId === id ? null : id;
+          renderBoard();
+        });
+      });
+      document.querySelectorAll(".team-view-checkbox").forEach(checkbox => {
+        checkbox.addEventListener("change", () => {
+          const userId = checkbox.dataset.userId;
+          const checked = Array.from(document.querySelectorAll(`.team-view-checkbox[data-user-id="${userId}"]`))
+            .filter(input => input.checked)
+            .map(input => input.dataset.viewId);
+          updateTeammateViews(userId, checked);
+        });
+      });
+      document.querySelectorAll(".team-views-reset").forEach(button => {
+        button.addEventListener("click", () => updateTeammateViews(button.dataset.userId, []));
+      });
+    }
+
+    async function updateTeammateViews(userId, views) {
+      const value = views.length ? views : null;
+      const { error } = await supabaseClient.from("profiles").update({ allowed_views: value }).eq("user_id", userId);
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      state.teamProfiles = state.teamProfiles.map(profile => profile.user_id === userId ? { ...profile, allowed_views: value } : profile);
+      if (userId === state.session?.user?.id) state.profile = { ...state.profile, allowed_views: value };
+      render();
+      flash("Access updated");
+    }
+
+    function renderProfileView() {
+      const profile = state.profile || {};
+      board.innerHTML = `
+        <section class="overview" aria-label="My profile">
+          <div class="activity-panel">
+            <h2>Account</h2>
+            <div class="approval-fields">
+              <div class="approval-field"><strong>Email</strong><span>${escapeHtml(profile.email || "")}</span></div>
+              <div class="approval-field"><strong>Role</strong><span class="role-badge">${label(currentRole())}</span></div>
+              <div class="approval-field"><strong>Status</strong><span>${label(profile.status || "active")}</span></div>
+            </div>
+          </div>
+          <div class="activity-panel">
+            <h2>HR details</h2>
+            <form class="form" id="profileForm">
+              <label>Display name<input name="display_name" value="${escapeAttr(profile.display_name || "")}"></label>
+              <div class="form-grid">
+                <label>Phone<input name="phone" value="${escapeAttr(profile.phone || "")}"></label>
+                <label>Job title<input name="job_title" value="${escapeAttr(profile.job_title || "")}"></label>
+              </div>
+              <div class="form-grid">
+                <label>Department<input name="department" value="${escapeAttr(profile.department || "")}"></label>
+                <label>Employee ID<input name="employee_id" value="${escapeAttr(profile.employee_id || "")}"></label>
+              </div>
+              <div class="form-grid">
+                <label>Start date<input name="start_date" type="date" value="${escapeAttr(profile.start_date || "")}"></label>
+                <label>Address<input name="address" value="${escapeAttr(profile.address || "")}"></label>
+              </div>
+              <div class="form-grid">
+                <label>Emergency contact name<input name="emergency_contact_name" value="${escapeAttr(profile.emergency_contact_name || "")}"></label>
+                <label>Emergency contact phone<input name="emergency_contact_phone" value="${escapeAttr(profile.emergency_contact_phone || "")}"></label>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="primary">Save profile</button>
+              </div>
+            </form>
+          </div>
+        </section>
+      `;
+      document.getElementById("profileForm").addEventListener("submit", saveMyProfile);
+    }
+
+    async function saveMyProfile(event) {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      const patch = {
+        display_name: form.get("display_name").trim(),
+        phone: form.get("phone").trim(),
+        job_title: form.get("job_title").trim(),
+        department: form.get("department").trim(),
+        employee_id: form.get("employee_id").trim(),
+        start_date: form.get("start_date") || null,
+        address: form.get("address").trim(),
+        emergency_contact_name: form.get("emergency_contact_name").trim(),
+        emergency_contact_phone: form.get("emergency_contact_phone").trim()
+      };
+
+      const { data, error } = await supabaseClient
+        .from("profiles")
+        .update(patch)
+        .eq("user_id", state.session.user.id)
+        .select("user_id,email,role,display_name,status,allowed_views,phone,department,job_title,start_date,employee_id,emergency_contact_name,emergency_contact_phone,address")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      state.profile = data;
+      render();
+      flash("Profile updated");
     }
 
     async function loadTeamProfiles() {
-      if (!isAdmin()) {
+      if (!isManager()) {
         state.teamProfiles = [];
         return;
       }
       const { data, error } = await supabaseClient
         .from("profiles")
-        .select("user_id,email,role,display_name,status")
+        .select("user_id,email,role,display_name,status,allowed_views")
         .order("email", { ascending: true });
 
       if (error) throw error;
@@ -2632,7 +2811,9 @@
         });
       });
       document.querySelectorAll(".service-delete-btn").forEach(button => {
-        button.addEventListener("click", () => deleteService(button.dataset.serviceId));
+        button.addEventListener("click", () => {
+          confirmAction("Delete this service from the catalog? This can't be undone.", () => deleteService(button.dataset.serviceId));
+        });
       });
 
       document.querySelectorAll(".calc-qty-input").forEach(input => {
@@ -2806,7 +2987,10 @@
         input.addEventListener("change", event => toggleActivity(event.currentTarget.closest(".activity-item").dataset.activityId, event.currentTarget.checked));
       });
       document.querySelectorAll(".activity-item[data-activity-id] .mini-delete").forEach(button => {
-        button.addEventListener("click", event => deleteActivity(event.currentTarget.closest(".activity-item").dataset.activityId));
+        button.addEventListener("click", event => {
+          const id = event.currentTarget.closest(".activity-item").dataset.activityId;
+          confirmAction("Delete this activity?", () => deleteActivity(id));
+        });
       });
     }
 
@@ -2825,7 +3009,7 @@
       const pendingCount = pendingRequestsForItem(item.id).length;
       return `
         <article class="card${selected}" draggable="true" data-id="${item.id}">
-          <h3>${escapeHtml(item.title)}</h3>
+          <h3>${escapeHtml(item.title)}${item.document_url ? ` <span title="Has a sales document link">🔗</span>` : ""}</h3>
           <div class="company">${escapeHtml(item.company)} &middot; ${escapeHtml(item.owner)}</div>
           <div class="card-row">
             <span class="pill priority-${item.priority}">${label(item.priority)}</span>
@@ -2851,12 +3035,6 @@
 
     function renderDetail() {
       const item = visibleItems().find(candidate => candidate.id === state.selectedId);
-      if (!state.session) {
-        sideTitle.textContent = "Details";
-        detail.innerHTML = `<div class="empty">You are viewing demo data. Sign in to read live CRM tables, edit cards, and save daily activities. Your real data is protected by Supabase Auth and row-level security.</div>`;
-        return;
-      }
-
       if (!item) {
         sideTitle.textContent = "Details";
         detail.innerHTML = `
@@ -2878,7 +3056,7 @@
       sidePanel.classList.add("open");
       sideTitle.textContent = item.company;
       const pending = pendingRequestsForItem(item.id);
-      const readOnly = isViewer() || isDemoMode();
+      const readOnly = isViewer();
       const linkedDocs = visibleDocuments().filter(doc => doc.board_item_id === item.id);
       detail.innerHTML = `
         ${pending.length ? `<div class="status-note">${pending.length} pending edit${pending.length === 1 ? "" : "s"} waiting for approval. Approved board data stays unchanged until review.</div>` : ""}
@@ -2911,6 +3089,10 @@
             <label>Due date<input name="due" type="date" value="${escapeAttr(item.due)}" ${readOnly ? "disabled" : ""}></label>
           </div>
           <label>Notes<textarea name="notes" ${readOnly ? "disabled" : ""}>${escapeHtml(item.notes)}</textarea></label>
+          <label>Sales document link<input name="document_url" type="url" placeholder="https://..." value="${escapeAttr(item.document_url || "")}" ${readOnly ? "disabled" : ""}></label>
+          ${item.document_url ? (isSafeUrl(item.document_url)
+            ? `<a href="${escapeAttr(item.document_url)}" target="_blank" rel="noopener noreferrer"><button type="button" class="link-btn">Open sales document &#8599;</button></a>`
+            : `<div class="empty">Document link must start with http:// or https://</div>`) : ""}
           ${readOnly ? "" : `
             <div class="form-actions">
               <button type="button" class="danger" id="deleteBtn">Delete</button>
@@ -2928,12 +3110,18 @@
 
       document.getElementById("itemForm").addEventListener("submit", saveSelectedFromForm);
       const deleteBtn = document.getElementById("deleteBtn");
-      if (deleteBtn) deleteBtn.addEventListener("click", deleteSelected);
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", () => {
+          confirmAction(`Delete "${item.title}" at ${item.company}? This can't be undone.`, deleteSelected);
+        });
+      }
       document.querySelectorAll("#detail .doc-preview-btn").forEach(button => {
         button.addEventListener("click", () => openPreview(button.dataset.docId));
       });
       document.querySelectorAll("#detail .doc-delete-btn").forEach(button => {
-        button.addEventListener("click", () => deleteDocument(button.dataset.docId));
+        button.addEventListener("click", () => {
+          confirmAction("Delete this document? This can't be undone.", () => deleteDocument(button.dataset.docId));
+        });
       });
     }
 
@@ -2969,7 +3157,7 @@
 
       const { data, error } = await supabaseClient
         .from("crm_board_items")
-        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,document_url,created_at,updated_at")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -3002,12 +3190,21 @@
         email: state.session.user.email,
         role: ADMIN_BOOTSTRAP_EMAILS.includes(state.session.user.email?.toLowerCase()) ? "admin" : "owner",
         display_name: state.session.user.email?.split("@")[0] || "User",
-        status: "active"
+        status: "active",
+        allowed_views: null,
+        phone: "",
+        department: "",
+        job_title: "",
+        start_date: null,
+        employee_id: "",
+        emergency_contact_name: "",
+        emergency_contact_phone: "",
+        address: ""
       };
 
       const { data, error } = await supabaseClient
         .from("profiles")
-        .select("user_id,email,role,display_name,status")
+        .select("user_id,email,role,display_name,status,allowed_views,phone,department,job_title,start_date,employee_id,emergency_contact_name,emergency_contact_phone,address")
         .eq("user_id", state.session.user.id)
         .single();
 
@@ -3131,6 +3328,11 @@
     async function saveSelectedFromForm(event) {
       event.preventDefault();
       const form = new FormData(event.currentTarget);
+      const documentUrl = form.get("document_url").trim();
+      if (documentUrl && !isSafeUrl(documentUrl)) {
+        flash("Document link must start with http:// or https://");
+        return;
+      }
       const patch = {
         title: form.get("title").trim(),
         company: form.get("company").trim(),
@@ -3140,7 +3342,8 @@
         status: form.get("status"),
         value: Number(form.get("value") || 0),
         due: form.get("due") || null,
-        notes: form.get("notes").trim()
+        notes: form.get("notes").trim(),
+        document_url: documentUrl
       };
 
       const item = state.items.find(candidate => candidate.id === state.selectedId);
@@ -3153,7 +3356,7 @@
         .from("crm_board_items")
         .update(patch)
         .eq("id", state.selectedId)
-        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,document_url,created_at,updated_at")
         .single();
 
       if (error) {
@@ -3203,7 +3406,7 @@
         .from("crm_board_items")
         .update({ status })
         .eq("id", id)
-        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,document_url,created_at,updated_at")
         .single();
 
       if (error) {
@@ -3244,7 +3447,8 @@
         value: 0,
         due: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
         status,
-        notes: ""
+        notes: "",
+        document_url: ""
       };
 
       if (!isManager()) {
@@ -3255,7 +3459,7 @@
       const { data, error } = await supabaseClient
         .from("crm_board_items")
         .insert(item)
-        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,document_url,created_at,updated_at")
         .single();
 
       if (error) {
@@ -3370,7 +3574,8 @@
         value: Number(item.value || 0),
         due: item.due || null,
         status: item.status,
-        notes: item.notes || ""
+        notes: item.notes || "",
+        document_url: item.document_url || ""
       };
     }
 
@@ -3448,22 +3653,15 @@
       return escapeHtml(value).replace(/`/g, "&#096;");
     }
 
+    function isSafeUrl(url) {
+      return /^https?:\/\//i.test(url || "");
+    }
+
     function flash(message) {
       toast.textContent = message;
       toast.classList.add("show");
       clearTimeout(flash.timer);
       flash.timer = setTimeout(() => toast.classList.remove("show"), 1300);
-    }
-
-    function setAuthTab(tab) {
-      state.authTab = tab;
-      state.authError = "";
-      document.querySelectorAll("[data-auth-tab]").forEach(button => {
-        button.classList.toggle("active", button.dataset.authTab === tab);
-      });
-      loginSubmit.textContent = tab === "signup" ? "Create account" : "Sign in";
-      loginPassword.autocomplete = tab === "signup" ? "new-password" : "current-password";
-      loginError.hidden = true;
     }
 
     async function handleAuthSubmit(event) {
@@ -3479,14 +3677,8 @@
       loginSubmit.disabled = true;
       loginError.hidden = true;
       try {
-        if (state.authTab === "signup") {
-          const { error } = await supabaseClient.auth.signUp({ email, password });
-          if (error) throw error;
-          flash("Account created. Check your email if confirmation is enabled.");
-        } else {
-          const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-          if (error) throw error;
-        }
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
       } catch (error) {
         loginError.textContent = error.message;
         loginError.hidden = false;
@@ -3513,7 +3705,6 @@
 
     async function signOut() {
       await supabaseClient.auth.signOut();
-      state.demoPreview = false;
     }
 
     async function refreshFromDatabase() {
@@ -3608,6 +3799,12 @@
       });
     });
 
+    document.getElementById("brandHomeBtn").addEventListener("click", () => {
+      state.view = "overview";
+      state.selectedId = null;
+      render();
+    });
+
     document.querySelectorAll(".segmented button").forEach(button => {
       button.addEventListener("click", () => {
         state.type = button.dataset.type;
@@ -3638,19 +3835,8 @@
       render();
     });
 
-    document.querySelectorAll("[data-auth-tab]").forEach(button => {
-      button.addEventListener("click", () => setAuthTab(button.dataset.authTab));
-    });
     loginForm.addEventListener("submit", handleAuthSubmit);
     document.getElementById("forgotPasswordBtn").addEventListener("click", forgotPassword);
-    document.getElementById("demoModeBtn").addEventListener("click", () => {
-      state.demoPreview = true;
-      render();
-    });
-    document.getElementById("demoSignInBtn").addEventListener("click", () => {
-      state.demoPreview = false;
-      render();
-    });
 
     document.getElementById("themeToggle").addEventListener("click", () => {
       state.theme = state.theme === "dark" ? "light" : "dark";
@@ -3672,10 +3858,22 @@
       if (event.target === previewOverlay) closePreview();
     });
 
+    document.getElementById("closeConfirm").addEventListener("click", closeConfirm);
+    document.getElementById("confirmCancelBtn").addEventListener("click", closeConfirm);
+    document.getElementById("confirmOkBtn").addEventListener("click", () => {
+      const callback = confirmCallback;
+      closeConfirm();
+      if (callback) callback();
+    });
+    confirmOverlay.addEventListener("click", event => {
+      if (event.target === confirmOverlay) closeConfirm();
+    });
+
     document.addEventListener("keydown", event => {
       const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
       if (event.key === "Escape") {
-        if (!previewOverlay.hidden) closePreview();
+        if (!confirmOverlay.hidden) closeConfirm();
+        else if (!previewOverlay.hidden) closePreview();
         else if (sidePanel.classList.contains("open")) {
           state.selectedId = null;
           sidePanel.classList.remove("open");
