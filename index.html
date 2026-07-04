@@ -833,11 +833,12 @@
 
     const pipelineColumns = [
       { id: "responded_email", title: "Responded to Email", color: "#2563eb" },
-      { id: "discovery_call", title: "Discovery Call", color: "#0f766e" },
+      { id: "meeting_booked", title: "Meeting Booked", color: "#0f766e" },
+      { id: "meeting_done", title: "Meeting Done", color: "#0891b2" },
       { id: "proposal_sent", title: "Proposal Sent", color: "#b45309" },
       { id: "follow_up", title: "Follow Up", color: "#7c3aed" },
       { id: "contract_signed", title: "Contract Signed", color: "#15803d" },
-      { id: "kickoff", title: "Kickoff", color: "#0891b2" },
+      { id: "kickoff", title: "Kickoff", color: "#0e7490" },
       { id: "in_progress", title: "In Progress", color: "#4f46e5" },
       { id: "review", title: "Review", color: "#be123c" },
       { id: "project_done", title: "Project Done", color: "#166534" }
@@ -852,7 +853,7 @@
     ];
 
     const seedItems = [
-      { id: "a1", type: "deal", title: "Enterprise onboarding", company: "Lumen Forge", owner: "Ava", priority: "high", value: 42000, due: "2026-07-08", status: "discovery_call", notes: "Security review is scheduled. Send revised implementation timeline before the call." },
+      { id: "a1", type: "deal", title: "Enterprise onboarding", company: "Lumen Forge", owner: "Ava", priority: "high", value: 42000, due: "2026-07-08", status: "meeting_booked", notes: "Security review is scheduled. Send revised implementation timeline before the call." },
       { id: "a2", type: "project", title: "Client portal rollout", company: "Mira Health", owner: "Noah", priority: "medium", value: 18000, due: "2026-07-12", status: "in_progress", notes: "Design QA passed. Waiting on single sign-on configuration from client IT." },
       { id: "a3", type: "task", title: "Renewal proposal", company: "Orbit Labs", owner: "Mina", priority: "high", value: 9600, due: "2026-07-05", status: "proposal_sent", notes: "Add usage expansion line item and include the support SLA option." },
       { id: "a4", type: "deal", title: "Analytics migration", company: "Harbor & Co.", owner: "Ava", priority: "medium", value: 26500, due: "2026-07-19", status: "responded_email", notes: "Discovery notes mention fragmented reporting and a November renewal deadline." },
@@ -876,6 +877,7 @@
       priority: "all",
       selectedId: null,
       session: null,
+      profile: null,
       loading: true,
       realtimeChannel: null,
       activities: [],
@@ -912,6 +914,14 @@
 
     function visibleActivities() {
       return isDemoMode() ? demoActivities : state.activities;
+    }
+
+    function currentRole() {
+      return state.profile?.role || (state.session ? "owner" : "demo");
+    }
+
+    function isManager() {
+      return currentRole() === "manager";
     }
 
     function normalizeStatus(item) {
@@ -977,7 +987,7 @@
 
       if (signedIn) {
         authStatus.textContent = `Signed in as ${state.session.user.email}`;
-        authHint.textContent = "Role: owner. Live cards and activities are saved to Supabase.";
+        authHint.textContent = `Role: ${label(currentRole())}. ${isManager() ? "Manager overview can read the team pipeline." : "Live cards and activities are saved to your dashboard."}`;
       } else {
         authStatus.textContent = "Demo mode - sign in for live data";
         authHint.textContent = "The dashboard below uses frontend dummy data. Sign in before real CRM tables read or write.";
@@ -1065,15 +1075,20 @@
       const demoBanner = isDemoMode()
         ? `<div class="empty">Demo data is shown here so your team can preview the workflow. Sign in to read and write the live Supabase tables.</div>`
         : "";
+      const roleBanner = state.session
+        ? `<div class="empty">${isManager() ? "Manager dashboard: you can see team CRM records allowed by Supabase policies." : "Personal dashboard: you see your own records plus anything shared with you."}</div>`
+        : "";
 
       board.innerHTML = `
         <section class="overview" aria-label="CRM overview dashboard">
           ${demoBanner}
+          ${roleBanner}
           <div class="kpi-grid">
             ${renderKpi("Open accounts", activeCount)}
             ${renderKpi("Open value", money(openValue))}
             ${renderKpi("Done projects", doneCount)}
             ${renderKpi("Today done", `${completedToday}/${todayActivities.length}`)}
+            ${renderKpi("Access", label(currentRole()))}
           </div>
           <div class="journey">
             <h2>Client Journey</h2>
@@ -1307,11 +1322,38 @@
 
       const { data, error } = await supabaseClient
         .from("crm_board_items")
-        .select("id,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
       state.items = data || [];
+    }
+
+    async function loadProfile() {
+      if (!state.session) {
+        state.profile = null;
+        return;
+      }
+
+      const fallback = {
+        user_id: state.session.user.id,
+        email: state.session.user.email,
+        role: state.session.user.email?.toLowerCase() === "iseolu6@gmail.com" ? "manager" : "owner",
+        display_name: state.session.user.email?.split("@")[0] || "User",
+        status: "active"
+      };
+
+      const { data, error } = await supabaseClient
+        .from("profiles")
+        .select("user_id,email,role,display_name,status")
+        .eq("user_id", state.session.user.id)
+        .single();
+
+      if (error) {
+        state.profile = fallback;
+        return;
+      }
+      state.profile = data || fallback;
     }
 
     async function loadRemoteActivities() {
@@ -1441,7 +1483,7 @@
         .from("crm_board_items")
         .update(patch)
         .eq("id", state.selectedId)
-        .select("id,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
         .single();
 
       if (error) {
@@ -1477,7 +1519,7 @@
         .from("crm_board_items")
         .update({ status })
         .eq("id", id)
-        .select("id,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
         .single();
 
       if (error) {
@@ -1503,6 +1545,9 @@
       }
       const status = state.view === "projects" ? "backlog" : "responded_email";
       const item = {
+        user_id: state.session.user.id,
+        assigned_to: state.session.user.id,
+        visibility: "personal",
         type: state.type === "all" ? "deal" : state.type,
         title: "New opportunity",
         company: "New account",
@@ -1517,7 +1562,7 @@
       const { data, error } = await supabaseClient
         .from("crm_board_items")
         .insert(item)
-        .select("id,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
         .single();
 
       if (error) {
@@ -1632,6 +1677,7 @@
       try {
         state.loading = true;
         render();
+        await loadProfile();
         await loadRemoteItems();
         await loadRemoteActivities();
       } catch (error) {
@@ -1665,6 +1711,7 @@
         const { data, error } = await supabaseClient.auth.getSession();
         if (error) throw error;
         state.session = data.session;
+        await loadProfile();
         await loadRemoteItems();
         await loadRemoteActivities();
         subscribeToChanges();
@@ -1678,6 +1725,11 @@
       supabaseClient.auth.onAuthStateChange(async (_event, session) => {
         state.session = session;
         state.selectedId = null;
+        if (!session) {
+          state.profile = null;
+          state.items = [];
+          state.activities = [];
+        }
         subscribeToChanges();
         await refreshFromDatabase();
       });
