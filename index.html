@@ -363,6 +363,11 @@
       grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr);
       gap: 14px;
     }
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 14px;
+    }
     .activity-panel {
       background: #fff;
       border: 1px solid var(--line);
@@ -371,6 +376,79 @@
       display: grid;
       gap: 12px;
       align-content: start;
+    }
+    .metric-table {
+      display: grid;
+      gap: 8px;
+    }
+    .metric-row {
+      display: grid;
+      grid-template-columns: minmax(90px, 1fr) minmax(78px, auto) minmax(78px, auto) minmax(74px, auto);
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 9px 10px;
+      font-size: 12px;
+    }
+    .metric-row.header {
+      background: var(--panel-strong);
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .metric-row strong {
+      font-size: 13px;
+    }
+    .chart {
+      display: grid;
+      gap: 10px;
+    }
+    .chart-row {
+      display: grid;
+      grid-template-columns: minmax(88px, 130px) minmax(0, 1fr) 42px;
+      gap: 9px;
+      align-items: center;
+      font-size: 12px;
+    }
+    .chart-label {
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .chart-track {
+      height: 10px;
+      background: #e6edf4;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .chart-fill {
+      height: 100%;
+      width: var(--w);
+      background: var(--c, var(--accent));
+      border-radius: 10px;
+    }
+    .split-bars {
+      display: grid;
+      gap: 9px;
+    }
+    .split-bar {
+      display: grid;
+      gap: 5px;
+    }
+    .split-bar-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .dual-track {
+      display: grid;
+      gap: 4px;
+    }
+    .dual-track .chart-track {
+      height: 8px;
     }
     .activity-form {
       display: grid;
@@ -711,6 +789,7 @@
       }
       .overview { padding: 12px; }
       .kpi-grid,
+      .dashboard-grid,
       .overview-grid {
         grid-template-columns: 1fr;
       }
@@ -845,11 +924,14 @@
     ];
 
     const projectColumns = [
-      { id: "backlog", title: "Backlog", color: "#64748b" },
-      { id: "planned", title: "Planned", color: "#2563eb" },
-      { id: "active", title: "Active", color: "#0f766e" },
-      { id: "blocked", title: "Blocked", color: "#be123c" },
-      { id: "project_done", title: "Project Done", color: "#15803d" }
+      { id: "project_brief", title: "Project Brief", color: "#64748b" },
+      { id: "project_planning", title: "Planning", color: "#2563eb" },
+      { id: "project_kickoff", title: "Kickoff", color: "#0f766e" },
+      { id: "project_build", title: "Build", color: "#4f46e5" },
+      { id: "project_qa", title: "QA / Review", color: "#b45309" },
+      { id: "client_approval", title: "Client Approval", color: "#7c3aed" },
+      { id: "project_delivered", title: "Delivered", color: "#0891b2" },
+      { id: "project_closed", title: "Closed", color: "#15803d" }
     ];
 
     const seedItems = [
@@ -927,8 +1009,8 @@
     function normalizeStatus(item) {
       const available = columns().map(column => column.id);
       if (available.includes(item.status)) return item.status;
-      if (state.view === "projects") return item.type === "project" ? "active" : "backlog";
-      return item.type === "deal" ? "discovery_call" : "responded_email";
+      if (state.view === "projects") return item.type === "project" ? "project_build" : "project_brief";
+      return item.type === "deal" ? "meeting_booked" : "responded_email";
     }
 
     function filteredItems() {
@@ -1065,13 +1147,22 @@
 
     function renderOverview() {
       const items = visibleItems();
-      const doneCount = items.filter(item => item.status === "project_done").length;
-      const activeCount = items.filter(item => !["project_done", "done", "won"].includes(item.status)).length;
+      const doneStatuses = ["project_done", "project_delivered", "project_closed"];
+      const doneCount = items.filter(item => doneStatuses.includes(item.status)).length;
+      const activeCount = items.filter(item => !doneStatuses.includes(item.status)).length;
       const openValue = items
-        .filter(item => !["project_done", "done", "won"].includes(item.status))
+        .filter(item => !doneStatuses.includes(item.status))
         .reduce((sum, item) => sum + Number(item.value || 0), 0);
+      const expectedValue = items.reduce((sum, item) => sum + Number(item.value || 0), 0);
+      const actualValue = items
+        .filter(item => doneStatuses.includes(item.status))
+        .reduce((sum, item) => sum + Number(item.value || 0), 0);
+      const expectedProjects = items.filter(item => item.type === "project").length;
+      const actualProjects = items.filter(item => item.type === "project" && doneStatuses.includes(item.status)).length;
+      const expectedActivities = visibleActivities().length;
       const todayActivities = activitiesForToday();
       const completedToday = todayActivities.filter(activity => activity.completed).length;
+      const actualActivities = visibleActivities().filter(activity => activity.completed).length;
       const demoBanner = isDemoMode()
         ? `<div class="empty">Demo data is shown here so your team can preview the workflow. Sign in to read and write the live Supabase tables.</div>`
         : "";
@@ -1090,6 +1181,25 @@
             ${renderKpi("Today done", `${completedToday}/${todayActivities.length}`)}
             ${renderKpi("Access", label(currentRole()))}
           </div>
+          <div class="dashboard-grid">
+            <div class="activity-panel">
+              <h2>Expected vs Actual</h2>
+              <div class="metric-table">
+                <div class="metric-row header"><span>Area</span><span>Expected</span><span>Actual</span><span>Gap</span></div>
+                ${renderMetricRow("Revenue", money(expectedValue), money(actualValue), money(expectedValue - actualValue))}
+                ${renderMetricRow("Projects", expectedProjects, actualProjects, expectedProjects - actualProjects)}
+                ${renderMetricRow("Activities", expectedActivities, actualActivities, expectedActivities - actualActivities)}
+              </div>
+            </div>
+            <div class="activity-panel">
+              <h2>Performance Graph</h2>
+              <div class="split-bars">
+                ${renderDualBar("Revenue", expectedValue, actualValue, "#0f766e")}
+                ${renderDualBar("Projects", expectedProjects, actualProjects, "#2563eb")}
+                ${renderDualBar("Activities", expectedActivities, actualActivities, "#b45309")}
+              </div>
+            </div>
+          </div>
           <div class="journey">
             <h2>Client Journey</h2>
             <div class="journey-steps">
@@ -1097,6 +1207,16 @@
                 const count = items.filter(item => item.status === step.id).length;
                 return `<div class="journey-step"><strong>${count}</strong><span>${step.title}</span></div>`;
               }).join("")}
+            </div>
+          </div>
+          <div class="dashboard-grid">
+            <div class="activity-panel">
+              <h2>Journey Graph</h2>
+              <div class="chart">${renderStageChart(pipelineColumns, items)}</div>
+            </div>
+            <div class="activity-panel">
+              <h2>Project Stage Graph</h2>
+              <div class="chart">${renderStageChart(projectColumns, items.filter(item => item.type === "project"))}</div>
             </div>
           </div>
           <div class="overview-grid">
@@ -1150,6 +1270,44 @@
 
     function renderKpi(labelText, value) {
       return `<div class="kpi"><span>${labelText}</span><strong>${value}</strong></div>`;
+    }
+
+    function renderMetricRow(area, expected, actual, gap) {
+      return `<div class="metric-row"><strong>${area}</strong><span>${expected}</span><span>${actual}</span><span>${gap}</span></div>`;
+    }
+
+    function renderDualBar(labelText, expected, actual, color) {
+      const max = Math.max(Number(expected) || 0, Number(actual) || 0, 1);
+      const expectedWidth = Math.max(4, Math.round(((Number(expected) || 0) / max) * 100));
+      const actualWidth = Math.max(4, Math.round(((Number(actual) || 0) / max) * 100));
+      return `
+        <div class="split-bar">
+          <div class="split-bar-top"><strong>${labelText}</strong><span>Expected ${formatCompact(expected)} / Actual ${formatCompact(actual)}</span></div>
+          <div class="dual-track">
+            <div class="chart-track"><div class="chart-fill" style="--w:${expectedWidth}%;--c:#94a3b8"></div></div>
+            <div class="chart-track"><div class="chart-fill" style="--w:${actualWidth}%;--c:${color}"></div></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStageChart(stages, items) {
+      const counts = stages.map(stage => ({ ...stage, count: items.filter(item => itemColumnForStage(item, stage.id)).length }));
+      const max = Math.max(...counts.map(stage => stage.count), 1);
+      return counts.map(stage => {
+        const width = Math.max(stage.count ? 8 : 2, Math.round((stage.count / max) * 100));
+        return `
+          <div class="chart-row">
+            <span class="chart-label">${stage.title}</span>
+            <span class="chart-track"><span class="chart-fill" style="--w:${width}%;--c:${stage.color}"></span></span>
+            <strong>${stage.count}</strong>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function itemColumnForStage(item, stageId) {
+      return item.status === stageId;
     }
 
     function renderActivityComposer() {
@@ -1543,7 +1701,7 @@
         flash("Sign in first");
         return;
       }
-      const status = state.view === "projects" ? "backlog" : "responded_email";
+      const status = state.view === "projects" ? "project_brief" : "responded_email";
       const item = {
         user_id: state.session.user.id,
         assigned_to: state.session.user.id,
@@ -1592,6 +1750,12 @@
 
     function money(value) {
       return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+    }
+
+    function formatCompact(value) {
+      return Number(value) > 999
+        ? new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value)
+        : String(value);
     }
 
     function label(value) {
