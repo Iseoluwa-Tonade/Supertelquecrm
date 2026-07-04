@@ -133,6 +133,20 @@
       color: #fff;
     }
 
+    .nav .nav-count {
+      margin-left: auto;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 10px;
+      display: none;
+      place-items: center;
+      background: #facc15;
+      color: #1f2933;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .nav .nav-count.show { display: grid; }
+
     .sidebar-footer {
       margin-top: auto;
       display: grid;
@@ -376,6 +390,69 @@
       display: grid;
       gap: 12px;
       align-content: start;
+    }
+    .approval-list {
+      display: grid;
+      gap: 10px;
+    }
+    .approval-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+    .approval-card header {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+    }
+    .approval-card h3 {
+      margin: 0;
+      font-size: 15px;
+    }
+    .approval-card p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .approval-fields {
+      display: grid;
+      gap: 7px;
+      font-size: 12px;
+    }
+    .approval-field {
+      display: grid;
+      grid-template-columns: minmax(80px, 130px) minmax(0, 1fr);
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px 10px;
+      align-items: center;
+    }
+    .approval-field strong {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .approval-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .status-note {
+      border: 1px solid #fde68a;
+      background: #fffbeb;
+      color: #92400e;
+      border-radius: 7px;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.4;
     }
     .metric-table {
       display: grid;
@@ -826,6 +903,9 @@
         <button data-view="activity" title="Activity">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg><span>Activity</span>
         </button>
+        <button data-view="approvals" title="Approvals">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 12l2 2 4-4"></path><path d="M21 12a9 9 0 1 1-6.2-8.56"></path></svg><span>Approvals</span><span class="nav-count" id="approvalCount">0</span>
+        </button>
         <button data-view="focus" title="Focus">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg><span>Focus</span>
         </button>
@@ -963,6 +1043,7 @@
       loading: true,
       realtimeChannel: null,
       activities: [],
+      changeRequests: [],
       items: []
     };
 
@@ -996,6 +1077,14 @@
 
     function visibleActivities() {
       return isDemoMode() ? demoActivities : state.activities;
+    }
+
+    function pendingRequests() {
+      return state.changeRequests.filter(request => request.status === "pending");
+    }
+
+    function pendingRequestsForItem(id) {
+      return pendingRequests().filter(request => request.board_item_id === id);
     }
 
     function currentRole() {
@@ -1040,6 +1129,7 @@
         pipeline: ["Client Journey", "Move every account from responded email to project done."],
         projects: ["Project Delivery", "Move client work from backlog through shipped outcomes."],
         activity: ["Daily Activities", "Track calls, emails, proposals, delivery work, and admin follow-ups."],
+        approvals: ["Approval Queue", "Review team changes before they become approved CRM records."],
         focus: ["Focus Queue", "High-priority and near-due work across the whole book."]
       };
       document.getElementById("viewTitle").textContent = copy[state.view][0];
@@ -1050,6 +1140,11 @@
       document.querySelectorAll(".segmented button").forEach(button => {
         button.classList.toggle("active", button.dataset.type === state.type);
       });
+      const approvalCount = document.getElementById("approvalCount");
+      if (approvalCount) {
+        approvalCount.textContent = pendingRequests().length;
+        approvalCount.classList.toggle("show", Boolean(state.session && pendingRequests().length));
+      }
     }
 
     function renderAuth() {
@@ -1098,6 +1193,11 @@
 
       if (state.view === "activity") {
         renderActivityView();
+        return;
+      }
+
+      if (state.view === "approvals") {
+        renderApprovalsView();
         return;
       }
 
@@ -1167,7 +1267,7 @@
         ? `<div class="empty">Demo data is shown here so your team can preview the workflow. Sign in to read and write the live Supabase tables.</div>`
         : "";
       const roleBanner = state.session
-        ? `<div class="empty">${isManager() ? "Manager dashboard: you can see team CRM records allowed by Supabase policies." : "Personal dashboard: you see your own records plus anything shared with you."}</div>`
+        ? `<div class="empty">${isManager() ? "Manager dashboard: you can see team CRM records allowed by Supabase policies and approve pending team edits." : "Personal dashboard: you see approved records. Your edits are sent for manager approval before they change the board."}</div>`
         : "";
 
       board.innerHTML = `
@@ -1179,6 +1279,7 @@
             ${renderKpi("Open value", money(openValue))}
             ${renderKpi("Done projects", doneCount)}
             ${renderKpi("Today done", `${completedToday}/${todayActivities.length}`)}
+            ${renderKpi("Pending edits", pendingRequests().length)}
             ${renderKpi("Access", label(currentRole()))}
           </div>
           <div class="dashboard-grid">
@@ -1241,6 +1342,79 @@
         </section>
       `;
       bindActivityControls();
+    }
+
+    function renderApprovalsView() {
+      if (isDemoMode()) {
+        board.innerHTML = `
+          <section class="overview" aria-label="Approval queue">
+            <div class="empty">Sign in to view pending CRM edits. Team changes are stored separately until a manager approves them.</div>
+          </section>
+        `;
+        return;
+      }
+
+      const requests = pendingRequests();
+      board.innerHTML = `
+        <section class="overview" aria-label="Approval queue">
+          <div class="activity-panel">
+            <h2>${isManager() ? "Pending Team Edits" : "My Pending Edits"}</h2>
+            <div class="approval-list">
+              ${requests.map(renderApprovalCard).join("") || `<div class="empty">${isManager() ? "No team edits are waiting for approval." : "You do not have pending edits right now."}</div>`}
+            </div>
+          </div>
+        </section>
+      `;
+
+      if (!isManager()) return;
+      document.querySelectorAll("[data-approve-id]").forEach(button => {
+        button.addEventListener("click", () => reviewChangeRequest(button.dataset.approveId, "approved"));
+      });
+      document.querySelectorAll("[data-reject-id]").forEach(button => {
+        button.addEventListener("click", () => reviewChangeRequest(button.dataset.rejectId, "rejected"));
+      });
+    }
+
+    function renderApprovalCard(request) {
+      const item = state.items.find(candidate => candidate.id === request.board_item_id);
+      const title = request.payload?.title || item?.title || "New CRM item";
+      const company = request.payload?.company || item?.company || "Pending account";
+      const action = label(request.action);
+      const requestedBy = request.requested_by === state.session?.user?.id ? "You" : shortId(request.requested_by);
+      return `
+        <article class="approval-card">
+          <header>
+            <div>
+              <h3>${escapeHtml(company)} - ${escapeHtml(title)}</h3>
+              <p>${action} requested by ${escapeHtml(requestedBy)} on ${dateLabel((request.requested_at || "").slice(0, 10))}</p>
+            </div>
+            <span class="pill">${label(request.status)}</span>
+          </header>
+          <div class="approval-fields">
+            ${renderChangeFields(request)}
+          </div>
+          ${isManager() ? `
+            <div class="approval-actions">
+              <button class="danger" type="button" data-reject-id="${request.id}">Reject</button>
+              <button class="primary" type="button" data-approve-id="${request.id}">Approve</button>
+            </div>
+          ` : `<div class="status-note">Waiting for manager approval. The approved board will not change until this is reviewed.</div>`}
+        </article>
+      `;
+    }
+
+    function renderChangeFields(request) {
+      const before = request.before_payload || {};
+      const after = request.payload || {};
+      if (request.action === "delete") {
+        return `<div class="approval-field"><strong>Delete</strong><span>${escapeHtml(before.company || "Account")} - ${escapeHtml(before.title || "CRM item")}</span></div>`;
+      }
+      return ["title", "company", "owner", "type", "priority", "status", "value", "due", "notes"].map(key => {
+        const previous = before[key];
+        const next = after[key];
+        if (request.action === "update" && String(previous ?? "") === String(next ?? "")) return "";
+        return `<div class="approval-field"><strong>${label(key)}</strong><span>${formatChangeValue(previous)} -> ${formatChangeValue(next)}</span></div>`;
+      }).join("") || `<div class="approval-field"><strong>Change</strong><span>No visible field changes.</span></div>`;
     }
 
     function renderActivityView() {
@@ -1355,6 +1529,7 @@
 
     function renderCard(item) {
       const selected = item.id === state.selectedId ? " selected" : "";
+      const pendingCount = pendingRequestsForItem(item.id).length;
       return `
         <article class="card${selected}" draggable="true" data-id="${item.id}">
           <h3>${escapeHtml(item.title)}</h3>
@@ -1367,6 +1542,7 @@
             <span class="pill">${label(item.type)}</span>
             <span class="pill">${dueLabel(item.due)}</span>
           </div>
+          ${pendingCount ? `<div class="card-row"><span class="pill priority-medium">${pendingCount} pending approval</span></div>` : ""}
         </article>
       `;
     }
@@ -1408,7 +1584,9 @@
 
       sidePanel.classList.add("open");
       sideTitle.textContent = item.company;
+      const pending = pendingRequestsForItem(item.id);
       detail.innerHTML = `
+        ${pending.length ? `<div class="status-note">${pending.length} pending edit${pending.length === 1 ? "" : "s"} waiting for approval. Approved board data stays unchanged until review.</div>` : ""}
         <form class="form" id="itemForm">
           <label>Title<input name="title" value="${escapeAttr(item.title)}"></label>
           <label>Company<input name="company" value="${escapeAttr(item.company)}"></label>
@@ -1439,7 +1617,7 @@
           <label>Notes<textarea name="notes">${escapeHtml(item.notes)}</textarea></label>
           <div class="form-actions">
             <button type="button" class="danger" id="deleteBtn">Delete</button>
-            <button type="submit" class="primary">Save</button>
+            <button type="submit" class="primary">${isManager() ? "Save" : "Send for approval"}</button>
           </div>
         </form>
       `;
@@ -1485,6 +1663,21 @@
 
       if (error) throw error;
       state.items = data || [];
+    }
+
+    async function loadChangeRequests() {
+      if (!state.session) {
+        state.changeRequests = [];
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("crm_change_requests")
+        .select("id,board_item_id,action,requested_by,requested_at,status,payload,before_payload,reviewed_by,reviewed_at,review_note")
+        .order("requested_at", { ascending: false });
+
+      if (error) throw error;
+      state.changeRequests = data || [];
     }
 
     async function loadProfile() {
@@ -1637,6 +1830,13 @@
         due: form.get("due") || null,
         notes: form.get("notes").trim()
       };
+
+      const item = state.items.find(candidate => candidate.id === state.selectedId);
+      if (!isManager()) {
+        await submitChangeRequest("update", item, patch);
+        return;
+      }
+
       const { data, error } = await supabaseClient
         .from("crm_board_items")
         .update(patch)
@@ -1656,6 +1856,12 @@
 
     async function deleteSelected() {
       const id = state.selectedId;
+      const item = state.items.find(candidate => candidate.id === id);
+      if (!isManager()) {
+        await submitChangeRequest("delete", item, {});
+        return;
+      }
+
       const { error } = await supabaseClient
         .from("crm_board_items")
         .delete()
@@ -1673,6 +1879,14 @@
     }
 
     async function moveItem(id, status) {
+      const item = state.items.find(candidate => candidate.id === id);
+      if (!isManager()) {
+        await submitChangeRequest("update", item, { ...pickBoardPayload(item), status });
+        state.selectedId = id;
+        render();
+        return;
+      }
+
       const { data, error } = await supabaseClient
         .from("crm_board_items")
         .update({ status })
@@ -1717,6 +1931,11 @@
         notes: ""
       };
 
+      if (!isManager()) {
+        await submitChangeRequest("create", null, item);
+        return;
+      }
+
       const { data, error } = await supabaseClient
         .from("crm_board_items")
         .insert(item)
@@ -1732,6 +1951,111 @@
       state.selectedId = data.id;
       render();
       flash("Created");
+    }
+
+    async function submitChangeRequest(action, item, payload) {
+      if (!state.session) {
+        flash("Sign in first");
+        return;
+      }
+
+      const request = {
+        board_item_id: item?.id || null,
+        action,
+        requested_by: state.session.user.id,
+        status: "pending",
+        payload,
+        before_payload: item ? pickBoardPayload(item) : null
+      };
+
+      const { data, error } = await supabaseClient
+        .from("crm_change_requests")
+        .insert(request)
+        .select("id,board_item_id,action,requested_by,requested_at,status,payload,before_payload,reviewed_by,reviewed_at,review_note")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.changeRequests.unshift(data);
+      render();
+      flash("Sent for approval");
+    }
+
+    async function reviewChangeRequest(id, decision) {
+      const request = state.changeRequests.find(candidate => candidate.id === id);
+      if (!request || !isManager()) return;
+
+      try {
+        if (decision === "approved") {
+          await applyApprovedRequest(request);
+        }
+
+        const { data, error } = await supabaseClient
+          .from("crm_change_requests")
+          .update({
+            status: decision,
+            reviewed_by: state.session.user.id,
+            reviewed_at: new Date().toISOString()
+          })
+          .eq("id", id)
+          .select("id,board_item_id,action,requested_by,requested_at,status,payload,before_payload,reviewed_by,reviewed_at,review_note")
+          .single();
+
+        if (error) throw error;
+        state.changeRequests = state.changeRequests.map(request => request.id === id ? data : request);
+        await loadRemoteItems();
+        render();
+        flash(decision === "approved" ? "Approved" : "Rejected");
+      } catch (error) {
+        flash(error.message);
+      }
+    }
+
+    async function applyApprovedRequest(request) {
+      if (request.action === "create") {
+        const { error } = await supabaseClient
+          .from("crm_board_items")
+          .insert(request.payload);
+        if (error) throw error;
+        return;
+      }
+
+      if (request.action === "update") {
+        const { error } = await supabaseClient
+          .from("crm_board_items")
+          .update(request.payload)
+          .eq("id", request.board_item_id);
+        if (error) throw error;
+        return;
+      }
+
+      if (request.action === "delete") {
+        const { error } = await supabaseClient
+          .from("crm_board_items")
+          .delete()
+          .eq("id", request.board_item_id);
+        if (error) throw error;
+      }
+    }
+
+    function pickBoardPayload(item) {
+      return {
+        user_id: item.user_id,
+        assigned_to: item.assigned_to,
+        visibility: item.visibility,
+        type: item.type,
+        title: item.title,
+        company: item.company,
+        owner: item.owner,
+        priority: item.priority,
+        value: Number(item.value || 0),
+        due: item.due || null,
+        status: item.status,
+        notes: item.notes || ""
+      };
     }
 
     function daysUntil(date) {
@@ -1756,6 +2080,16 @@
       return Number(value) > 999
         ? new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value)
         : String(value);
+    }
+
+    function formatChangeValue(value) {
+      if (value === null || value === undefined || value === "") return "Empty";
+      if (typeof value === "number") return String(value);
+      return escapeHtml(String(value));
+    }
+
+    function shortId(value) {
+      return value ? `${String(value).slice(0, 8)}...` : "Unknown";
     }
 
     function label(value) {
@@ -1844,6 +2178,7 @@
         await loadProfile();
         await loadRemoteItems();
         await loadRemoteActivities();
+        await loadChangeRequests();
       } catch (error) {
         flash(error.message);
       } finally {
@@ -1867,6 +2202,9 @@
         .on("postgres_changes", { event: "*", schema: "public", table: "crm_daily_activities" }, () => {
           loadRemoteActivities().then(render).catch(error => flash(error.message));
         })
+        .on("postgres_changes", { event: "*", schema: "public", table: "crm_change_requests" }, () => {
+          loadChangeRequests().then(render).catch(error => flash(error.message));
+        })
         .subscribe();
     }
 
@@ -1878,6 +2216,7 @@
         await loadProfile();
         await loadRemoteItems();
         await loadRemoteActivities();
+        await loadChangeRequests();
         subscribeToChanges();
       } catch (error) {
         flash(error.message);
@@ -1893,6 +2232,7 @@
           state.profile = null;
           state.items = [];
           state.activities = [];
+          state.changeRequests = [];
         }
         subscribeToChanges();
         await refreshFromDatabase();
