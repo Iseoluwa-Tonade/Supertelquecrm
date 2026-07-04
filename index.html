@@ -246,10 +246,19 @@
 
     .main {
       display: grid;
-      grid-template-rows: auto auto auto minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(0, 1fr);
       min-width: 0;
+      min-height: 0;
       border-right: 1px solid var(--line);
     }
+    /* Explicit placement: when .toolbar is hidden (display:none on views like
+       Overview), grid auto-placement would otherwise shift .board into the
+       toolbar's own (auto-sized) row instead of the flexible last row,
+       breaking its scroll container. Pinning each row by line number keeps
+       .board on the flexible track no matter which siblings are hidden. */
+    .main > header { grid-row: 1; }
+    .main > .toolbar { grid-row: 2; }
+    .main > .board { grid-row: 3; }
 
     header {
       background: var(--panel);
@@ -1550,7 +1559,7 @@
         </button>
       </nav>
       <div class="sidebar-footer">
-        <div class="metric">
+        <div class="metric" id="openValueMetric">
           <span>Open value</span>
           <strong id="totalValue">$0</strong>
         </div>
@@ -1802,8 +1811,13 @@
 
     function roleAllowsView(view) {
       if (view === "pricing") return isAdmin();
+      if (view === "pipeline") return isAdmin();
       if (view === "team") return isManager();
       return true;
+    }
+
+    function canSeeFinancials() {
+      return isAdmin();
     }
 
     function canSeeView(view) {
@@ -2030,7 +2044,7 @@
           ${roleBanner}
           <div class="kpi-grid">
             ${renderKpi("Open accounts", activeCount)}
-            ${renderKpi("Open value", money(openValue))}
+            ${canSeeFinancials() ? renderKpi("Open value", money(openValue)) : renderKpi("Open projects", expectedProjects)}
             ${renderKpi("Done projects", doneCount)}
             ${renderKpi("Today done", `${completedToday}/${todayActivities.length}`)}
             ${renderKpi("Pending edits", pendingRequests().length)}
@@ -2041,7 +2055,7 @@
               <h2>Expected vs Actual</h2>
               <div class="metric-table">
                 <div class="metric-row header"><span>Area</span><span>Expected</span><span>Actual</span><span>Gap</span></div>
-                ${renderMetricRow("Revenue", money(expectedValue), money(actualValue), money(expectedValue - actualValue))}
+                ${canSeeFinancials() ? renderMetricRow("Revenue", money(expectedValue), money(actualValue), money(expectedValue - actualValue)) : ""}
                 ${renderMetricRow("Projects", expectedProjects, actualProjects, expectedProjects - actualProjects)}
                 ${renderMetricRow("Activities", expectedActivities, actualActivities, expectedActivities - actualActivities)}
               </div>
@@ -2049,7 +2063,7 @@
             <div class="activity-panel">
               <h2>Performance Graph</h2>
               <div class="split-bars">
-                ${renderDualBar("Revenue", expectedValue, actualValue, "#0f766e")}
+                ${canSeeFinancials() ? renderDualBar("Revenue", expectedValue, actualValue, "#0f766e") : ""}
                 ${renderDualBar("Projects", expectedProjects, actualProjects, "#2563eb")}
                 ${renderDualBar("Activities", expectedActivities, actualActivities, "#b45309")}
               </div>
@@ -2082,7 +2096,7 @@
                   <div class="activity-item">
                     <span class="dot" style="background:${statusColor(item.status)}"></span>
                     <div><strong>${escapeHtml(item.company)}</strong><span>${escapeHtml(item.title)} - ${statusTitle(item.status)}</span></div>
-                    <span class="value">${item.value ? money(item.value) : dueLabel(item.due)}</span>
+                    <span class="value">${canSeeFinancials() && item.value ? money(item.value) : dueLabel(item.due)}</span>
                   </div>
                 `).join("") || `<div class="empty">No accounts yet. Create a card to start the journey.</div>`}
               </div>
@@ -2155,6 +2169,7 @@
         return `<div class="approval-field"><strong>Delete</strong><span>${escapeHtml(before.company || "Account")} - ${escapeHtml(before.title || "CRM item")}</span></div>`;
       }
       return ["title", "company", "owner", "type", "priority", "status", "value", "due", "notes", "document_url"].map(key => {
+        if (key === "value" && !canSeeFinancials()) return "";
         const previous = before[key];
         const next = after[key];
         if (request.action === "update" && String(previous ?? "") === String(next ?? "")) return "";
@@ -3013,7 +3028,7 @@
           <div class="company">${escapeHtml(item.company)} &middot; ${escapeHtml(item.owner)}</div>
           <div class="card-row">
             <span class="pill priority-${item.priority}">${label(item.priority)}</span>
-            <span class="value">${item.value ? money(item.value) : dueLabel(item.due)}</span>
+            <span class="value">${canSeeFinancials() && item.value ? money(item.value) : dueLabel(item.due)}</span>
           </div>
           <div class="card-row">
             <span class="pill">${label(item.type)}</span>
@@ -3026,10 +3041,13 @@
 
     function renderMetrics() {
       const items = visibleItems();
-      const openValue = items
-        .filter(item => !["won", "done", "project_done"].includes(item.status))
-        .reduce((sum, item) => sum + Number(item.value || 0), 0);
-      document.getElementById("totalValue").textContent = money(openValue);
+      document.getElementById("openValueMetric").hidden = !canSeeFinancials();
+      if (canSeeFinancials()) {
+        const openValue = items
+          .filter(item => !["won", "done", "project_done"].includes(item.status))
+          .reduce((sum, item) => sum + Number(item.value || 0), 0);
+        document.getElementById("totalValue").textContent = money(openValue);
+      }
       document.getElementById("dueWeek").textContent = items.filter(item => daysUntil(item.due) <= 7).length;
     }
 
@@ -3085,7 +3103,9 @@
             </label>
           </div>
           <div class="form-grid">
-            <label>Value<input name="value" type="number" min="0" step="100" value="${Number(item.value || 0)}" ${readOnly ? "disabled" : ""}></label>
+            ${canSeeFinancials()
+              ? `<label>Value<input name="value" type="number" min="0" step="100" value="${Number(item.value || 0)}" ${readOnly ? "disabled" : ""}></label>`
+              : `<input type="hidden" name="value" value="${Number(item.value || 0)}">`}
             <label>Due date<input name="due" type="date" value="${escapeAttr(item.due)}" ${readOnly ? "disabled" : ""}></label>
           </div>
           <label>Notes<textarea name="notes" ${readOnly ? "disabled" : ""}>${escapeHtml(item.notes)}</textarea></label>

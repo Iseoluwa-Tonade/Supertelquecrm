@@ -73,16 +73,26 @@ so the auth API itself rejects self-registration, not just the UI.
 
 ### Roles
 
-- **admin** — everything a manager can do, plus the Team page (change a
-  teammate's role, suspend/reinstate accounts, restrict which pages they can
-  see) and the Pricing calculator.
+- **admin** — the only role with financial visibility: the **Pipeline** tab
+  and every dollar figure in the app (Overview KPIs/charts, sidebar "Open
+  value," card price tags, approval diffs) are admin-only. Also gets
+  everything a manager can do, plus the Team page (change a teammate's role,
+  suspend/reinstate accounts, restrict which pages they can see) and the
+  Pricing calculator.
 - **manager** — same Team page access as admin (view/manage every teammate),
   edits and deletes board items directly, approves or rejects pending change
-  requests from owners. Does not get the Pricing calculator.
-- **owner** — day-to-day rep. Edits go through the approval queue unless
-  reviewed by a manager/admin.
-- **viewer** — read-only. Can browse the board, activities, and documents
-  but cannot create, edit, delete, or upload.
+  requests from owners — but does **not** see Pipeline or any dollar amount
+  (deal cards show their due date instead of value, and an approval diff's
+  value change is hidden). Does not get the Pricing calculator either.
+- **owner** — day-to-day rep, same financial/Pipeline restriction as manager.
+  Edits go through the approval queue unless reviewed by a manager/admin.
+- **viewer** — read-only, same financial/Pipeline restriction. Can browse
+  the board, activities, and documents but cannot create, edit, delete, or
+  upload.
+
+Editing a deal's Value while it's hidden doesn't erase it — the field is
+kept as a hidden form input so saving preserves the existing amount, it's
+just never rendered for non-admins to read.
 
 On the Team page, a manager or admin can also click **Views** next to any
 teammate to restrict which nav pages they're allowed to open (layered on top
