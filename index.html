@@ -1,0 +1,1311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CRM Project Board</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-strong: #f1f4f8;
+      --line: #d9e0e8;
+      --text: #1f2933;
+      --muted: #64748b;
+      --accent: #0f766e;
+      --accent-strong: #115e59;
+      --amber: #b45309;
+      --rose: #be123c;
+      --blue: #2563eb;
+      --green: #15803d;
+      --shadow: 0 12px 30px rgba(15, 23, 42, .08);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      min-height: 34px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover { border-color: #a7b4c3; }
+    button.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    button.primary:hover { background: var(--accent-strong); }
+    button.icon {
+      width: 34px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 236px minmax(0, 1fr) 340px;
+      height: 100vh;
+    }
+
+    .sidebar {
+      background: #202a36;
+      color: #e7edf4;
+      padding: 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 6px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+
+    .mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: #2dd4bf;
+      color: #102027;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+    }
+
+    .brand strong { display: block; font-size: 15px; }
+    .brand span { display: block; color: #aeb9c8; font-size: 12px; margin-top: 2px; }
+
+    .nav {
+      display: grid;
+      gap: 4px;
+    }
+
+    .nav button {
+      border: 0;
+      background: transparent;
+      color: #cbd5e1;
+      border-radius: 6px;
+      text-align: left;
+      padding: 9px 10px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .nav svg {
+      width: 17px;
+      height: 17px;
+      flex: 0 0 auto;
+    }
+
+    .nav button.active,
+    .nav button:hover {
+      background: rgba(255,255,255,.09);
+      color: #fff;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      display: grid;
+      gap: 10px;
+    }
+
+    .metric {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: var(--radius);
+      padding: 12px;
+    }
+    .metric span { color: #aeb9c8; font-size: 12px; }
+    .metric strong { display: block; margin-top: 6px; font-size: 20px; }
+
+    .main {
+      display: grid;
+      grid-template-rows: auto auto auto minmax(0, 1fr);
+      min-width: 0;
+      border-right: 1px solid var(--line);
+    }
+
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    .title p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .search {
+      position: relative;
+      min-width: 260px;
+    }
+    .search input {
+      width: 100%;
+      height: 36px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      padding: 0 10px 0 34px;
+      background: var(--panel-strong);
+      color: var(--text);
+    }
+    .search svg {
+      position: absolute;
+      left: 10px;
+      top: 9px;
+      color: var(--muted);
+    }
+
+    .toolbar {
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .segmented {
+      display: inline-grid;
+      grid-auto-flow: column;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      overflow: hidden;
+      background: var(--panel-strong);
+    }
+    .segmented button {
+      border: 0;
+      border-radius: 0;
+      min-height: 32px;
+      padding: 0 12px;
+      background: transparent;
+      color: var(--muted);
+    }
+    .segmented button.active {
+      background: #fff;
+      color: var(--text);
+      box-shadow: inset 0 -2px 0 var(--accent);
+    }
+
+    .filters {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .authbar {
+      background: #eef6f5;
+      border-bottom: 1px solid var(--line);
+      padding: 10px 18px;
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .authbar strong {
+      display: block;
+      font-size: 13px;
+    }
+    .authbar span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .auth-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .auth-controls input {
+      width: 190px;
+      height: 34px;
+      padding: 0 9px;
+    }
+    select {
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 8px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .board {
+      padding: 16px 18px;
+      overflow: auto;
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(250px, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .column {
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      min-height: 300px;
+      display: grid;
+      grid-template-rows: auto minmax(120px, 1fr);
+    }
+
+    .column-head {
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      min-width: 0;
+    }
+    .column-head h2 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+    .count {
+      color: var(--muted);
+      background: #fff;
+      border: 1px solid var(--line);
+      min-width: 28px;
+      height: 24px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+    }
+
+    .lane {
+      padding: 10px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      min-height: 260px;
+    }
+
+    .lane.drag-over {
+      outline: 2px solid rgba(15, 118, 110, .35);
+      outline-offset: -7px;
+      background: rgba(15, 118, 110, .04);
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: 0 1px 0 rgba(15,23,42,.03);
+      cursor: grab;
+      min-width: 0;
+    }
+    .card:active { cursor: grabbing; }
+    .card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(15,118,110,.16);
+    }
+    .card h3 {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    .card .company {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 11px;
+      align-items: center;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 23px;
+      border-radius: 12px;
+      padding: 0 8px;
+      font-size: 12px;
+      background: #eef2f7;
+      color: #405266;
+      white-space: nowrap;
+    }
+    .priority-high { background: #fff1f2; color: var(--rose); }
+    .priority-medium { background: #fffbeb; color: var(--amber); }
+    .priority-low { background: #ecfdf5; color: var(--green); }
+    .value { font-weight: 700; font-size: 13px; color: var(--text); }
+
+    .side {
+      background: var(--panel);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      min-width: 0;
+    }
+
+    .side-head {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .side-head h2 { margin: 0; font-size: 16px; }
+
+    .detail {
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .empty {
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+    .empty button {
+      margin-top: 12px;
+      padding: 0 10px;
+    }
+
+    .form {
+      display: grid;
+      gap: 12px;
+    }
+    label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 9px;
+      color: var(--text);
+      background: #fff;
+    }
+    textarea {
+      min-height: 84px;
+      resize: vertical;
+      line-height: 1.4;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .form-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      padding-top: 4px;
+    }
+    .danger { color: var(--rose); border-color: #fecdd3; }
+
+    .insights {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .insight {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .insight-top {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .bar {
+      height: 7px;
+      background: #e6edf4;
+      border-radius: 7px;
+      overflow: hidden;
+    }
+    .bar span {
+      display: block;
+      height: 100%;
+      background: var(--accent);
+      width: var(--w);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #111827;
+      color: #fff;
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: .18s ease;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 1120px) {
+      .app { grid-template-columns: 74px minmax(0, 1fr); }
+      .sidebar { padding: 14px 10px; }
+      .brand div:not(.mark), .nav span, .sidebar-footer { display: none; }
+      .nav button { justify-content: center; padding: 10px; }
+      .side {
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: min(360px, 100vw);
+        box-shadow: var(--shadow);
+        transform: translateX(100%);
+        transition: .2s ease;
+        z-index: 5;
+      }
+      .side.open { transform: translateX(0); }
+    }
+
+    @media (max-width: 760px) {
+      body { overflow: auto; }
+      .app { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+      .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        flex-direction: row;
+        align-items: center;
+        padding: 10px;
+      }
+      .brand { border: 0; padding: 0; }
+      .nav {
+        grid-auto-flow: column;
+        overflow-x: auto;
+        flex: 1;
+      }
+      .nav button { min-width: 42px; }
+      .main { min-height: calc(100vh - 54px); border-right: 0; }
+      header, .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .authbar {
+        grid-template-columns: 1fr;
+      }
+      .auth-controls {
+        justify-content: stretch;
+      }
+      .auth-controls input,
+      .auth-controls button {
+        flex: 1 1 140px;
+      }
+      .actions, .filters {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+      .search { min-width: 0; flex: 1 1 190px; }
+      .board {
+        grid-auto-columns: minmax(248px, 86vw);
+        padding: 12px;
+      }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Workspace navigation">
+      <div class="brand">
+        <div class="mark">N</div>
+        <div>
+          <strong>Northstar CRM</strong>
+          <span>Sales and delivery board</span>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="active" data-view="pipeline" title="Pipeline">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16"></path><path d="M9 5v14M15 5v14"></path></svg><span>Pipeline</span>
+        </button>
+        <button data-view="projects" title="Projects">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg><span>Projects</span>
+        </button>
+        <button data-view="focus" title="Focus">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg><span>Focus</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="metric">
+          <span>Open value</span>
+          <strong id="totalValue">$0</strong>
+        </div>
+        <div class="metric">
+          <span>Due this week</span>
+          <strong id="dueWeek">0</strong>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header>
+        <div class="title">
+          <h1 id="viewTitle">Revenue Pipeline</h1>
+          <p id="viewSubtitle">Track deals, projects, next actions, and owner accountability.</p>
+        </div>
+        <div class="actions">
+          <div class="search">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path>
+            </svg>
+            <input id="search" type="search" placeholder="Search account, owner, task">
+          </div>
+          <button class="primary" id="addBtn">+ New</button>
+        </div>
+      </header>
+
+      <section class="toolbar" aria-label="Board controls">
+        <div class="segmented" role="tablist" aria-label="Item type">
+          <button class="active" data-type="all">All</button>
+          <button data-type="deal">Deals</button>
+          <button data-type="project">Projects</button>
+          <button data-type="task">Tasks</button>
+        </div>
+        <div class="filters">
+          <select id="ownerFilter" aria-label="Owner filter"></select>
+          <select id="priorityFilter" aria-label="Priority filter">
+            <option value="all">All priorities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="authbar" id="authbar" aria-label="Supabase connection">
+        <div>
+          <strong id="authStatus">Connecting to CRM database</strong>
+          <span id="authHint">Sign in to save cards, sync changes, and use the dedicated CRM database.</span>
+        </div>
+        <div class="auth-controls" id="authControls">
+          <input id="authEmail" type="email" placeholder="Email">
+          <input id="authPassword" type="password" placeholder="Password">
+          <button id="signInBtn">Sign in</button>
+          <button class="primary" id="signUpBtn">Create account</button>
+          <button id="signOutBtn" hidden>Sign out</button>
+        </div>
+      </section>
+
+      <section class="board" id="board" aria-label="CRM project board"></section>
+    </main>
+
+    <aside class="side" id="sidePanel" aria-label="Selected item details">
+      <div class="side-head">
+        <h2 id="sideTitle">Details</h2>
+        <button class="icon" id="closeSide" title="Close">&times;</button>
+      </div>
+      <div class="detail" id="detail"></div>
+    </aside>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://otpzsnsrxcfuysjfnguk.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_l352tRKAwJS8Dw0m4JRgPA_X9gndbC7";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    const pipelineColumns = [
+      { id: "lead", title: "Lead", color: "#2563eb" },
+      { id: "qualified", title: "Qualified", color: "#0f766e" },
+      { id: "proposal", title: "Proposal", color: "#b45309" },
+      { id: "delivery", title: "Delivery", color: "#7c3aed" },
+      { id: "won", title: "Won", color: "#15803d" }
+    ];
+
+    const projectColumns = [
+      { id: "backlog", title: "Backlog", color: "#64748b" },
+      { id: "planned", title: "Planned", color: "#2563eb" },
+      { id: "active", title: "Active", color: "#0f766e" },
+      { id: "blocked", title: "Blocked", color: "#be123c" },
+      { id: "done", title: "Done", color: "#15803d" }
+    ];
+
+    const seedItems = [
+      { id: "a1", type: "deal", title: "Enterprise onboarding", company: "Lumen Forge", owner: "Ava", priority: "high", value: 42000, due: "2026-07-08", status: "qualified", notes: "Security review is scheduled. Send revised implementation timeline before the call." },
+      { id: "a2", type: "project", title: "Client portal rollout", company: "Mira Health", owner: "Noah", priority: "medium", value: 18000, due: "2026-07-12", status: "active", notes: "Design QA passed. Waiting on single sign-on configuration from client IT." },
+      { id: "a3", type: "task", title: "Renewal proposal", company: "Orbit Labs", owner: "Mina", priority: "high", value: 9600, due: "2026-07-05", status: "proposal", notes: "Add usage expansion line item and include the support SLA option." },
+      { id: "a4", type: "deal", title: "Analytics migration", company: "Harbor & Co.", owner: "Ava", priority: "medium", value: 26500, due: "2026-07-19", status: "lead", notes: "Discovery notes mention fragmented reporting and a November renewal deadline." },
+      { id: "a5", type: "project", title: "Workflow automation", company: "Clearbit Studio", owner: "Jules", priority: "low", value: 12400, due: "2026-07-22", status: "planned", notes: "Automate intake, approval, and client notification steps." },
+      { id: "a6", type: "deal", title: "Retainer expansion", company: "Northline Bank", owner: "Mina", priority: "medium", value: 33000, due: "2026-07-30", status: "delivery", notes: "Pilot team is happy. Procurement needs a month-to-month rider." },
+      { id: "a7", type: "task", title: "Resolve data import blocker", company: "Mira Health", owner: "Noah", priority: "high", value: 0, due: "2026-07-06", status: "blocked", notes: "CSV includes mixed encodings. Validate normalized export before next import." }
+    ];
+
+    const state = {
+      view: "pipeline",
+      type: "all",
+      search: "",
+      owner: "all",
+      priority: "all",
+      selectedId: null,
+      session: null,
+      loading: true,
+      realtimeChannel: null,
+      items: []
+    };
+
+    const board = document.getElementById("board");
+    const searchInput = document.getElementById("search");
+    const ownerFilter = document.getElementById("ownerFilter");
+    const priorityFilter = document.getElementById("priorityFilter");
+    const detail = document.getElementById("detail");
+    const sidePanel = document.getElementById("sidePanel");
+    const sideTitle = document.getElementById("sideTitle");
+    const toast = document.getElementById("toast");
+    const authStatus = document.getElementById("authStatus");
+    const authHint = document.getElementById("authHint");
+    const authEmail = document.getElementById("authEmail");
+    const authPassword = document.getElementById("authPassword");
+    const signInBtn = document.getElementById("signInBtn");
+    const signUpBtn = document.getElementById("signUpBtn");
+    const signOutBtn = document.getElementById("signOutBtn");
+
+    function columns() {
+      return state.view === "projects" ? projectColumns : pipelineColumns;
+    }
+
+    function normalizeStatus(item) {
+      const available = columns().map(column => column.id);
+      if (available.includes(item.status)) return item.status;
+      if (state.view === "projects") return item.type === "project" ? "active" : "backlog";
+      return item.type === "deal" ? "qualified" : "lead";
+    }
+
+    function filteredItems() {
+      const query = state.search.trim().toLowerCase();
+      return state.items.filter(item => {
+        const typeOk = state.type === "all" || item.type === state.type;
+        const ownerOk = state.owner === "all" || item.owner === state.owner;
+        const priorityOk = state.priority === "all" || item.priority === state.priority;
+        const viewOk = state.view !== "focus" || item.priority === "high" || daysUntil(item.due) <= 7;
+        const text = [item.title, item.company, item.owner, item.notes, item.type].join(" ").toLowerCase();
+        return typeOk && ownerOk && priorityOk && viewOk && (!query || text.includes(query));
+      });
+    }
+
+    function render() {
+      renderChrome();
+      renderAuth();
+      renderFilters();
+      renderBoard();
+      renderMetrics();
+      renderDetail();
+    }
+
+    function renderChrome() {
+      const copy = {
+        pipeline: ["Revenue Pipeline", "Track deals, projects, next actions, and owner accountability."],
+        projects: ["Project Delivery", "Move client work from backlog through shipped outcomes."],
+        focus: ["Focus Queue", "High-priority and near-due work across the whole book."]
+      };
+      document.getElementById("viewTitle").textContent = copy[state.view][0];
+      document.getElementById("viewSubtitle").textContent = copy[state.view][1];
+      document.querySelectorAll(".nav button").forEach(button => {
+        button.classList.toggle("active", button.dataset.view === state.view);
+      });
+      document.querySelectorAll(".segmented button").forEach(button => {
+        button.classList.toggle("active", button.dataset.type === state.type);
+      });
+    }
+
+    function renderAuth() {
+      const signedIn = Boolean(state.session);
+      authEmail.hidden = signedIn;
+      authPassword.hidden = signedIn;
+      signInBtn.hidden = signedIn;
+      signUpBtn.hidden = signedIn;
+      signOutBtn.hidden = !signedIn;
+      document.getElementById("addBtn").disabled = !signedIn;
+
+      if (state.loading) {
+        authStatus.textContent = "Connecting to CRM database";
+        authHint.textContent = "Loading Supabase session and board data.";
+        return;
+      }
+
+      if (signedIn) {
+        authStatus.textContent = `Signed in as ${state.session.user.email}`;
+        authHint.textContent = "Cards are saved to the dedicated crm-project-board Supabase project.";
+      } else {
+        authStatus.textContent = "Sign in to use the live CRM database";
+        authHint.textContent = "Create an account or sign in with email and password to save cards.";
+      }
+    }
+
+    function renderFilters() {
+      const owners = Array.from(new Set(state.items.map(item => item.owner))).sort();
+      ownerFilter.innerHTML = `<option value="all">All owners</option>` + owners.map(owner => (
+        `<option value="${escapeHtml(owner)}">${escapeHtml(owner)}</option>`
+      )).join("");
+      ownerFilter.value = state.owner;
+      priorityFilter.value = state.priority;
+    }
+
+    function renderBoard() {
+      if (state.loading) {
+        board.innerHTML = `<div class="empty">Loading the CRM database...</div>`;
+        return;
+      }
+
+      if (!state.session) {
+        board.innerHTML = `<div class="empty">Sign in above to load your live CRM board from Supabase.</div>`;
+        return;
+      }
+
+      const items = filteredItems();
+      const activeColumns = state.view === "focus" ? [
+        { id: "overdue", title: "Overdue", color: "#be123c" },
+        { id: "soon", title: "Next 7 days", color: "#b45309" },
+        { id: "later", title: "Later", color: "#0f766e" }
+      ] : columns();
+
+      board.innerHTML = activeColumns.map(column => {
+        const columnItems = items.filter(item => itemColumn(item) === column.id);
+        return `
+          <article class="column">
+            <div class="column-head">
+              <h2><span class="dot" style="background:${column.color}"></span>${column.title}</h2>
+              <span class="count">${columnItems.length}</span>
+            </div>
+            <div class="lane" data-status="${column.id}">
+              ${columnItems.map(renderCard).join("")}
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      document.querySelectorAll(".card").forEach(card => {
+        card.addEventListener("click", () => selectItem(card.dataset.id));
+        card.addEventListener("dragstart", event => {
+          event.dataTransfer.setData("text/plain", card.dataset.id);
+        });
+      });
+
+      document.querySelectorAll(".lane").forEach(lane => {
+        lane.addEventListener("dragover", event => {
+          if (state.view === "focus") return;
+          event.preventDefault();
+          lane.classList.add("drag-over");
+        });
+        lane.addEventListener("dragleave", () => lane.classList.remove("drag-over"));
+        lane.addEventListener("drop", event => {
+          event.preventDefault();
+          lane.classList.remove("drag-over");
+          moveItem(event.dataTransfer.getData("text/plain"), lane.dataset.status);
+        });
+      });
+    }
+
+    function itemColumn(item) {
+      if (state.view === "focus") {
+        const days = daysUntil(item.due);
+        if (days < 0) return "overdue";
+        if (days <= 7) return "soon";
+        return "later";
+      }
+      return normalizeStatus(item);
+    }
+
+    function renderCard(item) {
+      const selected = item.id === state.selectedId ? " selected" : "";
+      return `
+        <article class="card${selected}" draggable="true" data-id="${item.id}">
+          <h3>${escapeHtml(item.title)}</h3>
+          <div class="company">${escapeHtml(item.company)} &middot; ${escapeHtml(item.owner)}</div>
+          <div class="card-row">
+            <span class="pill priority-${item.priority}">${label(item.priority)}</span>
+            <span class="value">${item.value ? money(item.value) : dueLabel(item.due)}</span>
+          </div>
+          <div class="card-row">
+            <span class="pill">${label(item.type)}</span>
+            <span class="pill">${dueLabel(item.due)}</span>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderMetrics() {
+      const openValue = state.items
+        .filter(item => item.status !== "won" && item.status !== "done")
+        .reduce((sum, item) => sum + Number(item.value || 0), 0);
+      document.getElementById("totalValue").textContent = money(openValue);
+      document.getElementById("dueWeek").textContent = state.items.filter(item => daysUntil(item.due) <= 7).length;
+    }
+
+    function renderDetail() {
+      const item = state.items.find(candidate => candidate.id === state.selectedId);
+      if (!state.session) {
+        sideTitle.textContent = "Details";
+        detail.innerHTML = `<div class="empty">Your CRM data is protected by Supabase Auth and row-level security. Sign in to view and edit cards.</div>`;
+        return;
+      }
+
+      if (!item) {
+        sideTitle.textContent = "Details";
+        detail.innerHTML = `
+          <div class="insights">
+            ${renderInsight("Pipeline health", completionPercent("won", pipelineColumns), "Won deal value")}
+            ${renderInsight("Delivery health", completionPercent("done", projectColumns), "Completed project value")}
+            ${renderInsight("Urgent load", urgentPercent(), "High priority or due soon")}
+          </div>
+          <div class="empty">
+            Select a card to edit account details, ownership, priority, due date, value, and notes.
+            ${state.items.length ? "" : `<button class="primary" id="seedBtn">Load sample cards</button>`}
+          </div>
+        `;
+        const seedBtn = document.getElementById("seedBtn");
+        if (seedBtn) seedBtn.addEventListener("click", seedDatabase);
+        return;
+      }
+
+      sidePanel.classList.add("open");
+      sideTitle.textContent = item.company;
+      detail.innerHTML = `
+        <form class="form" id="itemForm">
+          <label>Title<input name="title" value="${escapeAttr(item.title)}"></label>
+          <label>Company<input name="company" value="${escapeAttr(item.company)}"></label>
+          <div class="form-grid">
+            <label>Owner<input name="owner" value="${escapeAttr(item.owner)}"></label>
+            <label>Type
+              <select name="type">
+                ${["deal", "project", "task"].map(value => option(value, item.type)).join("")}
+              </select>
+            </label>
+          </div>
+          <div class="form-grid">
+            <label>Priority
+              <select name="priority">
+                ${["high", "medium", "low"].map(value => option(value, item.priority)).join("")}
+              </select>
+            </label>
+            <label>Status
+              <select name="status">
+                ${columns().map(column => option(column.id, normalizeStatus(item), column.title)).join("")}
+              </select>
+            </label>
+          </div>
+          <div class="form-grid">
+            <label>Value<input name="value" type="number" min="0" step="100" value="${Number(item.value || 0)}"></label>
+            <label>Due date<input name="due" type="date" value="${escapeAttr(item.due)}"></label>
+          </div>
+          <label>Notes<textarea name="notes">${escapeHtml(item.notes)}</textarea></label>
+          <div class="form-actions">
+            <button type="button" class="danger" id="deleteBtn">Delete</button>
+            <button type="submit" class="primary">Save</button>
+          </div>
+        </form>
+      `;
+
+      document.getElementById("itemForm").addEventListener("submit", saveSelectedFromForm);
+      document.getElementById("deleteBtn").addEventListener("click", deleteSelected);
+    }
+
+    function renderInsight(title, percent, caption) {
+      return `
+        <div class="insight">
+          <div class="insight-top"><strong>${title}</strong><span>${percent}%</span></div>
+          <div class="bar"><span style="--w:${percent}%"></span></div>
+          <div class="insight-top"><span>${caption}</span></div>
+        </div>
+      `;
+    }
+
+    function completionPercent(doneStatus) {
+      const total = state.items.reduce((sum, item) => sum + Number(item.value || 0), 0) || 1;
+      const done = state.items.filter(item => item.status === doneStatus).reduce((sum, item) => sum + Number(item.value || 0), 0);
+      return Math.round((done / total) * 100);
+    }
+
+    function urgentPercent() {
+      if (!state.items.length) return 0;
+      const urgent = state.items.filter(item => item.priority === "high" || daysUntil(item.due) <= 7).length;
+      return Math.round((urgent / state.items.length) * 100);
+    }
+
+    async function loadRemoteItems() {
+      if (!state.session) {
+        state.items = [];
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("crm_board_items")
+        .select("id,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      state.items = data || [];
+    }
+
+    async function seedDatabase() {
+      if (!state.session) return;
+      const rows = seedItems.map(({ id, ...item }) => item);
+      const { data, error } = await supabaseClient
+        .from("crm_board_items")
+        .insert(rows)
+        .select("id,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at");
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      state.items = data || [];
+      render();
+      flash("Sample cards loaded");
+    }
+
+    async function saveSelectedFromForm(event) {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      const patch = {
+        title: form.get("title").trim(),
+        company: form.get("company").trim(),
+        owner: form.get("owner").trim(),
+        type: form.get("type"),
+        priority: form.get("priority"),
+        status: form.get("status"),
+        value: Number(form.get("value") || 0),
+        due: form.get("due") || null,
+        notes: form.get("notes").trim()
+      };
+      const { data, error } = await supabaseClient
+        .from("crm_board_items")
+        .update(patch)
+        .eq("id", state.selectedId)
+        .select("id,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.items = state.items.map(item => item.id === state.selectedId ? data : item);
+      render();
+      flash("Saved");
+    }
+
+    async function deleteSelected() {
+      const id = state.selectedId;
+      const { error } = await supabaseClient
+        .from("crm_board_items")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.items = state.items.filter(item => item.id !== id);
+      state.selectedId = null;
+      render();
+      flash("Deleted");
+    }
+
+    async function moveItem(id, status) {
+      const { data, error } = await supabaseClient
+        .from("crm_board_items")
+        .update({ status })
+        .eq("id", id)
+        .select("id,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.items = state.items.map(item => item.id === id ? data : item);
+      state.selectedId = id;
+      render();
+      flash("Moved");
+    }
+
+    function selectItem(id) {
+      state.selectedId = id;
+      render();
+    }
+
+    async function addItem() {
+      if (!state.session) {
+        flash("Sign in first");
+        return;
+      }
+      const status = state.view === "projects" ? "backlog" : "lead";
+      const item = {
+        type: state.type === "all" ? "deal" : state.type,
+        title: "New opportunity",
+        company: "New account",
+        owner: "Ava",
+        priority: "medium",
+        value: 0,
+        due: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+        status,
+        notes: ""
+      };
+
+      const { data, error } = await supabaseClient
+        .from("crm_board_items")
+        .insert(item)
+        .select("id,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.items.unshift(data);
+      state.selectedId = data.id;
+      render();
+      flash("Created");
+    }
+
+    function daysUntil(date) {
+      const today = new Date();
+      const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      return Math.ceil((new Date(date) - midnight) / 86400000);
+    }
+
+    function dueLabel(date) {
+      const days = daysUntil(date);
+      if (days < 0) return `${Math.abs(days)}d late`;
+      if (days === 0) return "Today";
+      if (days === 1) return "Tomorrow";
+      return `${days}d`;
+    }
+
+    function money(value) {
+      return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+    }
+
+    function label(value) {
+      return String(value).slice(0, 1).toUpperCase() + String(value).slice(1);
+    }
+
+    function option(value, selected, text = label(value)) {
+      return `<option value="${escapeAttr(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(text)}</option>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+      }[char]));
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replace(/`/g, "&#096;");
+    }
+
+    function flash(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(flash.timer);
+      flash.timer = setTimeout(() => toast.classList.remove("show"), 1300);
+    }
+
+    async function signIn() {
+      const email = authEmail.value.trim();
+      const password = authPassword.value;
+      if (!email || !password) {
+        flash("Enter email and password");
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) flash(error.message);
+    }
+
+    async function signUp() {
+      const email = authEmail.value.trim();
+      const password = authPassword.value;
+      if (!email || !password) {
+        flash("Enter email and password");
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signUp({ email, password });
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      flash("Account created. Check your email if confirmation is enabled.");
+    }
+
+    async function signOut() {
+      await supabaseClient.auth.signOut();
+    }
+
+    async function refreshFromDatabase() {
+      try {
+        state.loading = true;
+        render();
+        await loadRemoteItems();
+      } catch (error) {
+        flash(error.message);
+      } finally {
+        state.loading = false;
+        render();
+      }
+    }
+
+    function subscribeToChanges() {
+      if (state.realtimeChannel) {
+        supabaseClient.removeChannel(state.realtimeChannel);
+        state.realtimeChannel = null;
+      }
+      if (!state.session) return;
+
+      state.realtimeChannel = supabaseClient
+        .channel("crm_board_items_changes")
+        .on("postgres_changes", { event: "*", schema: "public", table: "crm_board_items" }, () => {
+          loadRemoteItems().then(render).catch(error => flash(error.message));
+        })
+        .subscribe();
+    }
+
+    async function initializeSupabase() {
+      try {
+        const { data, error } = await supabaseClient.auth.getSession();
+        if (error) throw error;
+        state.session = data.session;
+        await loadRemoteItems();
+        subscribeToChanges();
+      } catch (error) {
+        flash(error.message);
+      } finally {
+        state.loading = false;
+        render();
+      }
+
+      supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+        state.session = session;
+        state.selectedId = null;
+        subscribeToChanges();
+        await refreshFromDatabase();
+      });
+    }
+
+    document.querySelectorAll(".nav button").forEach(button => {
+      button.addEventListener("click", () => {
+        state.view = button.dataset.view;
+        state.selectedId = null;
+        render();
+      });
+    });
+
+    document.querySelectorAll(".segmented button").forEach(button => {
+      button.addEventListener("click", () => {
+        state.type = button.dataset.type;
+        render();
+      });
+    });
+
+    searchInput.addEventListener("input", event => {
+      state.search = event.target.value;
+      renderBoard();
+    });
+    ownerFilter.addEventListener("change", event => {
+      state.owner = event.target.value;
+      renderBoard();
+    });
+    priorityFilter.addEventListener("change", event => {
+      state.priority = event.target.value;
+      renderBoard();
+    });
+    document.getElementById("addBtn").addEventListener("click", addItem);
+    signInBtn.addEventListener("click", signIn);
+    signUpBtn.addEventListener("click", signUp);
+    signOutBtn.addEventListener("click", signOut);
+    authPassword.addEventListener("keydown", event => {
+      if (event.key === "Enter") signIn();
+    });
+    document.getElementById("closeSide").addEventListener("click", () => {
+      state.selectedId = null;
+      sidePanel.classList.remove("open");
+      render();
+    });
+
+    initializeSupabase();
+  </script>
+</body>
+</html>
