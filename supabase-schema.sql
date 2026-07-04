@@ -1,11 +1,21 @@
 -- SuperTelque CRM - additive schema for Documents, expanded roles, per-teammate
 -- view assignment, HR profile fields, the admin pricing calculator's service
 -- catalog, and the sales document link on board items.
--- Run this once in the Supabase SQL editor for your project.
--- It assumes the existing tables (profiles, crm_board_items, crm_daily_activities,
--- crm_change_requests) already exist, as created for the original CRM build.
--- This script only adds what's new. It is written to be safe to re-run
--- (IF NOT EXISTS / OR REPLACE / drop-then-add).
+--
+-- Run this once in the Supabase SQL editor for your project (or via the
+-- Supabase MCP `apply_migration` tool). It assumes the existing tables
+-- (profiles, crm_board_items, crm_daily_activities, crm_change_requests)
+-- already exist, as created for the original CRM build. This script is
+-- written to be safe to re-run (IF NOT EXISTS / OR REPLACE / drop-then-add).
+--
+-- This file matches what's actually deployed on the crm-project-board
+-- Supabase project as of the admin/manager-parity + documents/pricing
+-- rollout. In particular, the original build's `profiles`, `crm_board_items`,
+-- `crm_change_requests`, and `crm_daily_activities` tables already had RLS
+-- policies that checked `role = 'manager'` only. Section 6 below patches
+-- those exact pre-existing policies (by their real names) to also accept
+-- `admin`, since otherwise adding `admin` as a role would give admins LESS
+-- access than managers on every one of those tables.
 
 -- 1. Documents table -----------------------------------------------------
 
@@ -33,17 +43,17 @@ drop policy if exists "documents_insert_own" on public.crm_documents;
 create policy "documents_insert_own"
   on public.crm_documents for insert
   to authenticated
-  with check (uploaded_by = auth.uid());
+  with check (uploaded_by = (select auth.uid()));
 
 drop policy if exists "documents_delete_own_or_manager" on public.crm_documents;
 create policy "documents_delete_own_or_manager"
   on public.crm_documents for delete
   to authenticated
   using (
-    uploaded_by = auth.uid()
+    uploaded_by = (select auth.uid())
     or exists (
       select 1 from public.profiles p
-      where p.user_id = auth.uid() and p.role in ('manager', 'admin')
+      where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin')
     )
   );
 
@@ -75,10 +85,10 @@ create policy "crm_documents_storage_delete"
   using (
     bucket_id = 'crm-documents'
     and (
-      owner = auth.uid()
+      owner = (select auth.uid())
       or exists (
         select 1 from public.profiles p
-        where p.user_id = auth.uid() and p.role in ('manager', 'admin')
+        where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin')
       )
     )
   );
@@ -103,19 +113,20 @@ alter table public.profiles add column if not exists emergency_contact_name text
 alter table public.profiles add column if not exists emergency_contact_phone text default '';
 alter table public.profiles add column if not exists address text default '';
 
--- Managers and admins can view and update every teammate's profile (Team page).
--- Everyone can also always read/update their own row (also covers the HR
--- "My Profile" self-service form) — see the trigger below for why that's safe.
+-- Managers and admins can view and update every teammate's profile (Team
+-- page). This is deliberately additive/OR'd with the original build's
+-- `profiles_select_own` / `profiles_update_own_name` policies (not a
+-- replacement for them) — those still cover a regular owner/viewer reading
+-- and updating their own row; this one covers seeing/managing everyone else.
 drop policy if exists "profiles_admin_select_all" on public.profiles;
 drop policy if exists "profiles_manager_select_all" on public.profiles;
 create policy "profiles_manager_select_all"
   on public.profiles for select
   to authenticated
   using (
-    user_id = auth.uid()
-    or exists (
+    exists (
       select 1 from public.profiles p
-      where p.user_id = auth.uid() and p.role in ('admin', 'manager')
+      where p.user_id = (select auth.uid()) and p.role in ('admin', 'manager')
     )
   );
 
@@ -125,19 +136,21 @@ create policy "profiles_manager_update_all"
   on public.profiles for update
   to authenticated
   using (
-    user_id = auth.uid()
-    or exists (
+    exists (
       select 1 from public.profiles p
-      where p.user_id = auth.uid() and p.role in ('admin', 'manager')
+      where p.user_id = (select auth.uid()) and p.role in ('admin', 'manager')
     )
   );
 
--- Security: the update policy above lets a user update their OWN row (needed
--- for self-service HR editing), which would otherwise let anyone grant
--- themselves admin by editing their own `role`/`status`/`allowed_views` via a
--- raw API call. This trigger blocks that: when you're updating your own row
--- and you are not already an admin, role/status/allowed_views are silently
--- reset to their previous value no matter what the request asked for.
+-- Security: the original build's `profiles_update_own_name` policy already
+-- requires role to stay unchanged on a self-update, but the broader
+-- `profiles_manager_update_all` policy above is OR'd with it and doesn't
+-- carry that same restriction — so as a second, trigger-level layer of
+-- defense, this blocks a non-admin from changing their own
+-- role/status/allowed_views no matter which policy let the UPDATE through
+-- (including via a raw API call). SECURITY DEFINER is required so the
+-- inner lookup of the acting user's *current* role isn't itself blocked by
+-- RLS; EXECUTE is revoked below so it can't be called directly as an RPC.
 create or replace function public.prevent_self_role_escalation()
 returns trigger
 language plpgsql
@@ -158,6 +171,10 @@ begin
   return new;
 end;
 $$;
+
+revoke execute on function public.prevent_self_role_escalation() from public;
+revoke execute on function public.prevent_self_role_escalation() from anon;
+revoke execute on function public.prevent_self_role_escalation() from authenticated;
 
 drop trigger if exists trg_prevent_self_role_escalation on public.profiles;
 create trigger trg_prevent_self_role_escalation
@@ -185,13 +202,13 @@ create policy "services_admin_all"
   using (
     exists (
       select 1 from public.profiles p
-      where p.user_id = auth.uid() and p.role = 'admin'
+      where p.user_id = (select auth.uid()) and p.role = 'admin'
     )
   )
   with check (
     exists (
       select 1 from public.profiles p
-      where p.user_id = auth.uid() and p.role = 'admin'
+      where p.user_id = (select auth.uid()) and p.role = 'admin'
     )
   );
 
@@ -199,7 +216,118 @@ create policy "services_admin_all"
 
 alter table public.crm_board_items add column if not exists document_url text default '';
 
--- 7. Realtime for the new tables (optional, matches the existing tables) --
+-- 7. Give 'admin' the same access as 'manager' on the original build's
+--    pre-existing policies, which were written to only check role = 'manager'.
+--    Without this, admins would end up with LESS access than managers.
+
+drop policy if exists "crm_board_items_select_by_role" on public.crm_board_items;
+create policy "crm_board_items_select_by_role"
+  on public.crm_board_items for select
+  to authenticated
+  using (
+    (select auth.uid()) = user_id
+    or (select auth.uid()) = assigned_to
+    or visibility = 'shared'
+    or exists (select 1 from public.profiles p where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin'))
+  );
+
+drop policy if exists "crm_board_items_insert_by_manager" on public.crm_board_items;
+create policy "crm_board_items_insert_by_manager"
+  on public.crm_board_items for insert
+  to authenticated
+  with check (
+    exists (select 1 from public.profiles p where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin') and p.status = 'active')
+  );
+
+drop policy if exists "crm_board_items_update_by_manager" on public.crm_board_items;
+create policy "crm_board_items_update_by_manager"
+  on public.crm_board_items for update
+  to authenticated
+  using (
+    exists (select 1 from public.profiles p where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin') and p.status = 'active')
+  )
+  with check (
+    exists (select 1 from public.profiles p where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin') and p.status = 'active')
+  );
+
+drop policy if exists "crm_board_items_delete_by_manager" on public.crm_board_items;
+create policy "crm_board_items_delete_by_manager"
+  on public.crm_board_items for delete
+  to authenticated
+  using (
+    exists (select 1 from public.profiles p where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin') and p.status = 'active')
+  );
+
+drop policy if exists "crm_change_requests_select_by_role" on public.crm_change_requests;
+create policy "crm_change_requests_select_by_role"
+  on public.crm_change_requests for select
+  to authenticated
+  using (
+    exists (select 1 from public.profiles where profiles.user_id = (select auth.uid()) and profiles.role in ('manager', 'admin') and profiles.status = 'active')
+    or requested_by = (select auth.uid())
+  );
+
+drop policy if exists "crm_change_requests_update_by_manager" on public.crm_change_requests;
+create policy "crm_change_requests_update_by_manager"
+  on public.crm_change_requests for update
+  to authenticated
+  using (
+    exists (select 1 from public.profiles where profiles.user_id = (select auth.uid()) and profiles.role in ('manager', 'admin') and profiles.status = 'active')
+  )
+  with check (
+    exists (select 1 from public.profiles where profiles.user_id = (select auth.uid()) and profiles.role in ('manager', 'admin') and profiles.status = 'active')
+  );
+
+drop policy if exists "crm_change_requests_delete_by_manager" on public.crm_change_requests;
+create policy "crm_change_requests_delete_by_manager"
+  on public.crm_change_requests for delete
+  to authenticated
+  using (
+    exists (select 1 from public.profiles where profiles.user_id = (select auth.uid()) and profiles.role in ('manager', 'admin') and profiles.status = 'active')
+  );
+
+drop policy if exists "crm_daily_activities_select_by_role" on public.crm_daily_activities;
+create policy "crm_daily_activities_select_by_role"
+  on public.crm_daily_activities for select
+  to authenticated
+  using (
+    (select auth.uid()) = user_id
+    or visibility = 'team'
+    or exists (select 1 from public.profiles p where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin'))
+  );
+
+drop policy if exists "crm_daily_activities_insert_by_role" on public.crm_daily_activities;
+create policy "crm_daily_activities_insert_by_role"
+  on public.crm_daily_activities for insert
+  to authenticated
+  with check (
+    (select auth.uid()) = user_id
+    and exists (select 1 from public.profiles p where p.user_id = (select auth.uid()) and p.role in ('manager', 'owner', 'admin'))
+  );
+
+drop policy if exists "crm_daily_activities_update_by_role" on public.crm_daily_activities;
+create policy "crm_daily_activities_update_by_role"
+  on public.crm_daily_activities for update
+  to authenticated
+  using (
+    (select auth.uid()) = user_id
+    or exists (select 1 from public.profiles p where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin'))
+  )
+  with check (
+    (select auth.uid()) = user_id
+    or exists (select 1 from public.profiles p where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin'))
+  );
+
+drop policy if exists "crm_daily_activities_delete_by_role" on public.crm_daily_activities;
+create policy "crm_daily_activities_delete_by_role"
+  on public.crm_daily_activities for delete
+  to authenticated
+  using (
+    (select auth.uid()) = user_id
+    or exists (select 1 from public.profiles p where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin'))
+  );
+
+-- 8. Realtime for the new tables (optional, matches the existing tables) --
 -- If this errors because a table is already in the publication, that's fine.
 
 do $$
@@ -215,3 +343,9 @@ begin
 exception when duplicate_object then
   null;
 end $$;
+
+-- 9. One-time data fix: promote the CRM owner's account to admin ----------
+-- Only needed once. Harmless to re-run (it's a no-op if already admin).
+-- Adjust the email if your admin account differs.
+
+update public.profiles set role = 'admin' where email = 'iseolu6@gmail.com' and role <> 'admin';

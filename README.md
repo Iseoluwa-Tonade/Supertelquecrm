@@ -158,3 +158,7 @@ delete anywhere in the app.
   tag for the tradeoff and what a real server/CDN deployment could tighten.
 - All user-entered text is HTML-escaped before being inserted into the page,
   and the sales document link is restricted to `http(s)://` URLs.
+- **Manual step, not fixable via SQL:** Supabase Auth's leaked-password check
+  (HaveIBeenPwned) is off by default. Turn it on under Authentication →
+  Policies → Password in the Supabase dashboard — `get_advisors` flags this
+  on every run until it's enabled there.
