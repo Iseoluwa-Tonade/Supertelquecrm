@@ -854,6 +854,13 @@
       { id: "a7", type: "task", title: "Resolve data import blocker", company: "Mira Health", owner: "Noah", priority: "high", value: 0, due: "2026-07-06", status: "blocked", notes: "CSV includes mixed encodings. Validate normalized export before next import." }
     ];
 
+    const demoActivities = [
+      { id: "d1", activity_date: todayIso(), title: "Reply to new prospect email", channel: "email", notes: "", completed: true },
+      { id: "d2", activity_date: todayIso(), title: "Follow up on proposal with Orbit Labs", channel: "proposal", notes: "", completed: false },
+      { id: "d3", activity_date: todayIso(), title: "Prepare kickoff checklist for Mira Health", channel: "delivery", notes: "", completed: false },
+      { id: "d4", activity_date: "2026-07-03", title: "Discovery call notes cleaned up", channel: "meeting", notes: "", completed: true }
+    ];
+
     const state = {
       view: "overview",
       type: "all",
@@ -888,6 +895,18 @@
       return state.view === "projects" ? projectColumns : pipelineColumns;
     }
 
+    function isDemoMode() {
+      return !state.session;
+    }
+
+    function visibleItems() {
+      return isDemoMode() ? seedItems : state.items;
+    }
+
+    function visibleActivities() {
+      return isDemoMode() ? demoActivities : state.activities;
+    }
+
     function normalizeStatus(item) {
       const available = columns().map(column => column.id);
       if (available.includes(item.status)) return item.status;
@@ -897,7 +916,7 @@
 
     function filteredItems() {
       const query = state.search.trim().toLowerCase();
-      return state.items.filter(item => {
+      return visibleItems().filter(item => {
         const typeOk = state.type === "all" || item.type === state.type;
         const ownerOk = state.owner === "all" || item.owner === state.owner;
         const priorityOk = state.priority === "all" || item.priority === state.priority;
@@ -951,15 +970,15 @@
 
       if (signedIn) {
         authStatus.textContent = `Signed in as ${state.session.user.email}`;
-        authHint.textContent = "Cards are saved to the dedicated crm-project-board Supabase project.";
+        authHint.textContent = "Role: owner. Live cards and activities are saved to Supabase.";
       } else {
-        authStatus.textContent = "Sign in to use the live CRM database";
-        authHint.textContent = "Create an account or sign in with email and password to save cards.";
+        authStatus.textContent = "Demo mode - sign in for live data";
+        authHint.textContent = "The dashboard below uses frontend dummy data. Sign in before real CRM tables read or write.";
       }
     }
 
     function renderFilters() {
-      const owners = Array.from(new Set(state.items.map(item => item.owner))).sort();
+      const owners = Array.from(new Set(visibleItems().map(item => item.owner))).sort();
       ownerFilter.innerHTML = `<option value="all">All owners</option>` + owners.map(owner => (
         `<option value="${escapeHtml(owner)}">${escapeHtml(owner)}</option>`
       )).join("");
@@ -970,11 +989,6 @@
     function renderBoard() {
       if (state.loading) {
         board.innerHTML = `<div class="empty">Loading the CRM database...</div>`;
-        return;
-      }
-
-      if (!state.session) {
-        board.innerHTML = `<div class="empty">Sign in above to load your live CRM board from Supabase.</div>`;
         return;
       }
 
@@ -1033,16 +1047,21 @@
     }
 
     function renderOverview() {
-      const doneCount = state.items.filter(item => item.status === "project_done").length;
-      const activeCount = state.items.filter(item => !["project_done", "done", "won"].includes(item.status)).length;
-      const openValue = state.items
+      const items = visibleItems();
+      const doneCount = items.filter(item => item.status === "project_done").length;
+      const activeCount = items.filter(item => !["project_done", "done", "won"].includes(item.status)).length;
+      const openValue = items
         .filter(item => !["project_done", "done", "won"].includes(item.status))
         .reduce((sum, item) => sum + Number(item.value || 0), 0);
       const todayActivities = activitiesForToday();
       const completedToday = todayActivities.filter(activity => activity.completed).length;
+      const demoBanner = isDemoMode()
+        ? `<div class="empty">Demo data is shown here so your team can preview the workflow. Sign in to read and write the live Supabase tables.</div>`
+        : "";
 
       board.innerHTML = `
         <section class="overview" aria-label="CRM overview dashboard">
+          ${demoBanner}
           <div class="kpi-grid">
             ${renderKpi("Open accounts", activeCount)}
             ${renderKpi("Open value", money(openValue))}
@@ -1053,7 +1072,7 @@
             <h2>Client Journey</h2>
             <div class="journey-steps">
               ${pipelineColumns.map(step => {
-                const count = state.items.filter(item => item.status === step.id).length;
+                const count = items.filter(item => item.status === step.id).length;
                 return `<div class="journey-step"><strong>${count}</strong><span>${step.title}</span></div>`;
               }).join("")}
             </div>
@@ -1062,7 +1081,7 @@
             <div class="activity-panel">
               <h2>Recently Active</h2>
               <div class="activity-list">
-                ${state.items.slice(0, 6).map(item => `
+                ${items.slice(0, 6).map(item => `
                   <div class="activity-item">
                     <span class="dot" style="background:${statusColor(item.status)}"></span>
                     <div><strong>${escapeHtml(item.company)}</strong><span>${escapeHtml(item.title)} - ${statusTitle(item.status)}</span></div>
@@ -1074,7 +1093,7 @@
             <div class="activity-panel">
               <h2>Today</h2>
               ${renderActivityComposer()}
-              <div class="activity-list">${renderActivityItems(todayActivities, true)}</div>
+              <div class="activity-list">${renderActivityItems(todayActivities, !isDemoMode())}</div>
             </div>
           </div>
         </section>
@@ -1083,7 +1102,7 @@
     }
 
     function renderActivityView() {
-      const grouped = state.activities.reduce((groups, activity) => {
+      const grouped = visibleActivities().reduce((groups, activity) => {
         const key = activity.activity_date || todayIso();
         groups[key] ||= [];
         groups[key].push(activity);
@@ -1099,7 +1118,7 @@
           ${Object.keys(grouped).sort().reverse().map(date => `
             <div class="activity-panel">
               <h2>${dateLabel(date)}</h2>
-              <div class="activity-list">${renderActivityItems(grouped[date], true)}</div>
+              <div class="activity-list">${renderActivityItems(grouped[date], !isDemoMode())}</div>
             </div>
           `).join("") || `<div class="empty">No daily activities yet. Add your first email, call, meeting, or delivery task.</div>`}
         </section>
@@ -1114,11 +1133,11 @@
     function renderActivityComposer() {
       return `
         <form class="activity-form" id="activityForm">
-          <input name="title" placeholder="Daily activity">
-          <select name="channel">
+          <input name="title" placeholder="${isDemoMode() ? "Sign in to save daily activity" : "Daily activity"}" ${isDemoMode() ? "disabled" : ""}>
+          <select name="channel" ${isDemoMode() ? "disabled" : ""}>
             ${["email", "call", "meeting", "proposal", "delivery", "admin", "general"].map(value => option(value, "general")).join("")}
           </select>
-          <button class="primary" type="submit">Add</button>
+          <button class="primary" type="submit" ${isDemoMode() ? "disabled" : ""}>Add</button>
         </form>
       `;
     }
@@ -1173,18 +1192,19 @@
     }
 
     function renderMetrics() {
-      const openValue = state.items
+      const items = visibleItems();
+      const openValue = items
         .filter(item => !["won", "done", "project_done"].includes(item.status))
         .reduce((sum, item) => sum + Number(item.value || 0), 0);
       document.getElementById("totalValue").textContent = money(openValue);
-      document.getElementById("dueWeek").textContent = state.items.filter(item => daysUntil(item.due) <= 7).length;
+      document.getElementById("dueWeek").textContent = items.filter(item => daysUntil(item.due) <= 7).length;
     }
 
     function renderDetail() {
-      const item = state.items.find(candidate => candidate.id === state.selectedId);
+      const item = visibleItems().find(candidate => candidate.id === state.selectedId);
       if (!state.session) {
         sideTitle.textContent = "Details";
-        detail.innerHTML = `<div class="empty">Your CRM data is protected by Supabase Auth and row-level security. Sign in to view and edit cards.</div>`;
+        detail.innerHTML = `<div class="empty">You are viewing demo data. Sign in to read live CRM tables, edit cards, and save daily activities. Your real data is protected by Supabase Auth and row-level security.</div>`;
         return;
       }
 
@@ -1198,7 +1218,7 @@
           </div>
           <div class="empty">
             Select a card to edit account details, ownership, priority, due date, value, and notes.
-            ${state.items.length ? "" : `<button class="primary" id="seedBtn">Load sample cards</button>`}
+            ${visibleItems().length ? "" : `<button class="primary" id="seedBtn">Load sample cards</button>`}
           </div>
         `;
         const seedBtn = document.getElementById("seedBtn");
@@ -1259,15 +1279,17 @@
     }
 
     function completionPercent(doneStatus) {
-      const total = state.items.reduce((sum, item) => sum + Number(item.value || 0), 0) || 1;
-      const done = state.items.filter(item => item.status === doneStatus).reduce((sum, item) => sum + Number(item.value || 0), 0);
+      const items = visibleItems();
+      const total = items.reduce((sum, item) => sum + Number(item.value || 0), 0) || 1;
+      const done = items.filter(item => item.status === doneStatus).reduce((sum, item) => sum + Number(item.value || 0), 0);
       return Math.round((done / total) * 100);
     }
 
     function urgentPercent() {
-      if (!state.items.length) return 0;
-      const urgent = state.items.filter(item => item.priority === "high" || daysUntil(item.due) <= 7).length;
-      return Math.round((urgent / state.items.length) * 100);
+      const items = visibleItems();
+      if (!items.length) return 0;
+      const urgent = items.filter(item => item.priority === "high" || daysUntil(item.due) <= 7).length;
+      return Math.round((urgent / items.length) * 100);
     }
 
     async function loadRemoteItems() {
@@ -1321,6 +1343,10 @@
 
     async function addActivity(event) {
       event.preventDefault();
+      if (!state.session) {
+        flash("Sign in to save activity");
+        return;
+      }
       const form = new FormData(event.currentTarget);
       const title = form.get("title").trim();
       if (!title) {
@@ -1350,6 +1376,10 @@
     }
 
     async function toggleActivity(id, completed) {
+      if (!state.session) {
+        flash("Sign in to update activity");
+        return;
+      }
       const { data, error } = await supabaseClient
         .from("crm_daily_activities")
         .update({ completed })
@@ -1367,6 +1397,10 @@
     }
 
     async function deleteActivity(id) {
+      if (!state.session) {
+        flash("Sign in to delete activity");
+        return;
+      }
       const { error } = await supabaseClient
         .from("crm_daily_activities")
         .delete()
@@ -1530,7 +1564,7 @@
     }
 
     function activitiesForToday() {
-      return state.activities.filter(activity => activity.activity_date === todayIso());
+      return visibleActivities().filter(activity => activity.activity_date === todayIso());
     }
 
     function dateLabel(date) {
