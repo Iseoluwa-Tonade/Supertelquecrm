@@ -284,6 +284,130 @@
       align-items: start;
     }
 
+    .overview {
+      padding: 16px 18px;
+      overflow: auto;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 12px;
+    }
+    .kpi {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      min-width: 0;
+    }
+    .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      display: block;
+    }
+    .kpi strong {
+      display: block;
+      margin-top: 7px;
+      font-size: 24px;
+      line-height: 1;
+    }
+    .journey {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+    .journey h2,
+    .activity-panel h2 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+    .journey-steps {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(82px, 1fr));
+      gap: 8px;
+    }
+    .journey-step {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 10px 8px;
+      min-height: 72px;
+      display: grid;
+      align-content: space-between;
+      gap: 8px;
+      background: var(--panel-strong);
+    }
+    .journey-step strong {
+      font-size: 18px;
+    }
+    .journey-step span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+    .overview-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr);
+      gap: 14px;
+    }
+    .activity-panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+    .activity-form {
+      display: grid;
+      grid-template-columns: 1fr 130px 92px;
+      gap: 8px;
+    }
+    .activity-list {
+      display: grid;
+      gap: 8px;
+    }
+    .activity-item {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: start;
+    }
+    .activity-item input {
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+    }
+    .activity-item strong {
+      font-size: 13px;
+      display: block;
+    }
+    .activity-item span {
+      color: var(--muted);
+      display: block;
+      margin-top: 3px;
+      font-size: 12px;
+    }
+    .activity-item.done strong {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+    .mini-delete {
+      width: 28px;
+      min-height: 28px;
+      color: var(--rose);
+    }
+
     .column {
       background: var(--panel-strong);
       border: 1px solid var(--line);
@@ -578,6 +702,17 @@
         grid-auto-columns: minmax(248px, 86vw);
         padding: 12px;
       }
+      .overview { padding: 12px; }
+      .kpi-grid,
+      .overview-grid {
+        grid-template-columns: 1fr;
+      }
+      .journey-steps {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+      }
+      .activity-form {
+        grid-template-columns: 1fr;
+      }
       .form-grid { grid-template-columns: 1fr; }
     }
   </style>
@@ -593,11 +728,17 @@
         </div>
       </div>
       <nav class="nav">
-        <button class="active" data-view="pipeline" title="Pipeline">
+        <button class="active" data-view="overview" title="Overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="8"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="15" width="7" height="6"></rect></svg><span>Overview</span>
+        </button>
+        <button data-view="pipeline" title="Pipeline">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16"></path><path d="M9 5v14M15 5v14"></path></svg><span>Pipeline</span>
         </button>
         <button data-view="projects" title="Projects">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg><span>Projects</span>
+        </button>
+        <button data-view="activity" title="Activity">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg><span>Activity</span>
         </button>
         <button data-view="focus" title="Focus">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg><span>Focus</span>
@@ -684,11 +825,15 @@
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
     const pipelineColumns = [
-      { id: "lead", title: "Lead", color: "#2563eb" },
-      { id: "qualified", title: "Qualified", color: "#0f766e" },
-      { id: "proposal", title: "Proposal", color: "#b45309" },
-      { id: "delivery", title: "Delivery", color: "#7c3aed" },
-      { id: "won", title: "Won", color: "#15803d" }
+      { id: "responded_email", title: "Responded to Email", color: "#2563eb" },
+      { id: "discovery_call", title: "Discovery Call", color: "#0f766e" },
+      { id: "proposal_sent", title: "Proposal Sent", color: "#b45309" },
+      { id: "follow_up", title: "Follow Up", color: "#7c3aed" },
+      { id: "contract_signed", title: "Contract Signed", color: "#15803d" },
+      { id: "kickoff", title: "Kickoff", color: "#0891b2" },
+      { id: "in_progress", title: "In Progress", color: "#4f46e5" },
+      { id: "review", title: "Review", color: "#be123c" },
+      { id: "project_done", title: "Project Done", color: "#166534" }
     ];
 
     const projectColumns = [
@@ -696,21 +841,21 @@
       { id: "planned", title: "Planned", color: "#2563eb" },
       { id: "active", title: "Active", color: "#0f766e" },
       { id: "blocked", title: "Blocked", color: "#be123c" },
-      { id: "done", title: "Done", color: "#15803d" }
+      { id: "project_done", title: "Project Done", color: "#15803d" }
     ];
 
     const seedItems = [
-      { id: "a1", type: "deal", title: "Enterprise onboarding", company: "Lumen Forge", owner: "Ava", priority: "high", value: 42000, due: "2026-07-08", status: "qualified", notes: "Security review is scheduled. Send revised implementation timeline before the call." },
-      { id: "a2", type: "project", title: "Client portal rollout", company: "Mira Health", owner: "Noah", priority: "medium", value: 18000, due: "2026-07-12", status: "active", notes: "Design QA passed. Waiting on single sign-on configuration from client IT." },
-      { id: "a3", type: "task", title: "Renewal proposal", company: "Orbit Labs", owner: "Mina", priority: "high", value: 9600, due: "2026-07-05", status: "proposal", notes: "Add usage expansion line item and include the support SLA option." },
-      { id: "a4", type: "deal", title: "Analytics migration", company: "Harbor & Co.", owner: "Ava", priority: "medium", value: 26500, due: "2026-07-19", status: "lead", notes: "Discovery notes mention fragmented reporting and a November renewal deadline." },
-      { id: "a5", type: "project", title: "Workflow automation", company: "Clearbit Studio", owner: "Jules", priority: "low", value: 12400, due: "2026-07-22", status: "planned", notes: "Automate intake, approval, and client notification steps." },
-      { id: "a6", type: "deal", title: "Retainer expansion", company: "Northline Bank", owner: "Mina", priority: "medium", value: 33000, due: "2026-07-30", status: "delivery", notes: "Pilot team is happy. Procurement needs a month-to-month rider." },
+      { id: "a1", type: "deal", title: "Enterprise onboarding", company: "Lumen Forge", owner: "Ava", priority: "high", value: 42000, due: "2026-07-08", status: "discovery_call", notes: "Security review is scheduled. Send revised implementation timeline before the call." },
+      { id: "a2", type: "project", title: "Client portal rollout", company: "Mira Health", owner: "Noah", priority: "medium", value: 18000, due: "2026-07-12", status: "in_progress", notes: "Design QA passed. Waiting on single sign-on configuration from client IT." },
+      { id: "a3", type: "task", title: "Renewal proposal", company: "Orbit Labs", owner: "Mina", priority: "high", value: 9600, due: "2026-07-05", status: "proposal_sent", notes: "Add usage expansion line item and include the support SLA option." },
+      { id: "a4", type: "deal", title: "Analytics migration", company: "Harbor & Co.", owner: "Ava", priority: "medium", value: 26500, due: "2026-07-19", status: "responded_email", notes: "Discovery notes mention fragmented reporting and a November renewal deadline." },
+      { id: "a5", type: "project", title: "Workflow automation", company: "Clearbit Studio", owner: "Jules", priority: "low", value: 12400, due: "2026-07-22", status: "kickoff", notes: "Automate intake, approval, and client notification steps." },
+      { id: "a6", type: "deal", title: "Retainer expansion", company: "Northline Bank", owner: "Mina", priority: "medium", value: 33000, due: "2026-07-30", status: "contract_signed", notes: "Pilot team is happy. Procurement needs a month-to-month rider." },
       { id: "a7", type: "task", title: "Resolve data import blocker", company: "Mira Health", owner: "Noah", priority: "high", value: 0, due: "2026-07-06", status: "blocked", notes: "CSV includes mixed encodings. Validate normalized export before next import." }
     ];
 
     const state = {
-      view: "pipeline",
+      view: "overview",
       type: "all",
       search: "",
       owner: "all",
@@ -719,6 +864,7 @@
       session: null,
       loading: true,
       realtimeChannel: null,
+      activities: [],
       items: []
     };
 
@@ -746,7 +892,7 @@
       const available = columns().map(column => column.id);
       if (available.includes(item.status)) return item.status;
       if (state.view === "projects") return item.type === "project" ? "active" : "backlog";
-      return item.type === "deal" ? "qualified" : "lead";
+      return item.type === "deal" ? "discovery_call" : "responded_email";
     }
 
     function filteredItems() {
@@ -772,8 +918,10 @@
 
     function renderChrome() {
       const copy = {
-        pipeline: ["Revenue Pipeline", "Track deals, projects, next actions, and owner accountability."],
+        overview: ["CRM Overview", "See the journey, open value, project health, and today's daily work."],
+        pipeline: ["Client Journey", "Move every account from responded email to project done."],
         projects: ["Project Delivery", "Move client work from backlog through shipped outcomes."],
+        activity: ["Daily Activities", "Track calls, emails, proposals, delivery work, and admin follow-ups."],
         focus: ["Focus Queue", "High-priority and near-due work across the whole book."]
       };
       document.getElementById("viewTitle").textContent = copy[state.view][0];
@@ -830,6 +978,16 @@
         return;
       }
 
+      if (state.view === "overview") {
+        renderOverview();
+        return;
+      }
+
+      if (state.view === "activity") {
+        renderActivityView();
+        return;
+      }
+
       const items = filteredItems();
       const activeColumns = state.view === "focus" ? [
         { id: "overdue", title: "Overdue", color: "#be123c" },
@@ -874,6 +1032,118 @@
       });
     }
 
+    function renderOverview() {
+      const doneCount = state.items.filter(item => item.status === "project_done").length;
+      const activeCount = state.items.filter(item => !["project_done", "done", "won"].includes(item.status)).length;
+      const openValue = state.items
+        .filter(item => !["project_done", "done", "won"].includes(item.status))
+        .reduce((sum, item) => sum + Number(item.value || 0), 0);
+      const todayActivities = activitiesForToday();
+      const completedToday = todayActivities.filter(activity => activity.completed).length;
+
+      board.innerHTML = `
+        <section class="overview" aria-label="CRM overview dashboard">
+          <div class="kpi-grid">
+            ${renderKpi("Open accounts", activeCount)}
+            ${renderKpi("Open value", money(openValue))}
+            ${renderKpi("Done projects", doneCount)}
+            ${renderKpi("Today done", `${completedToday}/${todayActivities.length}`)}
+          </div>
+          <div class="journey">
+            <h2>Client Journey</h2>
+            <div class="journey-steps">
+              ${pipelineColumns.map(step => {
+                const count = state.items.filter(item => item.status === step.id).length;
+                return `<div class="journey-step"><strong>${count}</strong><span>${step.title}</span></div>`;
+              }).join("")}
+            </div>
+          </div>
+          <div class="overview-grid">
+            <div class="activity-panel">
+              <h2>Recently Active</h2>
+              <div class="activity-list">
+                ${state.items.slice(0, 6).map(item => `
+                  <div class="activity-item">
+                    <span class="dot" style="background:${statusColor(item.status)}"></span>
+                    <div><strong>${escapeHtml(item.company)}</strong><span>${escapeHtml(item.title)} - ${statusTitle(item.status)}</span></div>
+                    <span class="value">${item.value ? money(item.value) : dueLabel(item.due)}</span>
+                  </div>
+                `).join("") || `<div class="empty">No accounts yet. Create a card to start the journey.</div>`}
+              </div>
+            </div>
+            <div class="activity-panel">
+              <h2>Today</h2>
+              ${renderActivityComposer()}
+              <div class="activity-list">${renderActivityItems(todayActivities, true)}</div>
+            </div>
+          </div>
+        </section>
+      `;
+      bindActivityControls();
+    }
+
+    function renderActivityView() {
+      const grouped = state.activities.reduce((groups, activity) => {
+        const key = activity.activity_date || todayIso();
+        groups[key] ||= [];
+        groups[key].push(activity);
+        return groups;
+      }, {});
+
+      board.innerHTML = `
+        <section class="overview" aria-label="Daily activity tracking">
+          <div class="activity-panel">
+            <h2>New Activity</h2>
+            ${renderActivityComposer()}
+          </div>
+          ${Object.keys(grouped).sort().reverse().map(date => `
+            <div class="activity-panel">
+              <h2>${dateLabel(date)}</h2>
+              <div class="activity-list">${renderActivityItems(grouped[date], true)}</div>
+            </div>
+          `).join("") || `<div class="empty">No daily activities yet. Add your first email, call, meeting, or delivery task.</div>`}
+        </section>
+      `;
+      bindActivityControls();
+    }
+
+    function renderKpi(labelText, value) {
+      return `<div class="kpi"><span>${labelText}</span><strong>${value}</strong></div>`;
+    }
+
+    function renderActivityComposer() {
+      return `
+        <form class="activity-form" id="activityForm">
+          <input name="title" placeholder="Daily activity">
+          <select name="channel">
+            ${["email", "call", "meeting", "proposal", "delivery", "admin", "general"].map(value => option(value, "general")).join("")}
+          </select>
+          <button class="primary" type="submit">Add</button>
+        </form>
+      `;
+    }
+
+    function renderActivityItems(activities, editable) {
+      return activities.map(activity => `
+        <div class="activity-item ${activity.completed ? "done" : ""}" data-activity-id="${activity.id}">
+          <input type="checkbox" ${activity.completed ? "checked" : ""} ${editable ? "" : "disabled"} aria-label="Mark complete">
+          <div><strong>${escapeHtml(activity.title)}</strong><span>${label(activity.channel)} - ${dateLabel(activity.activity_date)}</span></div>
+          ${editable ? `<button class="mini-delete" type="button" title="Delete activity">&times;</button>` : ""}
+        </div>
+      `).join("") || `<div class="empty">No activities for this day yet.</div>`;
+    }
+
+    function bindActivityControls() {
+      const form = document.getElementById("activityForm");
+      if (form) form.addEventListener("submit", addActivity);
+      document.querySelectorAll(".activity-item[data-activity-id] input[type='checkbox']").forEach(input => {
+        input.addEventListener("change", event => toggleActivity(event.currentTarget.closest(".activity-item").dataset.activityId, event.currentTarget.checked));
+      });
+      document.querySelectorAll(".activity-item[data-activity-id] .mini-delete").forEach(button => {
+        button.addEventListener("click", event => deleteActivity(event.currentTarget.closest(".activity-item").dataset.activityId));
+      });
+    }
+
     function itemColumn(item) {
       if (state.view === "focus") {
         const days = daysUntil(item.due);
@@ -904,7 +1174,7 @@
 
     function renderMetrics() {
       const openValue = state.items
-        .filter(item => item.status !== "won" && item.status !== "done")
+        .filter(item => !["won", "done", "project_done"].includes(item.status))
         .reduce((sum, item) => sum + Number(item.value || 0), 0);
       document.getElementById("totalValue").textContent = money(openValue);
       document.getElementById("dueWeek").textContent = state.items.filter(item => daysUntil(item.due) <= 7).length;
@@ -922,8 +1192,8 @@
         sideTitle.textContent = "Details";
         detail.innerHTML = `
           <div class="insights">
-            ${renderInsight("Pipeline health", completionPercent("won", pipelineColumns), "Won deal value")}
-            ${renderInsight("Delivery health", completionPercent("done", projectColumns), "Completed project value")}
+            ${renderInsight("Pipeline health", completionPercent("project_done", pipelineColumns), "Completed project value")}
+            ${renderInsight("Delivery health", completionPercent("project_done", projectColumns), "Completed project value")}
             ${renderInsight("Urgent load", urgentPercent(), "High priority or due soon")}
           </div>
           <div class="empty">
@@ -1015,6 +1285,23 @@
       state.items = data || [];
     }
 
+    async function loadRemoteActivities() {
+      if (!state.session) {
+        state.activities = [];
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("crm_daily_activities")
+        .select("id,board_item_id,activity_date,title,channel,notes,completed,created_at,updated_at")
+        .order("activity_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(80);
+
+      if (error) throw error;
+      state.activities = data || [];
+    }
+
     async function seedDatabase() {
       if (!state.session) return;
       const rows = seedItems.map(({ id, ...item }) => item);
@@ -1030,6 +1317,69 @@
       state.items = data || [];
       render();
       flash("Sample cards loaded");
+    }
+
+    async function addActivity(event) {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      const title = form.get("title").trim();
+      if (!title) {
+        flash("Add an activity title");
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("crm_daily_activities")
+        .insert({
+          title,
+          channel: form.get("channel"),
+          activity_date: todayIso(),
+          completed: false
+        })
+        .select("id,board_item_id,activity_date,title,channel,notes,completed,created_at,updated_at")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.activities.unshift(data);
+      render();
+      flash("Activity added");
+    }
+
+    async function toggleActivity(id, completed) {
+      const { data, error } = await supabaseClient
+        .from("crm_daily_activities")
+        .update({ completed })
+        .eq("id", id)
+        .select("id,board_item_id,activity_date,title,channel,notes,completed,created_at,updated_at")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.activities = state.activities.map(activity => activity.id === id ? data : activity);
+      render();
+    }
+
+    async function deleteActivity(id) {
+      const { error } = await supabaseClient
+        .from("crm_daily_activities")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.activities = state.activities.filter(activity => activity.id !== id);
+      render();
+      flash("Activity deleted");
     }
 
     async function saveSelectedFromForm(event) {
@@ -1110,7 +1460,7 @@
         flash("Sign in first");
         return;
       }
-      const status = state.view === "projects" ? "backlog" : "lead";
+      const status = state.view === "projects" ? "backlog" : "responded_email";
       const item = {
         type: state.type === "all" ? "deal" : state.type,
         title: "New opportunity",
@@ -1159,11 +1509,33 @@
     }
 
     function label(value) {
-      return String(value).slice(0, 1).toUpperCase() + String(value).slice(1);
+      return String(value).replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase());
     }
 
     function option(value, selected, text = label(value)) {
       return `<option value="${escapeAttr(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(text)}</option>`;
+    }
+
+    function statusTitle(status) {
+      return [...pipelineColumns, ...projectColumns].find(column => column.id === status)?.title || label(status);
+    }
+
+    function statusColor(status) {
+      return [...pipelineColumns, ...projectColumns].find(column => column.id === status)?.color || "#64748b";
+    }
+
+    function todayIso() {
+      const now = new Date();
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 10);
+    }
+
+    function activitiesForToday() {
+      return state.activities.filter(activity => activity.activity_date === todayIso());
+    }
+
+    function dateLabel(date) {
+      if (date === todayIso()) return "Today";
+      return date || "No date";
     }
 
     function escapeHtml(value) {
@@ -1220,6 +1592,7 @@
         state.loading = true;
         render();
         await loadRemoteItems();
+        await loadRemoteActivities();
       } catch (error) {
         flash(error.message);
       } finally {
@@ -1240,6 +1613,9 @@
         .on("postgres_changes", { event: "*", schema: "public", table: "crm_board_items" }, () => {
           loadRemoteItems().then(render).catch(error => flash(error.message));
         })
+        .on("postgres_changes", { event: "*", schema: "public", table: "crm_daily_activities" }, () => {
+          loadRemoteActivities().then(render).catch(error => flash(error.message));
+        })
         .subscribe();
     }
 
@@ -1249,6 +1625,7 @@
         if (error) throw error;
         state.session = data.session;
         await loadRemoteItems();
+        await loadRemoteActivities();
         subscribeToChanges();
       } catch (error) {
         flash(error.message);
