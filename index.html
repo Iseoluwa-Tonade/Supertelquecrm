@@ -25,6 +25,46 @@
     }
 
     * { box-sizing: border-box; }
+    *, *::before, *::after {
+      transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* Opacity-only entrance for elements with a :hover/:active transform of their own —
+       an animation's fill-mode keeps holding the "to" keyframe value on the properties it
+       touches even after finishing, which would otherwise permanently block hover transforms. */
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes pop-in {
+      from { opacity: 0; transform: scale(.6); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes overlay-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes modal-pop-in {
+      from { opacity: 0; transform: translateY(10px) scale(.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes grow-bar {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+
     body {
       margin: 0;
       background: var(--bg);
@@ -137,7 +177,9 @@
       display: flex;
       gap: 10px;
       align-items: center;
+      transition: background .15s ease, color .15s ease, transform .1s ease;
     }
+    .nav button:active { transform: scale(.97); }
     .nav svg {
       width: 17px;
       height: 17px;
@@ -162,7 +204,7 @@
       font-size: 11px;
       font-weight: 800;
     }
-    .nav .nav-count.show { display: grid; }
+    .nav .nav-count.show { display: grid; animation: pop-in .3s cubic-bezier(.34,1.56,.64,1) both; }
 
     .sidebar-footer {
       margin-top: auto;
@@ -284,6 +326,7 @@
     .board {
       padding: 16px 18px;
       overflow: auto;
+      scroll-behavior: smooth;
       display: grid;
       grid-auto-flow: column;
       grid-auto-columns: minmax(250px, 1fr);
@@ -294,9 +337,11 @@
     .overview {
       padding: 16px 18px;
       overflow: auto;
+      scroll-behavior: smooth;
       display: grid;
       gap: 14px;
       align-content: start;
+      animation: fade-in-up .3s ease both;
     }
     .kpi-grid {
       display: grid;
@@ -309,7 +354,14 @@
       border-radius: var(--radius);
       padding: 14px;
       min-width: 0;
+      animation: fade-in-up .35s ease both;
     }
+    .kpi:nth-child(1) { animation-delay: 0ms; }
+    .kpi:nth-child(2) { animation-delay: 40ms; }
+    .kpi:nth-child(3) { animation-delay: 80ms; }
+    .kpi:nth-child(4) { animation-delay: 120ms; }
+    .kpi:nth-child(5) { animation-delay: 160ms; }
+    .kpi:nth-child(6) { animation-delay: 200ms; }
     .kpi span {
       color: var(--muted);
       font-size: 12px;
@@ -349,6 +401,7 @@
       align-content: space-between;
       gap: 8px;
       background: var(--panel-strong);
+      animation: fade-in-up .3s ease both;
     }
     .journey-step strong {
       font-size: 18px;
@@ -388,7 +441,10 @@
       padding: 14px;
       display: grid;
       gap: 12px;
+      animation: fade-in .3s ease both;
+      transition: transform .15s ease, box-shadow .15s ease;
     }
+    .approval-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15,23,42,.1); }
     .approval-card header {
       border: 0;
       padding: 0;
@@ -490,6 +546,8 @@
       width: var(--w);
       background: var(--c, var(--accent));
       border-radius: 10px;
+      transform-origin: left;
+      animation: grow-bar .6s cubic-bezier(.16,1,.3,1) both;
     }
     .split-bars {
       display: grid;
@@ -530,6 +588,7 @@
       grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 9px;
       align-items: start;
+      animation: fade-in-up .3s ease both;
     }
     .activity-item input {
       width: 16px;
@@ -563,7 +622,13 @@
       min-height: 300px;
       display: grid;
       grid-template-rows: auto minmax(120px, 1fr);
+      animation: fade-in-up .3s ease both;
     }
+    .column:nth-child(1) { animation-delay: 0ms; }
+    .column:nth-child(2) { animation-delay: 40ms; }
+    .column:nth-child(3) { animation-delay: 80ms; }
+    .column:nth-child(4) { animation-delay: 120ms; }
+    .column:nth-child(5) { animation-delay: 160ms; }
 
     .column-head {
       padding: 12px;
@@ -606,6 +671,7 @@
       gap: 10px;
       align-content: start;
       min-height: 260px;
+      transition: background .15s ease;
     }
 
     .lane.drag-over {
@@ -622,8 +688,17 @@
       box-shadow: 0 1px 0 rgba(15,23,42,.03);
       cursor: grab;
       min-width: 0;
+      animation: fade-in .3s ease both;
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
     }
-    .card:active { cursor: grabbing; }
+    .card:nth-child(1) { animation-delay: 0ms; }
+    .card:nth-child(2) { animation-delay: 30ms; }
+    .card:nth-child(3) { animation-delay: 60ms; }
+    .card:nth-child(4) { animation-delay: 90ms; }
+    .card:nth-child(5) { animation-delay: 120ms; }
+    .card:nth-child(6) { animation-delay: 150ms; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15,23,42,.1); border-color: #a7b4c3; }
+    .card:active { cursor: grabbing; transform: translateY(0) scale(.98); }
     .card.selected {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(15,118,110,.16);
@@ -686,6 +761,7 @@
     .detail {
       padding: 16px;
       overflow: auto;
+      scroll-behavior: smooth;
     }
 
     .empty {
@@ -695,6 +771,7 @@
       padding: 16px;
       line-height: 1.45;
       font-size: 14px;
+      animation: fade-in-up .3s ease both;
     }
     .empty button {
       margin-top: 12px;
@@ -704,6 +781,7 @@
     .form {
       display: grid;
       gap: 12px;
+      animation: fade-in-up .3s ease both;
     }
     label {
       display: grid;
@@ -755,6 +833,7 @@
       padding: 12px;
       display: grid;
       gap: 8px;
+      animation: fade-in-up .3s ease both;
     }
     .insight-top {
       display: flex;
@@ -773,6 +852,8 @@
       height: 100%;
       background: var(--accent);
       width: var(--w);
+      transform-origin: left;
+      animation: grow-bar .6s cubic-bezier(.16,1,.3,1) both;
     }
 
     .toast {
@@ -859,12 +940,24 @@
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       padding: 12px;
-      display: none;
+      display: grid;
       gap: 10px;
       grid-template-columns: 1fr;
       z-index: 20;
+      transform-origin: top right;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-6px) scale(.98);
+      pointer-events: none;
+      transition: opacity .15s ease, transform .15s ease, visibility 0s linear .15s;
     }
-    .profile-dropdown.open { display: grid; }
+    .profile-dropdown.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+      transition: opacity .15s ease, transform .15s ease;
+    }
     .profile-dropdown strong { font-size: 13px; word-break: break-all; }
     .profile-dropdown .muted-line { color: var(--muted); font-size: 12px; }
     .role-badge {
@@ -903,9 +996,6 @@
     @keyframes login-rise {
       from { opacity: 0; transform: translateY(16px); }
       to { opacity: 1; transform: translateY(0); }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .login-shell { animation: none; }
     }
 
     .login-hero {
@@ -1139,7 +1229,16 @@
       display: grid;
       gap: 8px;
       cursor: pointer;
+      animation: fade-in .3s ease both;
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
     }
+    .doc-card:nth-child(1) { animation-delay: 0ms; }
+    .doc-card:nth-child(2) { animation-delay: 30ms; }
+    .doc-card:nth-child(3) { animation-delay: 60ms; }
+    .doc-card:nth-child(4) { animation-delay: 90ms; }
+    .doc-card:nth-child(5) { animation-delay: 120ms; }
+    .doc-card:nth-child(6) { animation-delay: 150ms; }
+    .doc-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15,23,42,.1); border-color: #a7b4c3; }
     .doc-icon {
       width: 36px;
       height: 36px;
@@ -1176,6 +1275,7 @@
       place-items: center;
       z-index: 50;
       padding: 20px;
+      animation: overlay-fade-in .18s ease both;
     }
     .modal {
       width: min(720px, 100%);
@@ -1186,6 +1286,7 @@
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
       overflow: hidden;
+      animation: modal-pop-in .22s cubic-bezier(.16,1,.3,1) both;
     }
     .modal-header {
       padding: 14px 16px;
@@ -1224,6 +1325,7 @@
       border-radius: 7px;
       padding: 9px 10px;
       font-size: 12px;
+      animation: fade-in-up .3s ease both;
     }
     .team-row.header {
       background: var(--panel-strong);
@@ -1246,6 +1348,7 @@
       border-radius: 7px;
       padding: 8px 10px;
       font-size: 12px;
+      animation: fade-in-up .3s ease both;
     }
     .calc-row strong { font-size: 13px; display: block; }
     .calc-row span { color: var(--muted); }
