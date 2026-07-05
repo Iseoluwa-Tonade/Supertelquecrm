@@ -118,16 +118,38 @@ alter table public.profiles add column if not exists address text default '';
 -- `profiles_select_own` / `profiles_update_own_name` policies (not a
 -- replacement for them) — those still cover a regular owner/viewer reading
 -- and updating their own row; this one covers seeing/managing everyone else.
+--
+-- IMPORTANT: a policy ON `profiles` can't check the caller's role by
+-- querying `profiles` directly in its own USING clause — that makes
+-- Postgres re-apply this same policy to evaluate the subquery, which
+-- re-applies it again, and so on ("infinite recursion detected in policy
+-- for relation \"profiles\""). `is_manager_or_admin()` below is SECURITY
+-- DEFINER, so it reads `profiles` as its owner (which bypasses RLS on the
+-- table it owns) instead of as the querying user, breaking the loop.
+create or replace function public.is_manager_or_admin(uid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.profiles p
+    where p.user_id = uid and p.role in ('admin', 'manager')
+  );
+$$;
+
+revoke all on function public.is_manager_or_admin(uuid) from public;
+revoke all on function public.is_manager_or_admin(uuid) from anon;
+grant execute on function public.is_manager_or_admin(uuid) to authenticated;
+
 drop policy if exists "profiles_admin_select_all" on public.profiles;
 drop policy if exists "profiles_manager_select_all" on public.profiles;
 create policy "profiles_manager_select_all"
   on public.profiles for select
   to authenticated
   using (
-    exists (
-      select 1 from public.profiles p
-      where p.user_id = (select auth.uid()) and p.role in ('admin', 'manager')
-    )
+    public.is_manager_or_admin((select auth.uid()))
   );
 
 drop policy if exists "profiles_admin_update_all" on public.profiles;
@@ -136,10 +158,7 @@ create policy "profiles_manager_update_all"
   on public.profiles for update
   to authenticated
   using (
-    exists (
-      select 1 from public.profiles p
-      where p.user_id = (select auth.uid()) and p.role in ('admin', 'manager')
-    )
+    public.is_manager_or_admin((select auth.uid()))
   );
 
 -- Security: the original build's `profiles_update_own_name` policy already
