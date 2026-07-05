@@ -349,3 +349,139 @@ end $$;
 -- Adjust the email if your admin account differs.
 
 update public.profiles set role = 'admin' where email = 'iseolu6@gmail.com' and role <> 'admin';
+
+-- 10. Direct messages between teammates -------------------------------------
+-- A manager/admin can start a thread with any teammate; the recipient can
+-- then reply (and only reply — they can't cold-message a third party this
+-- way, so a regular user never needs broad visibility into the profiles
+-- table just to send a message).
+
+create table if not exists public.crm_messages (
+  id uuid primary key default gen_random_uuid(),
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  sender_email text not null,
+  recipient_id uuid not null references auth.users(id) on delete cascade,
+  recipient_email text not null,
+  body text not null,
+  created_at timestamptz not null default now(),
+  read_at timestamptz
+);
+
+alter table public.crm_messages enable row level security;
+
+drop policy if exists "crm_messages_select_participant" on public.crm_messages;
+create policy "crm_messages_select_participant"
+  on public.crm_messages for select
+  to authenticated
+  using (
+    sender_id = (select auth.uid()) or recipient_id = (select auth.uid())
+  );
+
+drop policy if exists "crm_messages_insert_participant" on public.crm_messages;
+create policy "crm_messages_insert_participant"
+  on public.crm_messages for insert
+  to authenticated
+  with check (
+    sender_id = (select auth.uid())
+    and (
+      exists (
+        select 1 from public.profiles p
+        where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin') and p.status = 'active'
+      )
+      or exists (
+        select 1 from public.crm_messages m
+        where m.sender_id = recipient_id and m.recipient_id = (select auth.uid())
+      )
+    )
+  );
+
+drop policy if exists "crm_messages_update_read_by_recipient" on public.crm_messages;
+create policy "crm_messages_update_read_by_recipient"
+  on public.crm_messages for update
+  to authenticated
+  using (recipient_id = (select auth.uid()))
+  with check (recipient_id = (select auth.uid()));
+
+-- Recipients can only ever flip read_at, never rewrite what was sent to them.
+create or replace function public.protect_message_content()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.sender_id <> old.sender_id
+     or new.recipient_id <> old.recipient_id
+     or new.body <> old.body
+     or new.created_at <> old.created_at then
+    raise exception 'Only read_at can be updated on an existing message';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.protect_message_content() from public;
+revoke all on function public.protect_message_content() from anon;
+revoke all on function public.protect_message_content() from authenticated;
+
+drop trigger if exists protect_message_content_trigger on public.crm_messages;
+create trigger protect_message_content_trigger
+  before update on public.crm_messages
+  for each row execute function public.protect_message_content();
+
+do $$
+begin
+  alter publication supabase_realtime add table public.crm_messages;
+exception when duplicate_object then
+  null;
+end $$;
+
+-- 11. Let a requester withdraw their own pending change request -------------
+
+drop policy if exists "crm_change_requests_cancel_by_requester" on public.crm_change_requests;
+create policy "crm_change_requests_cancel_by_requester"
+  on public.crm_change_requests for update
+  to authenticated
+  using (
+    requested_by = (select auth.uid()) and status = 'pending'
+  )
+  with check (
+    requested_by = (select auth.uid()) and status = 'cancelled'
+  );
+
+-- Belt-and-suspenders: even with the policy above, only allow a non-manager
+-- to flip their own pending request to 'cancelled' and nothing else.
+create or replace function public.restrict_change_request_cancel()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if exists (
+    select 1 from public.profiles p
+    where p.user_id = (select auth.uid()) and p.role in ('manager', 'admin') and p.status = 'active'
+  ) then
+    return new;
+  end if;
+
+  if new.requested_by <> old.requested_by
+     or new.board_item_id is distinct from old.board_item_id
+     or new.action <> old.action
+     or new.payload is distinct from old.payload
+     or new.before_payload is distinct from old.before_payload
+     or new.status <> 'cancelled' then
+    raise exception 'You can only cancel your own pending request';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.restrict_change_request_cancel() from public;
+revoke all on function public.restrict_change_request_cancel() from anon;
+revoke all on function public.restrict_change_request_cancel() from authenticated;
+
+drop trigger if exists restrict_change_request_cancel_trigger on public.crm_change_requests;
+create trigger restrict_change_request_cancel_trigger
+  before update on public.crm_change_requests
+  for each row execute function public.restrict_change_request_cancel();

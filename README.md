@@ -57,7 +57,14 @@ It:
 - Creates the `crm_services` table (the pricing calculator's service
   catalog), restricted entirely to the `admin` role.
 - Adds `document_url` to `crm_board_items` (the sales document link).
-- Adds `crm_documents` and `crm_services` to the realtime publication.
+- Creates the `crm_messages` table (direct messages between teammates) +
+  row-level security policies, plus a trigger that stops a recipient from
+  rewriting a message's sender/body/timestamp when marking it read.
+- Adds a policy (+ trigger) letting a requester withdraw their own pending
+  row in `crm_change_requests`, without being able to touch anyone else's
+  request or any other column on their own.
+- Adds `crm_documents`, `crm_services`, and `crm_messages` to the realtime
+  publication.
 
 ### Access is invite-only
 
@@ -115,9 +122,35 @@ call from changing your own role/status even if you're signed in.
 Files are uploaded straight to the `crm-documents` Supabase Storage bucket
 and tracked in `crm_documents`. You can select or drag-and-drop multiple
 files at once. Each file can optionally be linked to a deal or project;
-linked files also show up in that record's detail panel. Images and PDFs
-preview inline (via a short-lived signed URL); other file types show a
-download link.
+linked files also show up in that record's detail panel.
+
+Preview support (all served from a short-lived signed URL, so the bucket
+stays private):
+
+- **Images and PDFs** — inline, native preview.
+- **Video and audio** — inline `<video>`/`<audio>` player.
+- **Text files** (`txt`, `csv`, `json`, `md`, `log`) — fetched and shown as
+  plain text.
+- **Office documents** (`doc`/`docx`/`xls`/`xlsx`/`ppt`/`pptx`) — rendered
+  through Google's document viewer, which is handed the temporary signed
+  URL rather than a public link.
+- Anything else falls back to a download button.
+
+Any manager/admin can delete any document; an owner/viewer can delete a
+file they uploaded themselves.
+
+### Messages
+
+A **Messages** page lets teammates send each other direct messages. A
+manager or admin can start a new thread with anyone on the team (**New
+message** button on the Messages page, or the **Message** button next to a
+teammate on the Team page); the recipient can then reply in that thread.
+A regular owner/viewer can't cold-message an arbitrary teammate — they can
+only reply within a thread a manager/admin already started with them —
+so no one needs broad visibility into the team directory just to send a
+message. Unread counts show on the sidebar and next to each conversation;
+opening a thread marks it read. There's no real-time push — refresh (or
+the existing realtime subscription) picks up new messages.
 
 ### Sales document link
 
@@ -127,6 +160,15 @@ as a small 🔗 on the card and an "Open sales document" button in the detail
 panel that opens the link in a new tab. Only `http://`/`https://` links are
 accepted, to keep a pasted link from being used to run script code when
 someone else clicks it.
+
+### Approval queue
+
+An owner/viewer's create/edit/delete goes to **Approvals** as a pending
+change request instead of applying immediately; a manager or admin reviews
+it there and can **Approve** or **Reject**. The person who submitted a
+still-pending request can also **Withdraw** it themselves before anyone
+reviews it — that just cancels the request, the board is untouched either
+way since nothing was applied yet.
 
 ### Pricing calculator
 

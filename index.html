@@ -258,7 +258,27 @@
        .board on the flexible track no matter which siblings are hidden. */
     .main > header { grid-row: 1; }
     .main > .toolbar { grid-row: 2; }
-    .main > .board { grid-row: 3; }
+    .main > .board-scroll { grid-row: 3; }
+
+    .board-scroll {
+      overflow: auto;
+      scroll-behavior: smooth;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .app-footer {
+      flex-shrink: 0;
+      margin-top: auto;
+      padding: 16px 18px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 16px;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+    }
 
     header {
       background: var(--panel);
@@ -357,13 +377,12 @@
 
     .board {
       padding: 16px 18px;
-      overflow: auto;
-      scroll-behavior: smooth;
       display: grid;
       grid-auto-flow: column;
       grid-auto-columns: minmax(250px, 1fr);
       gap: 14px;
       align-items: start;
+      flex-shrink: 0;
     }
 
     .overview {
@@ -1248,6 +1267,87 @@
       flex-wrap: wrap;
     }
 
+    .message-thread-list {
+      display: grid;
+      gap: 8px;
+      max-height: 60vh;
+      overflow: auto;
+    }
+    .message-thread-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 2px 8px;
+      text-align: left;
+      padding: 10px 12px;
+      background: var(--panel);
+    }
+    .message-thread-item strong { grid-column: 1; font-size: 13px; }
+    .message-thread-item span:not(.thread-unread) {
+      grid-column: 1;
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .message-thread-item .thread-unread {
+      grid-row: 1 / 3;
+      align-self: center;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: #facc15;
+      color: #1f2933;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 0 5px;
+    }
+    .message-thread-item.active { border-color: var(--accent); }
+    .message-thread {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+    .message-list {
+      display: grid;
+      gap: 8px;
+      max-height: 50vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .message-bubble {
+      justify-self: start;
+      max-width: 80%;
+      background: var(--panel-strong, var(--panel));
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 12px;
+    }
+    .message-bubble.mine {
+      justify-self: end;
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+    }
+    .message-bubble p { margin: 0; font-size: 13px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+    .message-bubble span { display: block; margin-top: 4px; font-size: 11px; opacity: .7; }
+    .message-composer {
+      display: grid;
+      gap: 8px;
+    }
+    .message-composer textarea {
+      resize: vertical;
+      font: inherit;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--text);
+    }
+    .message-composer-new { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; }
+
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -1299,6 +1399,21 @@
       height: 60vh;
       border: 1px solid var(--line);
       border-radius: 6px;
+    }
+    .text-preview {
+      width: 100%;
+      max-height: 60vh;
+      overflow: auto;
+      margin: 0;
+      padding: 12px;
+      background: var(--panel-muted, var(--panel));
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, "SF Mono", Consolas, monospace;
+      font-size: 12px;
+      text-align: left;
     }
 
     .team-row {
@@ -1542,6 +1657,9 @@
         <button data-view="documents" title="Documents">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg><span>Documents</span>
         </button>
+        <button data-view="messages" title="Messages">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>Messages</span><span class="nav-count" id="messageCount">0</span>
+        </button>
         <button data-view="approvals" title="Approvals">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 12l2 2 4-4"></path><path d="M21 12a9 9 0 1 1-6.2-8.56"></path></svg><span>Approvals</span><span class="nav-count" id="approvalCount">0</span>
         </button>
@@ -1618,7 +1736,13 @@
         </div>
       </section>
 
-      <section class="board" id="board" aria-label="CRM project board"></section>
+      <div class="board-scroll" id="boardScroll">
+        <section class="board" id="board" aria-label="CRM project board"></section>
+        <footer class="app-footer">
+          <span>&copy; <span id="footerYear"></span> SuperTelque CRM</span>
+          <span>Built on Supabase &middot; data access enforced by row-level security</span>
+        </footer>
+      </div>
     </main>
 
     <aside class="side" id="sidePanel" aria-label="Selected item details">
@@ -1706,6 +1830,7 @@
       { id: "projects", label: "Projects" },
       { id: "activity", label: "Activity" },
       { id: "documents", label: "Documents" },
+      { id: "messages", label: "Messages" },
       { id: "approvals", label: "Approvals" },
       { id: "focus", label: "Focus" },
       { id: "team", label: "Team" },
@@ -1737,7 +1862,11 @@
       calcTax: 0,
       theme: localStorage.getItem("crm-theme") || "light",
       previewDoc: null,
-      docFilterItem: "all"
+      docFilterItem: "all",
+      messages: [],
+      messageThreadWith: null,
+      messageThreadEmail: null,
+      messageComposeOpen: false
     };
 
     document.documentElement.dataset.theme = state.theme;
@@ -1885,6 +2014,7 @@
         projects: ["Project Delivery", "Move client work from backlog through shipped outcomes."],
         activity: ["Daily Activities", "Track calls, emails, proposals, delivery work, and admin follow-ups."],
         documents: ["Documents", "Upload, organize, and preview files linked to accounts and projects."],
+        messages: ["Messages", "Direct messages between you and your manager or teammates."],
         approvals: ["Approval Queue", "Review team changes before they become approved CRM records."],
         focus: ["Focus Queue", "High-priority and near-due work across the whole book."],
         team: ["Team", "Manage teammate roles and access."],
@@ -1904,11 +2034,17 @@
         approvalCount.textContent = pendingRequests().length;
         approvalCount.classList.toggle("show", Boolean(state.session && pendingRequests().length));
       }
+      const messageCount = document.getElementById("messageCount");
+      if (messageCount) {
+        const unread = unreadMessageCount();
+        messageCount.textContent = unread;
+        messageCount.classList.toggle("show", Boolean(state.session && unread));
+      }
       NAV_VIEWS.forEach(entry => {
         const button = document.querySelector(`.nav button[data-view="${entry.id}"]`);
         if (button) button.hidden = !canSeeView(entry.id);
       });
-      document.querySelector(".toolbar").hidden = ["overview", "activity", "documents", "approvals", "team", "pricing", "profile"].includes(state.view);
+      document.querySelector(".toolbar").hidden = ["overview", "activity", "documents", "messages", "approvals", "team", "pricing", "profile"].includes(state.view);
     }
 
     function renderTopbar() {
@@ -1957,6 +2093,11 @@
 
       if (state.view === "documents") {
         renderDocumentsView();
+        return;
+      }
+
+      if (state.view === "messages") {
+        renderMessagesView();
         return;
       }
 
@@ -2125,6 +2266,12 @@
         </section>
       `;
 
+      document.querySelectorAll("[data-cancel-id]").forEach(button => {
+        button.addEventListener("click", () => {
+          confirmAction("Withdraw this pending request? It will not be applied.", () => cancelChangeRequest(button.dataset.cancelId), { confirmLabel: "Withdraw" });
+        });
+      });
+
       if (!isManager()) return;
       document.querySelectorAll("[data-approve-id]").forEach(button => {
         button.addEventListener("click", () => reviewChangeRequest(button.dataset.approveId, "approved"));
@@ -2139,7 +2286,8 @@
       const title = request.payload?.title || item?.title || "New CRM item";
       const company = request.payload?.company || item?.company || "Pending account";
       const action = label(request.action);
-      const requestedBy = request.requested_by === state.session?.user?.id ? "You" : shortId(request.requested_by);
+      const isOwnRequest = request.requested_by === state.session?.user?.id;
+      const requestedBy = isOwnRequest ? "You" : shortId(request.requested_by);
       return `
         <article class="approval-card">
           <header>
@@ -2154,10 +2302,16 @@
           </div>
           ${isManager() ? `
             <div class="approval-actions">
+              ${isOwnRequest ? `<button type="button" data-cancel-id="${request.id}">Withdraw</button>` : ""}
               <button class="danger" type="button" data-reject-id="${request.id}">Reject</button>
               <button class="primary" type="button" data-approve-id="${request.id}">Approve</button>
             </div>
-          ` : `<div class="status-note">Waiting for manager approval. The approved board will not change until this is reviewed.</div>`}
+          ` : `
+            <div class="approval-actions">
+              ${isOwnRequest ? `<button type="button" data-cancel-id="${request.id}">Withdraw</button>` : ""}
+            </div>
+            <div class="status-note">Waiting for manager approval. The approved board will not change until this is reviewed.</div>
+          `}
         </article>
       `;
     }
@@ -2431,14 +2585,60 @@
         return;
       }
 
-      const url = data.signedUrl;
-      if (doc.file_type?.startsWith("image/")) {
+      await renderPreviewBody(data.signedUrl, doc);
+    }
+
+    const OFFICE_PREVIEW_TYPES = [
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ];
+    const TEXT_PREVIEW_EXTENSIONS = ["txt", "csv", "json", "md", "log"];
+
+    function downloadFallback(url, doc, message) {
+      return `<div class="empty">${message}</div><a href="${escapeAttr(url)}" target="_blank" rel="noopener"><button class="primary" type="button">Download ${escapeHtml(doc.file_name)}</button></a>`;
+    }
+
+    async function renderPreviewBody(url, doc) {
+      const fileType = doc.file_type || "";
+      const extension = (doc.file_name.split(".").pop() || "").toLowerCase();
+
+      if (fileType.startsWith("image/")) {
         previewBody.innerHTML = `<img src="${escapeAttr(url)}" alt="${escapeAttr(doc.file_name)}">`;
-      } else if (doc.file_type?.includes("pdf")) {
-        previewBody.innerHTML = `<iframe src="${escapeAttr(url)}" title="${escapeAttr(doc.file_name)}"></iframe>`;
-      } else {
-        previewBody.innerHTML = `<div class="empty">Preview is not available for this file type.</div><a href="${escapeAttr(url)}" target="_blank" rel="noopener"><button class="primary" type="button">Download ${escapeHtml(doc.file_name)}</button></a>`;
+        return;
       }
+      if (fileType.includes("pdf")) {
+        previewBody.innerHTML = `<iframe src="${escapeAttr(url)}" title="${escapeAttr(doc.file_name)}"></iframe>`;
+        return;
+      }
+      if (fileType.startsWith("video/")) {
+        previewBody.innerHTML = `<video controls src="${escapeAttr(url)}" style="max-width:100%;max-height:100%;"></video>`;
+        return;
+      }
+      if (fileType.startsWith("audio/")) {
+        previewBody.innerHTML = `<div class="empty">${escapeHtml(doc.file_name)}</div><audio controls src="${escapeAttr(url)}" style="width:100%;"></audio>`;
+        return;
+      }
+      if (fileType.startsWith("text/") || TEXT_PREVIEW_EXTENSIONS.includes(extension)) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const text = await response.text();
+          previewBody.innerHTML = `<pre class="text-preview">${escapeHtml(text.slice(0, 200000))}</pre>`;
+        } catch (error) {
+          previewBody.innerHTML = downloadFallback(url, doc, "Could not load this text file for inline preview.");
+        }
+        return;
+      }
+      if (OFFICE_PREVIEW_TYPES.includes(fileType) || ["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(extension)) {
+        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+        previewBody.innerHTML = `<iframe src="${escapeAttr(viewerUrl)}" title="${escapeAttr(doc.file_name)}"></iframe>`;
+        return;
+      }
+      previewBody.innerHTML = downloadFallback(url, doc, "Preview is not available for this file type.");
     }
 
     function closePreview() {
@@ -2474,6 +2674,210 @@
 
       if (error) throw error;
       state.documents = data || [];
+    }
+
+    async function loadMessages() {
+      if (!state.session) {
+        state.messages = [];
+        return;
+      }
+      const { data, error } = await supabaseClient
+        .from("crm_messages")
+        .select("id,sender_id,sender_email,recipient_id,recipient_email,body,created_at,read_at")
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      state.messages = data || [];
+    }
+
+    function messageThreads() {
+      const myId = state.session?.user?.id;
+      const map = new Map();
+      state.messages.forEach(msg => {
+        const counterpartId = msg.sender_id === myId ? msg.recipient_id : msg.sender_id;
+        const counterpartEmail = msg.sender_id === myId ? msg.recipient_email : msg.sender_email;
+        if (!map.has(counterpartId)) map.set(counterpartId, { id: counterpartId, email: counterpartEmail, messages: [] });
+        map.get(counterpartId).messages.push(msg);
+      });
+      return Array.from(map.values()).sort((a, b) => {
+        const aLast = a.messages[a.messages.length - 1]?.created_at || "";
+        const bLast = b.messages[b.messages.length - 1]?.created_at || "";
+        return bLast.localeCompare(aLast);
+      });
+    }
+
+    function unreadMessageCount() {
+      const myId = state.session?.user?.id;
+      return state.messages.filter(msg => msg.recipient_id === myId && !msg.read_at).length;
+    }
+
+    function renderMessagesView() {
+      const threads = messageThreads();
+      let activeThread = threads.find(thread => thread.id === state.messageThreadWith) || null;
+      if (!activeThread && state.messageThreadWith) {
+        activeThread = { id: state.messageThreadWith, email: state.messageThreadEmail || "Teammate", messages: [] };
+      }
+      const canStartNew = isManager();
+
+      board.innerHTML = `
+        <section class="overview" aria-label="Messages">
+          <div class="overview-grid">
+            <div class="activity-panel">
+              <div class="doc-filters">
+                <h2 style="margin:0;flex:1;">Conversations (${threads.length})</h2>
+                ${canStartNew ? `<button type="button" id="newMessageBtn" class="primary">New message</button>` : ""}
+              </div>
+              ${state.messageComposeOpen ? renderNewMessageComposer() : ""}
+              <div class="message-thread-list">
+                ${threads.map(thread => renderThreadListItem(thread)).join("") || `<div class="empty">No conversations yet. ${canStartNew ? "Start one with New message above." : "A manager or admin can start one with you."}</div>`}
+              </div>
+            </div>
+            ${activeThread ? renderMessageThread(activeThread) : `<div class="activity-panel"><div class="empty">Select a conversation to view it.</div></div>`}
+          </div>
+        </section>
+      `;
+      bindMessageControls();
+      if (activeThread && activeThread.messages.length) markThreadRead(activeThread.id);
+    }
+
+    function renderThreadListItem(thread) {
+      const myId = state.session?.user?.id;
+      const last = thread.messages[thread.messages.length - 1];
+      const unread = thread.messages.filter(msg => msg.recipient_id === myId && !msg.read_at).length;
+      const active = state.messageThreadWith === thread.id;
+      return `
+        <button type="button" class="message-thread-item ${active ? "active" : ""}" data-thread-id="${escapeAttr(thread.id)}" data-thread-email="${escapeAttr(thread.email || "")}">
+          <strong>${escapeHtml(thread.email || "Teammate")}</strong>
+          <span>${escapeHtml((last?.body || "").slice(0, 60))}</span>
+          ${unread ? `<span class="thread-unread">${unread}</span>` : ""}
+        </button>
+      `;
+    }
+
+    function renderMessageThread(thread) {
+      const myId = state.session?.user?.id;
+      return `
+        <div class="activity-panel message-thread">
+          <h2 style="margin:0;">${escapeHtml(thread.email || "Teammate")}</h2>
+          <div class="message-list" id="messageList">
+            ${thread.messages.map(msg => `
+              <div class="message-bubble ${msg.sender_id === myId ? "mine" : ""}">
+                <p>${escapeHtml(msg.body)}</p>
+                <span>${dateLabel((msg.created_at || "").slice(0, 10))} ${msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}</span>
+              </div>
+            `).join("") || `<div class="empty">No messages yet. Say hello.</div>`}
+          </div>
+          <form id="replyForm" class="message-composer">
+            <textarea id="replyBody" rows="2" placeholder="Write a reply..." required></textarea>
+            <div class="form-actions"><button class="primary" type="submit">Send</button></div>
+          </form>
+        </div>
+      `;
+    }
+
+    function renderNewMessageComposer() {
+      const myId = state.session?.user?.id;
+      const recipients = state.teamProfiles.filter(profile => profile.user_id !== myId);
+      return `
+        <form id="newMessageForm" class="message-composer message-composer-new">
+          <select id="newMessageRecipient" required>
+            <option value="">Choose a teammate...</option>
+            ${recipients.map(profile => `<option value="${escapeAttr(profile.user_id)}" data-email="${escapeAttr(profile.email || "")}">${escapeHtml(profile.display_name || profile.email || "Teammate")}</option>`).join("")}
+          </select>
+          <textarea id="newMessageBody" rows="2" placeholder="Write a message..." required></textarea>
+          <div class="form-actions">
+            <button type="button" id="cancelNewMessage">Cancel</button>
+            <button class="primary" type="submit">Send</button>
+          </div>
+        </form>
+      `;
+    }
+
+    function bindMessageControls() {
+      document.querySelectorAll(".message-thread-item").forEach(button => {
+        button.addEventListener("click", () => {
+          state.messageThreadWith = button.dataset.threadId;
+          state.messageThreadEmail = button.dataset.threadEmail;
+          state.messageComposeOpen = false;
+          renderBoard();
+        });
+      });
+
+      const newMessageBtn = document.getElementById("newMessageBtn");
+      if (newMessageBtn) {
+        newMessageBtn.addEventListener("click", () => {
+          state.messageComposeOpen = true;
+          renderBoard();
+        });
+      }
+      const cancelNewMessage = document.getElementById("cancelNewMessage");
+      if (cancelNewMessage) {
+        cancelNewMessage.addEventListener("click", () => {
+          state.messageComposeOpen = false;
+          renderBoard();
+        });
+      }
+      const newMessageForm = document.getElementById("newMessageForm");
+      if (newMessageForm) {
+        newMessageForm.addEventListener("submit", async event => {
+          event.preventDefault();
+          const select = document.getElementById("newMessageRecipient");
+          const recipientId = select.value;
+          const recipientEmail = select.selectedOptions[0]?.dataset.email || "";
+          const body = document.getElementById("newMessageBody").value.trim();
+          if (!recipientId || !body) return;
+          state.messageComposeOpen = false;
+          state.messageThreadWith = recipientId;
+          state.messageThreadEmail = recipientEmail;
+          await sendMessage(recipientId, recipientEmail, body);
+        });
+      }
+
+      const replyForm = document.getElementById("replyForm");
+      if (replyForm) {
+        replyForm.addEventListener("submit", async event => {
+          event.preventDefault();
+          const textarea = document.getElementById("replyBody");
+          const body = textarea.value.trim();
+          if (!body || !state.messageThreadWith) return;
+          await sendMessage(state.messageThreadWith, state.messageThreadEmail, body);
+        });
+      }
+
+      const messageList = document.getElementById("messageList");
+      if (messageList) messageList.scrollTop = messageList.scrollHeight;
+    }
+
+    async function sendMessage(recipientId, recipientEmail, body) {
+      const { data, error } = await supabaseClient
+        .from("crm_messages")
+        .insert({
+          sender_id: state.session.user.id,
+          sender_email: state.session.user.email || "",
+          recipient_id: recipientId,
+          recipient_email: recipientEmail || "",
+          body
+        })
+        .select("id,sender_id,sender_email,recipient_id,recipient_email,body,created_at,read_at")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.messages.push(data);
+      render();
+    }
+
+    async function markThreadRead(counterpartId) {
+      const myId = state.session?.user?.id;
+      const unread = state.messages.filter(msg => msg.sender_id === counterpartId && msg.recipient_id === myId && !msg.read_at);
+      if (!unread.length) return;
+      const now = new Date().toISOString();
+      await Promise.all(unread.map(msg => supabaseClient.from("crm_messages").update({ read_at: now }).eq("id", msg.id)));
+      state.messages = state.messages.map(msg => unread.some(candidate => candidate.id === msg.id) ? { ...msg, read_at: now } : msg);
+      renderChrome();
     }
 
     function renderTeamView() {
@@ -2512,6 +2916,7 @@
           </select>
           <span>${label(profile.status || "active")}</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+            ${isSelf ? "" : `<button type="button" class="team-message-btn" data-user-id="${profile.user_id}" data-email="${escapeAttr(profile.email || "")}">Message</button>`}
             <button type="button" class="team-views-toggle" data-user-id="${profile.user_id}">${restricted ? "Views*" : "Views"}</button>
             <button type="button" class="team-status-btn" data-user-id="${profile.user_id}" ${isSelf ? "disabled" : ""}>
               ${profile.status === "suspended" ? "Reinstate" : "Suspend"}
@@ -2547,6 +2952,15 @@
     }
 
     function bindTeamControls() {
+      document.querySelectorAll(".team-message-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          state.view = "messages";
+          state.messageThreadWith = button.dataset.userId;
+          state.messageThreadEmail = button.dataset.email;
+          state.messageComposeOpen = false;
+          render();
+        });
+      });
       document.querySelectorAll(".team-role-select").forEach(select => {
         select.addEventListener("change", event => updateTeamRole(event.target.dataset.userId, event.target.value));
       });
@@ -3554,6 +3968,27 @@
       }
     }
 
+    async function cancelChangeRequest(id) {
+      const request = state.changeRequests.find(candidate => candidate.id === id);
+      if (!request || request.requested_by !== state.session?.user?.id) return;
+
+      const { data, error } = await supabaseClient
+        .from("crm_change_requests")
+        .update({ status: "cancelled" })
+        .eq("id", id)
+        .select("id,board_item_id,action,requested_by,requested_at,status,payload,before_payload,reviewed_by,reviewed_at,review_note")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.changeRequests = state.changeRequests.map(candidate => candidate.id === id ? data : candidate);
+      render();
+      flash("Request withdrawn");
+    }
+
     async function applyApprovedRequest(request) {
       if (request.action === "create") {
         const { error } = await supabaseClient
@@ -3738,6 +4173,7 @@
         await loadDocuments();
         await loadTeamProfiles();
         await loadServices();
+        await loadMessages();
       } catch (error) {
         flash(error.message);
       } finally {
@@ -3770,6 +4206,9 @@
         .on("postgres_changes", { event: "*", schema: "public", table: "crm_services" }, () => {
           loadServices().then(render).catch(error => flash(error.message));
         })
+        .on("postgres_changes", { event: "*", schema: "public", table: "crm_messages" }, () => {
+          loadMessages().then(render).catch(error => flash(error.message));
+        })
         .subscribe();
     }
 
@@ -3785,6 +4224,7 @@
         await loadDocuments();
         await loadTeamProfiles();
         await loadServices();
+        await loadMessages();
         subscribeToChanges();
       } catch (error) {
         flash(error.message);
@@ -3805,6 +4245,10 @@
           state.teamProfiles = [];
           state.services = [];
           state.editingServiceId = null;
+          state.messages = [];
+          state.messageThreadWith = null;
+          state.messageThreadEmail = null;
+          state.messageComposeOpen = false;
         }
         subscribeToChanges();
         await refreshFromDatabase();
@@ -3872,6 +4316,8 @@
     document.addEventListener("click", event => {
       if (!profileMenu.contains(event.target)) profileDropdown.classList.remove("open");
     });
+
+    document.getElementById("footerYear").textContent = new Date().getFullYear();
 
     document.getElementById("closePreview").addEventListener("click", closePreview);
     previewOverlay.addEventListener("click", event => {
