@@ -126,7 +126,15 @@ alter table public.profiles add column if not exists address text default '';
 -- for relation \"profiles\""). `is_manager_or_admin()` below is SECURITY
 -- DEFINER, so it reads `profiles` as its owner (which bypasses RLS on the
 -- table it owns) instead of as the querying user, breaking the loop.
-create or replace function public.is_manager_or_admin(uid uuid)
+--
+-- It lives in a `private` schema (not `public`) so PostgREST never exposes
+-- it as a callable `/rest/v1/rpc/is_manager_or_admin` endpoint — it's only
+-- ever invoked from inside these policies, never directly by a client.
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to authenticated;
+
+create or replace function private.is_manager_or_admin(uid uuid)
 returns boolean
 language sql
 security definer
@@ -139,9 +147,11 @@ as $$
   );
 $$;
 
-revoke all on function public.is_manager_or_admin(uuid) from public;
-revoke all on function public.is_manager_or_admin(uuid) from anon;
-grant execute on function public.is_manager_or_admin(uuid) to authenticated;
+revoke all on function private.is_manager_or_admin(uuid) from public;
+revoke all on function private.is_manager_or_admin(uuid) from anon;
+grant execute on function private.is_manager_or_admin(uuid) to authenticated;
+
+drop function if exists public.is_manager_or_admin(uuid);
 
 drop policy if exists "profiles_admin_select_all" on public.profiles;
 drop policy if exists "profiles_manager_select_all" on public.profiles;
@@ -149,7 +159,7 @@ create policy "profiles_manager_select_all"
   on public.profiles for select
   to authenticated
   using (
-    public.is_manager_or_admin((select auth.uid()))
+    private.is_manager_or_admin((select auth.uid()))
   );
 
 drop policy if exists "profiles_admin_update_all" on public.profiles;
@@ -158,7 +168,7 @@ create policy "profiles_manager_update_all"
   on public.profiles for update
   to authenticated
   using (
-    public.is_manager_or_admin((select auth.uid()))
+    private.is_manager_or_admin((select auth.uid()))
   );
 
 -- Security: the original build's `profiles_update_own_name` policy already
