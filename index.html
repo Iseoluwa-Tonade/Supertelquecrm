@@ -3,7 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CRM Project Board</title>
+  <!--
+    Content-Security-Policy note: this app is a single static file with an
+    inline script block and an inline style block, so 'unsafe-inline' is
+    required for script-src and style-src below (there is no build step to
+    move them to hashed/external files or nonces). The real access-control
+    boundary is Supabase row-level security, not this policy — see
+    supabase-schema.sql. The frame-ancestors directive is included for
+    documentation but is ignored when delivered via a meta tag; GitHub
+    Pages does not support custom response headers, so it has no effect
+    there. Host this behind a server/CDN that lets you set real HTTP
+    security headers if that matters for your deployment.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://otpzsnsrxcfuysjfnguk.supabase.co; font-src 'self'; connect-src 'self' https://otpzsnsrxcfuysjfnguk.supabase.co wss://otpzsnsrxcfuysjfnguk.supabase.co; frame-src https://otpzsnsrxcfuysjfnguk.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self';">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>SuperTelque CRM</title>
   <style>
     :root {
       color-scheme: light;
@@ -25,6 +39,46 @@
     }
 
     * { box-sizing: border-box; }
+    *, *::before, *::after {
+      transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* Opacity-only entrance for elements with a :hover/:active transform of their own —
+       an animation's fill-mode keeps holding the "to" keyframe value on the properties it
+       touches even after finishing, which would otherwise permanently block hover transforms. */
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes pop-in {
+      from { opacity: 0; transform: scale(.6); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes overlay-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes modal-pop-in {
+      from { opacity: 0; transform: translateY(10px) scale(.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes grow-bar {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+
     body {
       margin: 0;
       background: var(--bg);
@@ -44,15 +98,32 @@
       min-height: 34px;
       border-radius: 6px;
       cursor: pointer;
+      transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease, filter .15s ease, background .15s ease;
     }
 
     button:hover { border-color: #a7b4c3; }
+    button:active { transform: translateY(1px); }
     button.primary {
-      background: var(--accent);
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
       color: white;
-      border-color: var(--accent);
+      border-color: transparent;
+      font-weight: 600;
     }
-    button.primary:hover { background: var(--accent-strong); }
+    button.primary:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(15,118,110,.28);
+    }
+    button.primary:active { transform: translateY(0); box-shadow: none; }
+    button.primary:disabled {
+      background: var(--panel-strong);
+      color: var(--muted);
+      border-color: var(--line);
+      filter: none;
+      transform: none;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
     button.icon {
       width: 34px;
       display: grid;
@@ -82,7 +153,16 @@
       gap: 10px;
       padding: 0 6px 10px;
       border-bottom: 1px solid rgba(255,255,255,.12);
+      width: 100%;
+      background: transparent;
+      border-left: 0;
+      border-right: 0;
+      border-top: 0;
+      text-align: left;
+      cursor: pointer;
+      min-height: auto;
     }
+    .brand:hover .mark { background: rgba(255,255,255,.14); }
 
     .mark {
       width: 38px;
@@ -120,7 +200,9 @@
       display: flex;
       gap: 10px;
       align-items: center;
+      transition: background .15s ease, color .15s ease, transform .1s ease;
     }
+    .nav button:active { transform: scale(.97); }
     .nav svg {
       width: 17px;
       height: 17px;
@@ -145,7 +227,7 @@
       font-size: 11px;
       font-weight: 800;
     }
-    .nav .nav-count.show { display: grid; }
+    .nav .nav-count.show { display: grid; animation: pop-in .3s cubic-bezier(.34,1.56,.64,1) both; }
 
     .sidebar-footer {
       margin-top: auto;
@@ -164,9 +246,38 @@
 
     .main {
       display: grid;
-      grid-template-rows: auto auto auto minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(0, 1fr);
       min-width: 0;
+      min-height: 0;
       border-right: 1px solid var(--line);
+    }
+    /* Explicit placement: when .toolbar is hidden (display:none on views like
+       Overview), grid auto-placement would otherwise shift .board into the
+       toolbar's own (auto-sized) row instead of the flexible last row,
+       breaking its scroll container. Pinning each row by line number keeps
+       .board on the flexible track no matter which siblings are hidden. */
+    .main > header { grid-row: 1; }
+    .main > .toolbar { grid-row: 2; }
+    .main > .board-scroll { grid-row: 3; }
+
+    .board-scroll {
+      overflow: auto;
+      scroll-behavior: smooth;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .app-footer {
+      flex-shrink: 0;
+      margin-top: auto;
+      padding: 16px 18px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 16px;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
     }
 
     header {
@@ -245,7 +356,7 @@
       color: var(--muted);
     }
     .segmented button.active {
-      background: #fff;
+      background: var(--panel);
       color: var(--text);
       box-shadow: inset 0 -2px 0 var(--accent);
     }
@@ -255,62 +366,33 @@
       align-items: center;
       gap: 8px;
     }
-    .authbar {
-      background: #eef6f5;
-      border-bottom: 1px solid var(--line);
-      padding: 10px 18px;
-      display: grid;
-      grid-template-columns: minmax(180px, 1fr) auto;
-      gap: 10px;
-      align-items: center;
-    }
-    .authbar strong {
-      display: block;
-      font-size: 13px;
-    }
-    .authbar span {
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      margin-top: 2px;
-    }
-    .auth-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-    .auth-controls input {
-      width: 190px;
-      height: 34px;
-      padding: 0 9px;
-    }
     select {
       height: 32px;
       border: 1px solid var(--line);
       border-radius: 6px;
       padding: 0 8px;
-      background: #fff;
+      background: var(--panel);
       color: var(--text);
     }
 
     .board {
       padding: 16px 18px;
-      overflow: auto;
       display: grid;
       grid-auto-flow: column;
       grid-auto-columns: minmax(250px, 1fr);
       gap: 14px;
       align-items: start;
+      flex-shrink: 0;
     }
 
     .overview {
       padding: 16px 18px;
       overflow: auto;
+      scroll-behavior: smooth;
       display: grid;
       gap: 14px;
       align-content: start;
+      animation: fade-in-up .3s ease both;
     }
     .kpi-grid {
       display: grid;
@@ -318,12 +400,19 @@
       gap: 12px;
     }
     .kpi {
-      background: #fff;
+      background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 14px;
       min-width: 0;
+      animation: fade-in-up .35s ease both;
     }
+    .kpi:nth-child(1) { animation-delay: 0ms; }
+    .kpi:nth-child(2) { animation-delay: 40ms; }
+    .kpi:nth-child(3) { animation-delay: 80ms; }
+    .kpi:nth-child(4) { animation-delay: 120ms; }
+    .kpi:nth-child(5) { animation-delay: 160ms; }
+    .kpi:nth-child(6) { animation-delay: 200ms; }
     .kpi span {
       color: var(--muted);
       font-size: 12px;
@@ -336,7 +425,7 @@
       line-height: 1;
     }
     .journey {
-      background: #fff;
+      background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 14px;
@@ -363,6 +452,7 @@
       align-content: space-between;
       gap: 8px;
       background: var(--panel-strong);
+      animation: fade-in-up .3s ease both;
     }
     .journey-step strong {
       font-size: 18px;
@@ -383,7 +473,7 @@
       gap: 14px;
     }
     .activity-panel {
-      background: #fff;
+      background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 14px;
@@ -396,13 +486,16 @@
       gap: 10px;
     }
     .approval-card {
-      background: #fff;
+      background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 14px;
       display: grid;
       gap: 12px;
+      animation: fade-in .3s ease both;
+      transition: transform .15s ease, box-shadow .15s ease;
     }
+    .approval-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15,23,42,.1); }
     .approval-card header {
       border: 0;
       padding: 0;
@@ -504,6 +597,8 @@
       width: var(--w);
       background: var(--c, var(--accent));
       border-radius: 10px;
+      transform-origin: left;
+      animation: grow-bar .6s cubic-bezier(.16,1,.3,1) both;
     }
     .split-bars {
       display: grid;
@@ -544,6 +639,7 @@
       grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 9px;
       align-items: start;
+      animation: fade-in-up .3s ease both;
     }
     .activity-item input {
       width: 16px;
@@ -577,7 +673,13 @@
       min-height: 300px;
       display: grid;
       grid-template-rows: auto minmax(120px, 1fr);
+      animation: fade-in-up .3s ease both;
     }
+    .column:nth-child(1) { animation-delay: 0ms; }
+    .column:nth-child(2) { animation-delay: 40ms; }
+    .column:nth-child(3) { animation-delay: 80ms; }
+    .column:nth-child(4) { animation-delay: 120ms; }
+    .column:nth-child(5) { animation-delay: 160ms; }
 
     .column-head {
       padding: 12px;
@@ -604,7 +706,7 @@
     }
     .count {
       color: var(--muted);
-      background: #fff;
+      background: var(--panel);
       border: 1px solid var(--line);
       min-width: 28px;
       height: 24px;
@@ -620,6 +722,7 @@
       gap: 10px;
       align-content: start;
       min-height: 260px;
+      transition: background .15s ease;
     }
 
     .lane.drag-over {
@@ -629,15 +732,24 @@
     }
 
     .card {
-      background: #fff;
+      background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 12px;
       box-shadow: 0 1px 0 rgba(15,23,42,.03);
       cursor: grab;
       min-width: 0;
+      animation: fade-in .3s ease both;
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
     }
-    .card:active { cursor: grabbing; }
+    .card:nth-child(1) { animation-delay: 0ms; }
+    .card:nth-child(2) { animation-delay: 30ms; }
+    .card:nth-child(3) { animation-delay: 60ms; }
+    .card:nth-child(4) { animation-delay: 90ms; }
+    .card:nth-child(5) { animation-delay: 120ms; }
+    .card:nth-child(6) { animation-delay: 150ms; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15,23,42,.1); border-color: #a7b4c3; }
+    .card:active { cursor: grabbing; transform: translateY(0) scale(.98); }
     .card.selected {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(15,118,110,.16);
@@ -700,6 +812,7 @@
     .detail {
       padding: 16px;
       overflow: auto;
+      scroll-behavior: smooth;
     }
 
     .empty {
@@ -709,6 +822,7 @@
       padding: 16px;
       line-height: 1.45;
       font-size: 14px;
+      animation: fade-in-up .3s ease both;
     }
     .empty button {
       margin-top: 12px;
@@ -718,6 +832,7 @@
     .form {
       display: grid;
       gap: 12px;
+      animation: fade-in-up .3s ease both;
     }
     label {
       display: grid;
@@ -732,7 +847,13 @@
       border-radius: 6px;
       padding: 8px 9px;
       color: var(--text);
-      background: #fff;
+      background: var(--panel);
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15,118,110,.15);
     }
     textarea {
       min-height: 84px;
@@ -763,6 +884,7 @@
       padding: 12px;
       display: grid;
       gap: 8px;
+      animation: fade-in-up .3s ease both;
     }
     .insight-top {
       display: flex;
@@ -781,6 +903,8 @@
       height: 100%;
       background: var(--accent);
       width: var(--w);
+      transform-origin: left;
+      animation: grow-bar .6s cubic-bezier(.16,1,.3,1) both;
     }
 
     .toast {
@@ -801,6 +925,592 @@
     .toast.show {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0b1220;
+      --panel: #141b28;
+      --panel-strong: #1b2432;
+      --line: #2a3546;
+      --text: #e6edf4;
+      --muted: #8b98aa;
+      --accent: #2dd4bf;
+      --accent-strong: #14b8a6;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+      --blue: #60a5fa;
+      --green: #4ade80;
+      --shadow: 0 12px 30px rgba(0,0,0,.5);
+    }
+    :root[data-theme="dark"] .chart-track,
+    :root[data-theme="dark"] .bar { background: #24314c; }
+    :root[data-theme="dark"] .priority-high { background: rgba(251,113,133,.14); }
+    :root[data-theme="dark"] .priority-medium { background: rgba(251,191,36,.14); }
+    :root[data-theme="dark"] .priority-low { background: rgba(74,222,128,.14); }
+    :root[data-theme="dark"] .pill { background: #1f2937; color: #cbd5e1; }
+    :root[data-theme="dark"] .status-note { background: rgba(251,191,36,.1); border-color: rgba(251,191,36,.35); color: #fcd34d; }
+    :root[data-theme="dark"] .card { box-shadow: none; }
+
+    .theme-toggle {
+      width: 34px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .profile-menu {
+      position: relative;
+    }
+    .profile-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+    .profile-dropdown {
+      position: absolute;
+      right: 0;
+      top: 42px;
+      width: 240px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr;
+      z-index: 20;
+      transform-origin: top right;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-6px) scale(.98);
+      pointer-events: none;
+      transition: opacity .15s ease, transform .15s ease, visibility 0s linear .15s;
+    }
+    .profile-dropdown.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+      transition: opacity .15s ease, transform .15s ease;
+    }
+    .profile-dropdown strong { font-size: 13px; word-break: break-all; }
+    .profile-dropdown .muted-line { color: var(--muted); font-size: 12px; }
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      height: 20px;
+      border-radius: 10px;
+      padding: 0 8px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+      background: rgba(15,118,110,.12);
+      color: var(--accent-strong);
+    }
+    .profile-dropdown button { width: 100%; }
+
+    .login-screen {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      padding: 24px;
+    }
+    .login-shell {
+      width: min(940px, 100%);
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      background: var(--panel);
+      animation: login-rise .45s cubic-bezier(.16,1,.3,1) both;
+    }
+    @keyframes login-rise {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-hero {
+      position: relative;
+      padding: 48px 42px;
+      background: linear-gradient(155deg, #14b8a6 0%, #0f766e 45%, #0b3d3a 100%);
+      color: #eafffa;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+    .login-hero-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(46px);
+      pointer-events: none;
+    }
+    .login-hero-blob.b1 { width: 260px; height: 260px; background: #5eead4; top: -70px; right: -60px; opacity: .55; }
+    .login-hero-blob.b2 { width: 220px; height: 220px; background: #facc15; bottom: -90px; left: -50px; opacity: .2; }
+    .login-hero-content { position: relative; z-index: 1; display: grid; gap: 18px; }
+    .login-hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-size: 11px;
+      font-weight: 800;
+      color: #99f6e4;
+    }
+    .login-hero-content h2 {
+      margin: 0;
+      font-size: 27px;
+      line-height: 1.28;
+      letter-spacing: -0.01em;
+    }
+    .login-hero-content > p {
+      margin: 0;
+      color: rgba(234,255,250,.82);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .login-hero-features {
+      list-style: none;
+      margin: 6px 0 0;
+      padding: 0;
+      display: grid;
+      gap: 12px;
+    }
+    .login-hero-features li {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-size: 13px;
+      color: rgba(234,255,250,.94);
+    }
+    .login-hero-features li span {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.16);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      flex: 0 0 auto;
+    }
+
+    .login-panel {
+      padding: 46px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 340px;
+      display: grid;
+      gap: 18px;
+    }
+    .login-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .login-brand .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 9px;
+      background: #202a36;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      flex: 0 0 auto;
+    }
+    .login-brand .mark img { width: 36px; height: 36px; object-fit: contain; }
+    .login-brand h1 { margin: 0; font-size: 18px; }
+    .login-brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .login-form { display: grid; gap: 10px; }
+    .field-icon { position: relative; }
+    .field-icon svg {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .field-icon input { padding-left: 34px; }
+    .link-btn {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      min-height: auto;
+      padding: 0;
+      text-align: left;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .link-btn:hover { color: var(--accent-strong); }
+    .login-error {
+      border: 1px solid #fecdd3;
+      background: #fff1f2;
+      color: var(--rose);
+      border-radius: 7px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+    :root[data-theme="dark"] .login-error { background: rgba(251,113,133,.1); }
+    .login-footer {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .login-footer button {
+      border: 0;
+      background: transparent;
+      color: var(--accent-strong);
+      min-height: auto;
+      padding: 0;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    @media (max-width: 860px) {
+      .login-shell { grid-template-columns: 1fr; border-radius: 16px; }
+      .login-hero { display: none; }
+      .login-panel { padding: 34px 26px; }
+    }
+
+    .dropzone {
+      border: 2px dashed var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+      cursor: pointer;
+      background: var(--panel-strong);
+    }
+    .dropzone.drag-over {
+      outline: 2px solid rgba(15, 118, 110, .35);
+      outline-offset: -6px;
+      background: rgba(15, 118, 110, .06);
+    }
+    .dropzone strong { color: var(--text); }
+    .doc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .doc-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      background: var(--panel);
+      display: grid;
+      gap: 8px;
+      cursor: pointer;
+      animation: fade-in .3s ease both;
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    .doc-card:nth-child(1) { animation-delay: 0ms; }
+    .doc-card:nth-child(2) { animation-delay: 30ms; }
+    .doc-card:nth-child(3) { animation-delay: 60ms; }
+    .doc-card:nth-child(4) { animation-delay: 90ms; }
+    .doc-card:nth-child(5) { animation-delay: 120ms; }
+    .doc-card:nth-child(6) { animation-delay: 150ms; }
+    .doc-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15,23,42,.1); border-color: #a7b4c3; }
+    .doc-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--panel-strong);
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+    }
+    .doc-card h3 {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+    .doc-card span { color: var(--muted); font-size: 11px; }
+    .doc-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      align-items: center;
+    }
+    .doc-filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .message-thread-list {
+      display: grid;
+      gap: 8px;
+      max-height: 60vh;
+      overflow: auto;
+    }
+    .message-thread-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 2px 8px;
+      text-align: left;
+      padding: 10px 12px;
+      background: var(--panel);
+    }
+    .message-thread-item strong { grid-column: 1; font-size: 13px; }
+    .message-thread-item span:not(.thread-unread) {
+      grid-column: 1;
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .message-thread-item .thread-unread {
+      grid-row: 1 / 3;
+      align-self: center;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: #facc15;
+      color: #1f2933;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 0 5px;
+    }
+    .message-thread-item.active { border-color: var(--accent); }
+    .message-thread {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+    .message-list {
+      display: grid;
+      gap: 8px;
+      max-height: 50vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .message-bubble {
+      justify-self: start;
+      max-width: 80%;
+      background: var(--panel-strong, var(--panel));
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 12px;
+    }
+    .message-bubble.mine {
+      justify-self: end;
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+    }
+    .message-bubble p { margin: 0; font-size: 13px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+    .message-bubble span { display: block; margin-top: 4px; font-size: 11px; opacity: .7; }
+    .message-composer {
+      display: grid;
+      gap: 8px;
+    }
+    .message-composer textarea {
+      resize: vertical;
+      font: inherit;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--text);
+    }
+    .message-composer-new { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .55);
+      display: grid;
+      place-items: center;
+      z-index: 50;
+      padding: 20px;
+      animation: overlay-fade-in .18s ease both;
+    }
+    .modal {
+      width: min(720px, 100%);
+      max-height: 88vh;
+      background: var(--panel);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+      animation: modal-pop-in .22s cubic-bezier(.16,1,.3,1) both;
+    }
+    .modal-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .modal-header h2 { margin: 0; font-size: 15px; word-break: break-word; }
+    .modal-body {
+      padding: 16px;
+      overflow: auto;
+      display: grid;
+      gap: 12px;
+      justify-items: center;
+    }
+    .confirm-modal { width: min(420px, 100%); }
+    .confirm-modal .modal-body { justify-items: stretch; }
+    .confirm-modal #confirmMessage { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .confirm-modal .form-actions { padding-top: 0; }
+    .modal-body img {
+      max-width: 100%;
+      max-height: 60vh;
+      border-radius: 6px;
+    }
+    .modal-body iframe {
+      width: 100%;
+      height: 60vh;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+    .text-preview {
+      width: 100%;
+      max-height: 60vh;
+      overflow: auto;
+      margin: 0;
+      padding: 12px;
+      background: var(--panel-muted, var(--panel));
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, "SF Mono", Consolas, monospace;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .team-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 120px 100px 170px;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 9px 10px;
+      font-size: 12px;
+      animation: fade-in-up .3s ease both;
+    }
+    .team-views-panel {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 12px;
+      margin-top: -2px;
+      background: var(--panel-strong);
+      display: grid;
+      gap: 10px;
+      animation: fade-in .2s ease both;
+    }
+    .team-views-head strong { display: block; font-size: 13px; }
+    .team-views-head span { color: var(--muted); font-size: 12px; }
+    .team-views-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .team-view-check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .team-view-check input { width: 15px; height: 15px; }
+    .team-row.header {
+      background: var(--panel-strong);
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .team-row strong { font-size: 13px; display: block; }
+    .team-row span { color: var(--muted); }
+
+    .calc-grid {
+      display: grid;
+      gap: 8px;
+    }
+    .calc-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 130px 80px 100px;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px 10px;
+      font-size: 12px;
+      animation: fade-in-up .3s ease both;
+    }
+    .calc-row strong { font-size: 13px; display: block; }
+    .calc-row span { color: var(--muted); }
+    .calc-row input {
+      height: 32px;
+      padding: 0 8px;
+    }
+    .calc-line-total {
+      font-weight: 700;
+      color: var(--text) !important;
+      text-align: right;
+    }
+    .calc-summary {
+      display: grid;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .calc-summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px 10px;
+    }
+    .calc-summary-row.total {
+      font-size: 15px;
+      font-weight: 800;
+      background: var(--panel-strong);
+    }
+
+    @media (max-width: 760px) {
+      .team-row { grid-template-columns: 1fr; gap: 4px; }
+      .doc-grid { grid-template-columns: 1fr; }
+      .calc-row { grid-template-columns: 1fr; gap: 4px; }
     }
 
     @media (max-width: 1120px) {
@@ -845,16 +1555,6 @@
         align-items: stretch;
         flex-direction: column;
       }
-      .authbar {
-        grid-template-columns: 1fr;
-      }
-      .auth-controls {
-        justify-content: stretch;
-      }
-      .auth-controls input,
-      .auth-controls button {
-        flex: 1 1 140px;
-      }
       .actions, .filters {
         width: 100%;
         flex-wrap: wrap;
@@ -878,18 +1578,69 @@
       }
       .form-grid { grid-template-columns: 1fr; }
     }
+
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
-  <div class="app">
+  <div class="login-screen" id="loginScreen" hidden>
+    <div class="login-shell">
+      <div class="login-hero" aria-hidden="true">
+        <div class="login-hero-blob b1"></div>
+        <div class="login-hero-blob b2"></div>
+        <div class="login-hero-content">
+          <span class="login-hero-kicker">SuperTelque CRM</span>
+          <h2>One calm workspace for your whole client journey</h2>
+          <p>Pipeline, delivery, documents, and reporting — without switching tools.</p>
+          <ul class="login-hero-features">
+            <li><span>&#10003;</span> Pipeline &amp; project boards with drag-and-drop</li>
+            <li><span>&#10003;</span> Role-based access for admins, managers, and reps</li>
+            <li><span>&#10003;</span> Document upload with inline preview</li>
+            <li><span>&#10003;</span> Admin pricing calculator for fast quotes</li>
+          </ul>
+        </div>
+      </div>
+      <div class="login-panel">
+        <div class="login-card">
+          <div class="login-brand">
+            <div class="mark"><img src="supertelque-logo.png" alt="SuperTelque"></div>
+            <div>
+              <h1>SuperTelque CRM</h1>
+              <p>Client journey, delivery, and documents in one workspace.</p>
+            </div>
+          </div>
+          <form class="login-form" id="loginForm">
+            <label>Email
+              <div class="field-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
+                <input id="loginEmail" type="email" autocomplete="email" required>
+              </div>
+            </label>
+            <label>Password
+              <div class="field-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <input id="loginPassword" type="password" autocomplete="current-password" required>
+              </div>
+            </label>
+            <div id="loginError" class="login-error" hidden></div>
+            <button class="primary" type="submit" id="loginSubmit">Sign in</button>
+            <button type="button" class="link-btn" id="forgotPasswordBtn">Forgot your password?</button>
+          </form>
+          <p class="login-footer">Access is invite-only. Your CRM data is protected by Supabase Auth and row-level security &mdash; only teammates invited by an admin can sign in.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app" id="appRoot" hidden>
     <aside class="sidebar" aria-label="Workspace navigation">
-      <div class="brand">
+      <button type="button" class="brand" id="brandHomeBtn" title="Go to Overview">
         <div class="mark"><img src="supertelque-logo.png" alt="SuperTelque"></div>
         <div>
           <strong>SuperTelque CRM</strong>
           <span>Client journey and delivery</span>
         </div>
-      </div>
+      </button>
       <nav class="nav">
         <button class="active" data-view="overview" title="Overview">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="8"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="15" width="7" height="6"></rect></svg><span>Overview</span>
@@ -903,15 +1654,30 @@
         <button data-view="activity" title="Activity">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg><span>Activity</span>
         </button>
+        <button data-view="documents" title="Documents">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg><span>Documents</span>
+        </button>
+        <button data-view="messages" title="Messages">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>Messages</span><span class="nav-count" id="messageCount">0</span>
+        </button>
         <button data-view="approvals" title="Approvals">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 12l2 2 4-4"></path><path d="M21 12a9 9 0 1 1-6.2-8.56"></path></svg><span>Approvals</span><span class="nav-count" id="approvalCount">0</span>
         </button>
         <button data-view="focus" title="Focus">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg><span>Focus</span>
         </button>
+        <button data-view="team" title="Team" id="teamNavBtn" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span>Team</span>
+        </button>
+        <button data-view="pricing" title="Pricing" id="pricingNavBtn" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg><span>Pricing</span>
+        </button>
+        <button data-view="profile" title="My Profile" id="profileNavBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><circle cx="9" cy="11" r="2.5"></circle><path d="M6 17c.5-2 1.5-3 3-3s2.5 1 3 3"></path><path d="M15 10h4M15 14h4"></path></svg><span>My Profile</span>
+        </button>
       </nav>
       <div class="sidebar-footer">
-        <div class="metric">
+        <div class="metric" id="openValueMetric">
           <span>Open value</span>
           <strong id="totalValue">$0</strong>
         </div>
@@ -936,6 +1702,19 @@
             <input id="search" type="search" placeholder="Search account, owner, task">
           </div>
           <button class="primary" id="addBtn">+ New</button>
+          <div class="topbar-actions">
+            <button class="icon theme-toggle" id="themeToggle" title="Toggle dark mode">🌙</button>
+            <div class="profile-menu" id="profileMenu" hidden>
+              <button class="profile-avatar" id="profileAvatarBtn" title="Account menu">?</button>
+              <div class="profile-dropdown" id="profileDropdown">
+                <div>
+                  <strong id="profileEmail"></strong>
+                  <div class="muted-line" id="profileRoleLine"></div>
+                </div>
+                <button id="signOutBtn">Sign out</button>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -957,21 +1736,13 @@
         </div>
       </section>
 
-      <section class="authbar" id="authbar" aria-label="Supabase connection">
-        <div>
-          <strong id="authStatus">Connecting to CRM database</strong>
-          <span id="authHint">Sign in to save cards, sync changes, and use the dedicated CRM database.</span>
-        </div>
-        <div class="auth-controls" id="authControls">
-          <input id="authEmail" type="email" placeholder="Email">
-          <input id="authPassword" type="password" placeholder="Password">
-          <button id="signInBtn">Sign in</button>
-          <button class="primary" id="signUpBtn">Create account</button>
-          <button id="signOutBtn" hidden>Sign out</button>
-        </div>
-      </section>
-
-      <section class="board" id="board" aria-label="CRM project board"></section>
+      <div class="board-scroll" id="boardScroll">
+        <section class="board" id="board" aria-label="CRM project board"></section>
+        <footer class="app-footer">
+          <span>&copy; <span id="footerYear"></span> SuperTelque CRM</span>
+          <span>Built on Supabase &middot; data access enforced by row-level security</span>
+        </footer>
+      </div>
     </main>
 
     <aside class="side" id="sidePanel" aria-label="Selected item details">
@@ -982,6 +1753,33 @@
       <div class="detail" id="detail"></div>
     </aside>
   </div>
+
+  <div class="modal-overlay" id="previewOverlay" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="previewTitle">Document</h2>
+        <button class="icon" id="closePreview" title="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="previewBody"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="confirmOverlay" hidden>
+    <div class="modal confirm-modal">
+      <div class="modal-header">
+        <h2 id="confirmTitle">Are you sure?</h2>
+        <button class="icon" id="closeConfirm" title="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage"></p>
+        <div class="form-actions">
+          <button type="button" id="confirmCancelBtn">Cancel</button>
+          <button type="button" class="danger" id="confirmOkBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1024,11 +1822,20 @@
       { id: "a7", type: "task", title: "Resolve data import blocker", company: "Mira Health", owner: "Noah", priority: "high", value: 0, due: "2026-07-06", status: "blocked", notes: "CSV includes mixed encodings. Validate normalized export before next import." }
     ];
 
-    const demoActivities = [
-      { id: "d1", activity_date: todayIso(), title: "Reply to new prospect email", channel: "email", notes: "", completed: true },
-      { id: "d2", activity_date: todayIso(), title: "Follow up on proposal with Orbit Labs", channel: "proposal", notes: "", completed: false },
-      { id: "d3", activity_date: todayIso(), title: "Prepare kickoff checklist for Mira Health", channel: "delivery", notes: "", completed: false },
-      { id: "d4", activity_date: "2026-07-03", title: "Discovery call notes cleaned up", channel: "meeting", notes: "", completed: true }
+    const ROLES = ["admin", "manager", "owner", "viewer"];
+    const ADMIN_BOOTSTRAP_EMAILS = ["iseo6lu@gmail.com", "iseolu6@gmail.com"];
+    const NAV_VIEWS = [
+      { id: "overview", label: "Overview" },
+      { id: "pipeline", label: "Pipeline" },
+      { id: "projects", label: "Projects" },
+      { id: "activity", label: "Activity" },
+      { id: "documents", label: "Documents" },
+      { id: "messages", label: "Messages" },
+      { id: "approvals", label: "Approvals" },
+      { id: "focus", label: "Focus" },
+      { id: "team", label: "Team" },
+      { id: "pricing", label: "Pricing" },
+      { id: "profile", label: "My Profile" }
     ];
 
     const state = {
@@ -1044,9 +1851,28 @@
       realtimeChannel: null,
       activities: [],
       changeRequests: [],
-      items: []
+      items: [],
+      documents: [],
+      teamProfiles: [],
+      teamViewsOpenId: null,
+      services: [],
+      editingServiceId: null,
+      calcQty: {},
+      calcDiscount: 0,
+      calcTax: 0,
+      theme: localStorage.getItem("crm-theme") || "light",
+      previewDoc: null,
+      docFilterItem: "all",
+      messages: [],
+      messageThreadWith: null,
+      messageThreadEmail: null,
+      messageComposeOpen: false
     };
 
+    document.documentElement.dataset.theme = state.theme;
+
+    const loginScreen = document.getElementById("loginScreen");
+    const appRoot = document.getElementById("appRoot");
     const board = document.getElementById("board");
     const searchInput = document.getElementById("search");
     const ownerFilter = document.getElementById("ownerFilter");
@@ -1055,28 +1881,33 @@
     const sidePanel = document.getElementById("sidePanel");
     const sideTitle = document.getElementById("sideTitle");
     const toast = document.getElementById("toast");
-    const authStatus = document.getElementById("authStatus");
-    const authHint = document.getElementById("authHint");
-    const authEmail = document.getElementById("authEmail");
-    const authPassword = document.getElementById("authPassword");
-    const signInBtn = document.getElementById("signInBtn");
-    const signUpBtn = document.getElementById("signUpBtn");
     const signOutBtn = document.getElementById("signOutBtn");
+    const loginForm = document.getElementById("loginForm");
+    const loginEmail = document.getElementById("loginEmail");
+    const loginPassword = document.getElementById("loginPassword");
+    const loginError = document.getElementById("loginError");
+    const loginSubmit = document.getElementById("loginSubmit");
+    const profileMenu = document.getElementById("profileMenu");
+    const profileDropdown = document.getElementById("profileDropdown");
+    const previewOverlay = document.getElementById("previewOverlay");
+    const previewTitle = document.getElementById("previewTitle");
+    const previewBody = document.getElementById("previewBody");
+    const confirmOverlay = document.getElementById("confirmOverlay");
 
     function columns() {
       return state.view === "projects" ? projectColumns : pipelineColumns;
     }
 
-    function isDemoMode() {
-      return !state.session;
-    }
-
     function visibleItems() {
-      return isDemoMode() ? seedItems : state.items;
+      return state.items;
     }
 
     function visibleActivities() {
-      return isDemoMode() ? demoActivities : state.activities;
+      return state.activities;
+    }
+
+    function visibleDocuments() {
+      return state.documents;
     }
 
     function pendingRequests() {
@@ -1088,11 +1919,46 @@
     }
 
     function currentRole() {
-      return state.profile?.role || (state.session ? "owner" : "demo");
+      return state.profile?.role || "owner";
+    }
+
+    function isAdmin() {
+      return currentRole() === "admin";
     }
 
     function isManager() {
-      return currentRole() === "manager";
+      return currentRole() === "manager" || currentRole() === "admin";
+    }
+
+    function isViewer() {
+      return currentRole() === "viewer";
+    }
+
+    function canEdit() {
+      return Boolean(state.session) && !isViewer();
+    }
+
+    function roleAllowsView(view) {
+      if (view === "pricing") return isAdmin();
+      if (view === "pipeline") return isAdmin();
+      if (view === "team") return isManager();
+      return true;
+    }
+
+    function canSeeFinancials() {
+      return isAdmin();
+    }
+
+    function canSeeView(view) {
+      if (!roleAllowsView(view)) return false;
+      const allowed = state.profile?.allowed_views;
+      if (!allowed || !allowed.length) return true;
+      return allowed.includes(view);
+    }
+
+    function firstAllowedView() {
+      const match = NAV_VIEWS.find(entry => canSeeView(entry.id));
+      return match ? match.id : "overview";
     }
 
     function normalizeStatus(item) {
@@ -1115,12 +1981,30 @@
     }
 
     function render() {
+      if (!state.session) {
+        showLoginScreen();
+        return;
+      }
+      if (!state.loading && !canSeeView(state.view)) {
+        state.view = firstAllowedView();
+      }
+      showAppScreen();
       renderChrome();
-      renderAuth();
+      renderTopbar();
       renderFilters();
       renderBoard();
       renderMetrics();
       renderDetail();
+    }
+
+    function showLoginScreen() {
+      loginScreen.hidden = false;
+      appRoot.hidden = true;
+    }
+
+    function showAppScreen() {
+      loginScreen.hidden = true;
+      appRoot.hidden = false;
     }
 
     function renderChrome() {
@@ -1129,8 +2013,13 @@
         pipeline: ["Client Journey", "Move every account from responded email to project done."],
         projects: ["Project Delivery", "Move client work from backlog through shipped outcomes."],
         activity: ["Daily Activities", "Track calls, emails, proposals, delivery work, and admin follow-ups."],
+        documents: ["Documents", "Upload, organize, and preview files linked to accounts and projects."],
+        messages: ["Messages", "Direct messages between you and your manager or teammates."],
         approvals: ["Approval Queue", "Review team changes before they become approved CRM records."],
-        focus: ["Focus Queue", "High-priority and near-due work across the whole book."]
+        focus: ["Focus Queue", "High-priority and near-due work across the whole book."],
+        team: ["Team", "Manage teammate roles and access."],
+        pricing: ["Pricing Calculator", "Manage the service catalog and quote a client."],
+        profile: ["My Profile", "Your account, contact, and HR details."]
       };
       document.getElementById("viewTitle").textContent = copy[state.view][0];
       document.getElementById("viewSubtitle").textContent = copy[state.view][1];
@@ -1145,29 +2034,30 @@
         approvalCount.textContent = pendingRequests().length;
         approvalCount.classList.toggle("show", Boolean(state.session && pendingRequests().length));
       }
+      const messageCount = document.getElementById("messageCount");
+      if (messageCount) {
+        const unread = unreadMessageCount();
+        messageCount.textContent = unread;
+        messageCount.classList.toggle("show", Boolean(state.session && unread));
+      }
+      NAV_VIEWS.forEach(entry => {
+        const button = document.querySelector(`.nav button[data-view="${entry.id}"]`);
+        if (button) button.hidden = !canSeeView(entry.id);
+      });
+      document.querySelector(".toolbar").hidden = ["overview", "activity", "documents", "messages", "approvals", "team", "pricing", "profile"].includes(state.view);
     }
 
-    function renderAuth() {
+    function renderTopbar() {
       const signedIn = Boolean(state.session);
-      authEmail.hidden = signedIn;
-      authPassword.hidden = signedIn;
-      signInBtn.hidden = signedIn;
-      signUpBtn.hidden = signedIn;
-      signOutBtn.hidden = !signedIn;
-      document.getElementById("addBtn").disabled = !signedIn;
-
-      if (state.loading) {
-        authStatus.textContent = "Connecting to CRM database";
-        authHint.textContent = "Loading Supabase session and board data.";
-        return;
-      }
+      document.getElementById("addBtn").hidden = !["pipeline", "projects", "focus"].includes(state.view);
+      document.getElementById("addBtn").disabled = !canEdit();
+      profileMenu.hidden = !signedIn;
 
       if (signedIn) {
-        authStatus.textContent = `Signed in as ${state.session.user.email}`;
-        authHint.textContent = `Role: ${label(currentRole())}. ${isManager() ? "Manager overview can read the team pipeline." : "Live cards and activities are saved to your dashboard."}`;
-      } else {
-        authStatus.textContent = "Demo mode - sign in for live data";
-        authHint.textContent = "The dashboard below uses frontend dummy data. Sign in before real CRM tables read or write.";
+        const email = state.session.user.email || "";
+        document.getElementById("profileAvatarBtn").textContent = email.slice(0, 1).toUpperCase() || "?";
+        document.getElementById("profileEmail").textContent = email;
+        document.getElementById("profileRoleLine").innerHTML = `<span class="role-badge">${label(currentRole())}</span>`;
       }
     }
 
@@ -1198,6 +2088,31 @@
 
       if (state.view === "approvals") {
         renderApprovalsView();
+        return;
+      }
+
+      if (state.view === "documents") {
+        renderDocumentsView();
+        return;
+      }
+
+      if (state.view === "messages") {
+        renderMessagesView();
+        return;
+      }
+
+      if (state.view === "team") {
+        renderTeamView();
+        return;
+      }
+
+      if (state.view === "pricing") {
+        renderPricingView();
+        return;
+      }
+
+      if (state.view === "profile") {
+        renderProfileView();
         return;
       }
 
@@ -1263,20 +2178,14 @@
       const todayActivities = activitiesForToday();
       const completedToday = todayActivities.filter(activity => activity.completed).length;
       const actualActivities = visibleActivities().filter(activity => activity.completed).length;
-      const demoBanner = isDemoMode()
-        ? `<div class="empty">Demo data is shown here so your team can preview the workflow. Sign in to read and write the live Supabase tables.</div>`
-        : "";
-      const roleBanner = state.session
-        ? `<div class="empty">${isManager() ? "Manager dashboard: you can see team CRM records allowed by Supabase policies and approve pending team edits." : "Personal dashboard: you see approved records. Your edits are sent for manager approval before they change the board."}</div>`
-        : "";
+      const roleBanner = `<div class="empty">${isManager() ? "Manager dashboard: you can see team CRM records allowed by Supabase policies and approve pending team edits." : "Personal dashboard: you see approved records. Your edits are sent for manager approval before they change the board."}</div>`;
 
       board.innerHTML = `
         <section class="overview" aria-label="CRM overview dashboard">
-          ${demoBanner}
           ${roleBanner}
           <div class="kpi-grid">
             ${renderKpi("Open accounts", activeCount)}
-            ${renderKpi("Open value", money(openValue))}
+            ${canSeeFinancials() ? renderKpi("Open value", money(openValue)) : renderKpi("Open projects", expectedProjects)}
             ${renderKpi("Done projects", doneCount)}
             ${renderKpi("Today done", `${completedToday}/${todayActivities.length}`)}
             ${renderKpi("Pending edits", pendingRequests().length)}
@@ -1287,7 +2196,7 @@
               <h2>Expected vs Actual</h2>
               <div class="metric-table">
                 <div class="metric-row header"><span>Area</span><span>Expected</span><span>Actual</span><span>Gap</span></div>
-                ${renderMetricRow("Revenue", money(expectedValue), money(actualValue), money(expectedValue - actualValue))}
+                ${canSeeFinancials() ? renderMetricRow("Revenue", money(expectedValue), money(actualValue), money(expectedValue - actualValue)) : ""}
                 ${renderMetricRow("Projects", expectedProjects, actualProjects, expectedProjects - actualProjects)}
                 ${renderMetricRow("Activities", expectedActivities, actualActivities, expectedActivities - actualActivities)}
               </div>
@@ -1295,7 +2204,7 @@
             <div class="activity-panel">
               <h2>Performance Graph</h2>
               <div class="split-bars">
-                ${renderDualBar("Revenue", expectedValue, actualValue, "#0f766e")}
+                ${canSeeFinancials() ? renderDualBar("Revenue", expectedValue, actualValue, "#0f766e") : ""}
                 ${renderDualBar("Projects", expectedProjects, actualProjects, "#2563eb")}
                 ${renderDualBar("Activities", expectedActivities, actualActivities, "#b45309")}
               </div>
@@ -1328,7 +2237,7 @@
                   <div class="activity-item">
                     <span class="dot" style="background:${statusColor(item.status)}"></span>
                     <div><strong>${escapeHtml(item.company)}</strong><span>${escapeHtml(item.title)} - ${statusTitle(item.status)}</span></div>
-                    <span class="value">${item.value ? money(item.value) : dueLabel(item.due)}</span>
+                    <span class="value">${canSeeFinancials() && item.value ? money(item.value) : dueLabel(item.due)}</span>
                   </div>
                 `).join("") || `<div class="empty">No accounts yet. Create a card to start the journey.</div>`}
               </div>
@@ -1336,7 +2245,7 @@
             <div class="activity-panel">
               <h2>Today</h2>
               ${renderActivityComposer()}
-              <div class="activity-list">${renderActivityItems(todayActivities, !isDemoMode())}</div>
+              <div class="activity-list">${renderActivityItems(todayActivities, true)}</div>
             </div>
           </div>
         </section>
@@ -1345,15 +2254,6 @@
     }
 
     function renderApprovalsView() {
-      if (isDemoMode()) {
-        board.innerHTML = `
-          <section class="overview" aria-label="Approval queue">
-            <div class="empty">Sign in to view pending CRM edits. Team changes are stored separately until a manager approves them.</div>
-          </section>
-        `;
-        return;
-      }
-
       const requests = pendingRequests();
       board.innerHTML = `
         <section class="overview" aria-label="Approval queue">
@@ -1365,6 +2265,12 @@
           </div>
         </section>
       `;
+
+      document.querySelectorAll("[data-cancel-id]").forEach(button => {
+        button.addEventListener("click", () => {
+          confirmAction("Withdraw this pending request? It will not be applied.", () => cancelChangeRequest(button.dataset.cancelId), { confirmLabel: "Withdraw" });
+        });
+      });
 
       if (!isManager()) return;
       document.querySelectorAll("[data-approve-id]").forEach(button => {
@@ -1380,7 +2286,8 @@
       const title = request.payload?.title || item?.title || "New CRM item";
       const company = request.payload?.company || item?.company || "Pending account";
       const action = label(request.action);
-      const requestedBy = request.requested_by === state.session?.user?.id ? "You" : shortId(request.requested_by);
+      const isOwnRequest = request.requested_by === state.session?.user?.id;
+      const requestedBy = isOwnRequest ? "You" : shortId(request.requested_by);
       return `
         <article class="approval-card">
           <header>
@@ -1395,10 +2302,16 @@
           </div>
           ${isManager() ? `
             <div class="approval-actions">
+              ${isOwnRequest ? `<button type="button" data-cancel-id="${request.id}">Withdraw</button>` : ""}
               <button class="danger" type="button" data-reject-id="${request.id}">Reject</button>
               <button class="primary" type="button" data-approve-id="${request.id}">Approve</button>
             </div>
-          ` : `<div class="status-note">Waiting for manager approval. The approved board will not change until this is reviewed.</div>`}
+          ` : `
+            <div class="approval-actions">
+              ${isOwnRequest ? `<button type="button" data-cancel-id="${request.id}">Withdraw</button>` : ""}
+            </div>
+            <div class="status-note">Waiting for manager approval. The approved board will not change until this is reviewed.</div>
+          `}
         </article>
       `;
     }
@@ -1409,7 +2322,8 @@
       if (request.action === "delete") {
         return `<div class="approval-field"><strong>Delete</strong><span>${escapeHtml(before.company || "Account")} - ${escapeHtml(before.title || "CRM item")}</span></div>`;
       }
-      return ["title", "company", "owner", "type", "priority", "status", "value", "due", "notes"].map(key => {
+      return ["title", "company", "owner", "type", "priority", "status", "value", "due", "notes", "document_url"].map(key => {
+        if (key === "value" && !canSeeFinancials()) return "";
         const previous = before[key];
         const next = after[key];
         if (request.action === "update" && String(previous ?? "") === String(next ?? "")) return "";
@@ -1434,12 +2348,1001 @@
           ${Object.keys(grouped).sort().reverse().map(date => `
             <div class="activity-panel">
               <h2>${dateLabel(date)}</h2>
-              <div class="activity-list">${renderActivityItems(grouped[date], !isDemoMode())}</div>
+              <div class="activity-list">${renderActivityItems(grouped[date], true)}</div>
             </div>
           `).join("") || `<div class="empty">No daily activities yet. Add your first email, call, meeting, or delivery task.</div>`}
         </section>
       `;
       bindActivityControls();
+    }
+
+    function renderDocumentsView() {
+      const docs = visibleDocuments()
+        .filter(doc => state.docFilterItem === "all" || doc.board_item_id === state.docFilterItem)
+        .slice()
+        .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+
+      const linkableItems = visibleItems();
+      const canUpload = !isViewer();
+
+      board.innerHTML = `
+        <section class="overview" aria-label="Document library">
+          ${canUpload ? `
+            <div class="activity-panel">
+              <h2>Upload a document</h2>
+              <div class="dropzone" id="dropzone" tabindex="0">
+                <strong>Drag & drop files here, or click to browse</strong>
+                <span>PDF, images, and office documents up to 20 MB each &mdash; select as many as you need</span>
+              </div>
+              <input type="file" id="fileInput" multiple hidden>
+              <label>Link to account or project
+                <select id="uploadLinkSelect">
+                  <option value="">No linked account</option>
+                  ${linkableItems.map(item => `<option value="${escapeAttr(item.id)}">${escapeHtml(item.company)} - ${escapeHtml(item.title)}</option>`).join("")}
+                </select>
+              </label>
+            </div>
+          ` : ""}
+          <div class="activity-panel">
+            <div class="doc-filters">
+              <h2 style="margin:0;flex:1;">Files (${docs.length})</h2>
+              <select id="docFilterSelect" aria-label="Filter by linked account">
+                <option value="all">All accounts</option>
+                ${linkableItems.map(item => `<option value="${escapeAttr(item.id)}" ${state.docFilterItem === item.id ? "selected" : ""}>${escapeHtml(item.company)} - ${escapeHtml(item.title)}</option>`).join("")}
+              </select>
+            </div>
+            <div class="doc-grid">
+              ${docs.map(renderDocCard).join("") || `<div class="empty">No documents yet. ${canUpload ? "Upload the first file above." : "Sign in to upload files."}</div>`}
+            </div>
+          </div>
+        </section>
+      `;
+      bindDocumentControls();
+    }
+
+    function renderDocCard(doc) {
+      const item = visibleItems().find(candidate => candidate.id === doc.board_item_id);
+      const canDelete = state.session && (isManager() || doc.uploaded_by === state.session?.user?.id);
+      return `
+        <article class="doc-card" data-doc-id="${doc.id}">
+          <div class="doc-icon">${docIcon(doc.file_type)}</div>
+          <h3>${escapeHtml(doc.file_name)}</h3>
+          <span>${item ? escapeHtml(item.company) : "No linked account"}</span>
+          <span>${formatBytes(doc.file_size)} &middot; ${dateLabel((doc.created_at || "").slice(0, 10))}</span>
+          <div class="doc-actions">
+            <button type="button" class="doc-preview-btn" data-doc-id="${doc.id}">Preview</button>
+            ${canDelete ? `<button type="button" class="mini-delete doc-delete-btn" data-doc-id="${doc.id}" title="Delete">&times;</button>` : ""}
+          </div>
+        </article>
+      `;
+    }
+
+    function docIcon(fileType = "") {
+      if (fileType.startsWith("image/")) return "🖼";
+      if (fileType.includes("pdf")) return "📄";
+      if (fileType.includes("word") || fileType.includes("document")) return "📝";
+      if (fileType.includes("sheet") || fileType.includes("excel")) return "📊";
+      return "📁";
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes) return "0 KB";
+      if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function bindDocumentControls() {
+      const dropzone = document.getElementById("dropzone");
+      const fileInput = document.getElementById("fileInput");
+      const linkSelect = document.getElementById("uploadLinkSelect");
+      if (dropzone && fileInput) {
+        dropzone.addEventListener("click", () => fileInput.click());
+        dropzone.addEventListener("keydown", event => {
+          if (event.key === "Enter" || event.key === " ") fileInput.click();
+        });
+        fileInput.addEventListener("change", () => {
+          uploadDocuments(fileInput.files, linkSelect?.value || "");
+          fileInput.value = "";
+        });
+        dropzone.addEventListener("dragover", event => {
+          event.preventDefault();
+          dropzone.classList.add("drag-over");
+        });
+        dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag-over"));
+        dropzone.addEventListener("drop", event => {
+          event.preventDefault();
+          dropzone.classList.remove("drag-over");
+          uploadDocuments(event.dataTransfer.files, linkSelect?.value || "");
+        });
+      }
+
+      const docFilterSelect = document.getElementById("docFilterSelect");
+      if (docFilterSelect) {
+        docFilterSelect.addEventListener("change", event => {
+          state.docFilterItem = event.target.value;
+          renderBoard();
+        });
+      }
+
+      document.querySelectorAll(".doc-preview-btn").forEach(button => {
+        button.addEventListener("click", () => openPreview(button.dataset.docId));
+      });
+      document.querySelectorAll(".doc-delete-btn").forEach(button => {
+        button.addEventListener("click", event => {
+          event.stopPropagation();
+          confirmAction("Delete this document? This can't be undone.", () => deleteDocument(button.dataset.docId));
+        });
+      });
+    }
+
+    function friendlyUploadError(message) {
+      if (/bucket/i.test(message) && /not\s*found/i.test(message)) {
+        return `Storage bucket not found. Ask your admin to run supabase-schema.sql (or create a private "crm-documents" bucket in Supabase → Storage) before uploading.`;
+      }
+      return message;
+    }
+
+    async function uploadOneDocument(file, boardItemId) {
+      if (file.size > 20 * 1024 * 1024) {
+        return { ok: false, error: `${file.name}: files must be smaller than 20 MB` };
+      }
+
+      const path = `${state.session.user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${file.name}`;
+      const { error: uploadError } = await supabaseClient.storage
+        .from("crm-documents")
+        .upload(path, file);
+
+      if (uploadError) {
+        return { ok: false, error: `${file.name}: ${friendlyUploadError(uploadError.message)}` };
+      }
+
+      const { data, error } = await supabaseClient
+        .from("crm_documents")
+        .insert({
+          board_item_id: boardItemId || null,
+          file_name: file.name,
+          file_path: path,
+          file_type: file.type || "application/octet-stream",
+          file_size: file.size,
+          uploaded_by: state.session.user.id
+        })
+        .select("id,board_item_id,file_name,file_path,file_type,file_size,description,uploaded_by,created_at")
+        .single();
+
+      if (error) {
+        return { ok: false, error: `${file.name}: ${error.message}` };
+      }
+
+      return { ok: true, data };
+    }
+
+    async function uploadDocuments(fileList, boardItemId) {
+      if (!canEdit()) {
+        flash(isViewer() ? "Viewers have read-only access" : "Sign in to upload documents");
+        return;
+      }
+      const files = Array.from(fileList || []);
+      if (!files.length) return;
+
+      flash(files.length > 1 ? `Uploading ${files.length} files...` : "Uploading...");
+      let succeeded = 0;
+      const errors = [];
+      for (const file of files) {
+        const result = await uploadOneDocument(file, boardItemId);
+        if (result.ok) {
+          state.documents.unshift(result.data);
+          succeeded++;
+        } else {
+          errors.push(result.error);
+        }
+      }
+
+      render();
+      if (errors.length) {
+        const suffix = errors.length > 1 ? ` (+${errors.length - 1} more failed)` : "";
+        flash(`${succeeded ? `${succeeded} uploaded. ` : ""}${errors[0]}${suffix}`);
+      } else {
+        flash(succeeded === 1 ? "Document uploaded" : `${succeeded} documents uploaded`);
+      }
+    }
+
+    async function deleteDocument(id) {
+      const doc = state.documents.find(candidate => candidate.id === id);
+      if (!doc) return;
+
+      const { error: storageError } = await supabaseClient.storage.from("crm-documents").remove([doc.file_path]);
+      if (storageError) {
+        flash(storageError.message);
+        return;
+      }
+
+      const { error } = await supabaseClient.from("crm_documents").delete().eq("id", id);
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.documents = state.documents.filter(candidate => candidate.id !== id);
+      if (state.previewDoc?.id === id) closePreview();
+      render();
+      flash("Document deleted");
+    }
+
+    async function openPreview(id) {
+      const doc = visibleDocuments().find(candidate => candidate.id === id);
+      if (!doc) return;
+      state.previewDoc = doc;
+      previewTitle.textContent = doc.file_name;
+      previewOverlay.hidden = false;
+
+      previewBody.innerHTML = `<div class="empty">Loading preview...</div>`;
+      const { data, error } = await supabaseClient.storage
+        .from("crm-documents")
+        .createSignedUrl(doc.file_path, 300);
+
+      if (error) {
+        previewBody.innerHTML = `<div class="empty">Could not load preview: ${escapeHtml(error.message)}</div>`;
+        return;
+      }
+
+      await renderPreviewBody(data.signedUrl, doc);
+    }
+
+    const OFFICE_PREVIEW_TYPES = [
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ];
+    const TEXT_PREVIEW_EXTENSIONS = ["txt", "csv", "json", "md", "log"];
+
+    function downloadFallback(url, doc, message) {
+      return `<div class="empty">${message}</div><a href="${escapeAttr(url)}" target="_blank" rel="noopener"><button class="primary" type="button">Download ${escapeHtml(doc.file_name)}</button></a>`;
+    }
+
+    async function renderPreviewBody(url, doc) {
+      const fileType = doc.file_type || "";
+      const extension = (doc.file_name.split(".").pop() || "").toLowerCase();
+
+      if (fileType.startsWith("image/")) {
+        previewBody.innerHTML = `<img src="${escapeAttr(url)}" alt="${escapeAttr(doc.file_name)}">`;
+        return;
+      }
+      if (fileType.includes("pdf")) {
+        previewBody.innerHTML = `<iframe src="${escapeAttr(url)}" title="${escapeAttr(doc.file_name)}"></iframe>`;
+        return;
+      }
+      if (fileType.startsWith("video/")) {
+        previewBody.innerHTML = `<video controls src="${escapeAttr(url)}" style="max-width:100%;max-height:100%;"></video>`;
+        return;
+      }
+      if (fileType.startsWith("audio/")) {
+        previewBody.innerHTML = `<div class="empty">${escapeHtml(doc.file_name)}</div><audio controls src="${escapeAttr(url)}" style="width:100%;"></audio>`;
+        return;
+      }
+      if (fileType.startsWith("text/") || TEXT_PREVIEW_EXTENSIONS.includes(extension)) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const text = await response.text();
+          previewBody.innerHTML = `<pre class="text-preview">${escapeHtml(text.slice(0, 200000))}</pre>`;
+        } catch (error) {
+          previewBody.innerHTML = downloadFallback(url, doc, "Could not load this text file for inline preview.");
+        }
+        return;
+      }
+      if (OFFICE_PREVIEW_TYPES.includes(fileType) || ["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(extension)) {
+        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+        previewBody.innerHTML = `<iframe src="${escapeAttr(viewerUrl)}" title="${escapeAttr(doc.file_name)}"></iframe>`;
+        return;
+      }
+      previewBody.innerHTML = downloadFallback(url, doc, "Preview is not available for this file type.");
+    }
+
+    function closePreview() {
+      state.previewDoc = null;
+      previewOverlay.hidden = true;
+      previewBody.innerHTML = "";
+    }
+
+    let confirmCallback = null;
+
+    function confirmAction(message, onConfirm, options = {}) {
+      confirmCallback = onConfirm;
+      document.getElementById("confirmTitle").textContent = options.title || "Are you sure?";
+      document.getElementById("confirmMessage").textContent = message;
+      document.getElementById("confirmOkBtn").textContent = options.confirmLabel || "Delete";
+      confirmOverlay.hidden = false;
+    }
+
+    function closeConfirm() {
+      confirmOverlay.hidden = true;
+      confirmCallback = null;
+    }
+
+    async function loadDocuments() {
+      if (!state.session) {
+        state.documents = [];
+        return;
+      }
+      const { data, error } = await supabaseClient
+        .from("crm_documents")
+        .select("id,board_item_id,file_name,file_path,file_type,file_size,description,uploaded_by,created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      state.documents = data || [];
+    }
+
+    async function loadMessages() {
+      if (!state.session) {
+        state.messages = [];
+        return;
+      }
+      const { data, error } = await supabaseClient
+        .from("crm_messages")
+        .select("id,sender_id,sender_email,recipient_id,recipient_email,body,created_at,read_at")
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      state.messages = data || [];
+    }
+
+    function messageThreads() {
+      const myId = state.session?.user?.id;
+      const map = new Map();
+      state.messages.forEach(msg => {
+        const counterpartId = msg.sender_id === myId ? msg.recipient_id : msg.sender_id;
+        const counterpartEmail = msg.sender_id === myId ? msg.recipient_email : msg.sender_email;
+        if (!map.has(counterpartId)) map.set(counterpartId, { id: counterpartId, email: counterpartEmail, messages: [] });
+        map.get(counterpartId).messages.push(msg);
+      });
+      return Array.from(map.values()).sort((a, b) => {
+        const aLast = a.messages[a.messages.length - 1]?.created_at || "";
+        const bLast = b.messages[b.messages.length - 1]?.created_at || "";
+        return bLast.localeCompare(aLast);
+      });
+    }
+
+    function unreadMessageCount() {
+      const myId = state.session?.user?.id;
+      return state.messages.filter(msg => msg.recipient_id === myId && !msg.read_at).length;
+    }
+
+    function renderMessagesView() {
+      const threads = messageThreads();
+      let activeThread = threads.find(thread => thread.id === state.messageThreadWith) || null;
+      if (!activeThread && state.messageThreadWith) {
+        activeThread = { id: state.messageThreadWith, email: state.messageThreadEmail || "Teammate", messages: [] };
+      }
+      const canStartNew = isManager();
+
+      board.innerHTML = `
+        <section class="overview" aria-label="Messages">
+          <div class="overview-grid">
+            <div class="activity-panel">
+              <div class="doc-filters">
+                <h2 style="margin:0;flex:1;">Conversations (${threads.length})</h2>
+                ${canStartNew ? `<button type="button" id="newMessageBtn" class="primary">New message</button>` : ""}
+              </div>
+              ${state.messageComposeOpen ? renderNewMessageComposer() : ""}
+              <div class="message-thread-list">
+                ${threads.map(thread => renderThreadListItem(thread)).join("") || `<div class="empty">No conversations yet. ${canStartNew ? "Start one with New message above." : "A manager or admin can start one with you."}</div>`}
+              </div>
+            </div>
+            ${activeThread ? renderMessageThread(activeThread) : `<div class="activity-panel"><div class="empty">Select a conversation to view it.</div></div>`}
+          </div>
+        </section>
+      `;
+      bindMessageControls();
+      if (activeThread && activeThread.messages.length) markThreadRead(activeThread.id);
+    }
+
+    function renderThreadListItem(thread) {
+      const myId = state.session?.user?.id;
+      const last = thread.messages[thread.messages.length - 1];
+      const unread = thread.messages.filter(msg => msg.recipient_id === myId && !msg.read_at).length;
+      const active = state.messageThreadWith === thread.id;
+      return `
+        <button type="button" class="message-thread-item ${active ? "active" : ""}" data-thread-id="${escapeAttr(thread.id)}" data-thread-email="${escapeAttr(thread.email || "")}">
+          <strong>${escapeHtml(thread.email || "Teammate")}</strong>
+          <span>${escapeHtml((last?.body || "").slice(0, 60))}</span>
+          ${unread ? `<span class="thread-unread">${unread}</span>` : ""}
+        </button>
+      `;
+    }
+
+    function renderMessageThread(thread) {
+      const myId = state.session?.user?.id;
+      return `
+        <div class="activity-panel message-thread">
+          <h2 style="margin:0;">${escapeHtml(thread.email || "Teammate")}</h2>
+          <div class="message-list" id="messageList">
+            ${thread.messages.map(msg => `
+              <div class="message-bubble ${msg.sender_id === myId ? "mine" : ""}">
+                <p>${escapeHtml(msg.body)}</p>
+                <span>${dateLabel((msg.created_at || "").slice(0, 10))} ${msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}</span>
+              </div>
+            `).join("") || `<div class="empty">No messages yet. Say hello.</div>`}
+          </div>
+          <form id="replyForm" class="message-composer">
+            <textarea id="replyBody" rows="2" placeholder="Write a reply..." required></textarea>
+            <div class="form-actions"><button class="primary" type="submit">Send</button></div>
+          </form>
+        </div>
+      `;
+    }
+
+    function renderNewMessageComposer() {
+      const myId = state.session?.user?.id;
+      const recipients = state.teamProfiles.filter(profile => profile.user_id !== myId);
+      return `
+        <form id="newMessageForm" class="message-composer message-composer-new">
+          <select id="newMessageRecipient" required>
+            <option value="">Choose a teammate...</option>
+            ${recipients.map(profile => `<option value="${escapeAttr(profile.user_id)}" data-email="${escapeAttr(profile.email || "")}">${escapeHtml(profile.display_name || profile.email || "Teammate")}</option>`).join("")}
+          </select>
+          <textarea id="newMessageBody" rows="2" placeholder="Write a message..." required></textarea>
+          <div class="form-actions">
+            <button type="button" id="cancelNewMessage">Cancel</button>
+            <button class="primary" type="submit">Send</button>
+          </div>
+        </form>
+      `;
+    }
+
+    function bindMessageControls() {
+      document.querySelectorAll(".message-thread-item").forEach(button => {
+        button.addEventListener("click", () => {
+          state.messageThreadWith = button.dataset.threadId;
+          state.messageThreadEmail = button.dataset.threadEmail;
+          state.messageComposeOpen = false;
+          renderBoard();
+        });
+      });
+
+      const newMessageBtn = document.getElementById("newMessageBtn");
+      if (newMessageBtn) {
+        newMessageBtn.addEventListener("click", () => {
+          state.messageComposeOpen = true;
+          renderBoard();
+        });
+      }
+      const cancelNewMessage = document.getElementById("cancelNewMessage");
+      if (cancelNewMessage) {
+        cancelNewMessage.addEventListener("click", () => {
+          state.messageComposeOpen = false;
+          renderBoard();
+        });
+      }
+      const newMessageForm = document.getElementById("newMessageForm");
+      if (newMessageForm) {
+        newMessageForm.addEventListener("submit", async event => {
+          event.preventDefault();
+          const select = document.getElementById("newMessageRecipient");
+          const recipientId = select.value;
+          const recipientEmail = select.selectedOptions[0]?.dataset.email || "";
+          const body = document.getElementById("newMessageBody").value.trim();
+          if (!recipientId || !body) return;
+          state.messageComposeOpen = false;
+          state.messageThreadWith = recipientId;
+          state.messageThreadEmail = recipientEmail;
+          await sendMessage(recipientId, recipientEmail, body);
+        });
+      }
+
+      const replyForm = document.getElementById("replyForm");
+      if (replyForm) {
+        replyForm.addEventListener("submit", async event => {
+          event.preventDefault();
+          const textarea = document.getElementById("replyBody");
+          const body = textarea.value.trim();
+          if (!body || !state.messageThreadWith) return;
+          await sendMessage(state.messageThreadWith, state.messageThreadEmail, body);
+        });
+      }
+
+      const messageList = document.getElementById("messageList");
+      if (messageList) messageList.scrollTop = messageList.scrollHeight;
+    }
+
+    async function sendMessage(recipientId, recipientEmail, body) {
+      const { data, error } = await supabaseClient
+        .from("crm_messages")
+        .insert({
+          sender_id: state.session.user.id,
+          sender_email: state.session.user.email || "",
+          recipient_id: recipientId,
+          recipient_email: recipientEmail || "",
+          body
+        })
+        .select("id,sender_id,sender_email,recipient_id,recipient_email,body,created_at,read_at")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.messages.push(data);
+      render();
+    }
+
+    async function markThreadRead(counterpartId) {
+      const myId = state.session?.user?.id;
+      const unread = state.messages.filter(msg => msg.sender_id === counterpartId && msg.recipient_id === myId && !msg.read_at);
+      if (!unread.length) return;
+      const now = new Date().toISOString();
+      await Promise.all(unread.map(msg => supabaseClient.from("crm_messages").update({ read_at: now }).eq("id", msg.id)));
+      state.messages = state.messages.map(msg => unread.some(candidate => candidate.id === msg.id) ? { ...msg, read_at: now } : msg);
+      renderChrome();
+    }
+
+    function renderTeamView() {
+      if (!isManager()) {
+        board.innerHTML = `<section class="overview"><div class="empty">Only managers and admins can manage the team.</div></section>`;
+        return;
+      }
+
+      board.innerHTML = `
+        <section class="overview" aria-label="Team management">
+          <div class="activity-panel">
+            <h2>Teammates (${state.teamProfiles.length})</h2>
+            <div class="team-table" style="display:grid;gap:8px;">
+              <div class="team-row header"><span>Email</span><span>Role</span><span>Status</span><span></span></div>
+              ${state.teamProfiles.map(renderTeamRow).join("") || `<div class="empty">No teammates found yet.</div>`}
+            </div>
+          </div>
+        </section>
+      `;
+      bindTeamControls();
+    }
+
+    function renderTeamRow(profile) {
+      const isSelf = profile.user_id === state.session?.user?.id;
+      const viewsOpen = state.teamViewsOpenId === profile.user_id;
+      const restricted = Array.isArray(profile.allowed_views) && profile.allowed_views.length > 0;
+      return `
+        <div class="team-row" data-user-id="${profile.user_id}">
+          <div>
+            <strong>${escapeHtml(profile.display_name || profile.email || "Teammate")}</strong>
+            <span>${escapeHtml(profile.email || "")}</span>
+            ${profile.job_title || profile.department ? `<span>${[profile.job_title, profile.department].filter(Boolean).map(escapeHtml).join(" &middot; ")}</span>` : ""}
+          </div>
+          <select class="team-role-select" data-user-id="${profile.user_id}" ${isSelf ? "disabled" : ""}>
+            ${ROLES.map(role => option(role, profile.role, label(role))).join("")}
+          </select>
+          <span>${label(profile.status || "active")}</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+            ${isSelf ? "" : `<button type="button" class="team-message-btn" data-user-id="${profile.user_id}" data-email="${escapeAttr(profile.email || "")}">Message</button>`}
+            <button type="button" class="team-views-toggle" data-user-id="${profile.user_id}">${restricted ? "Views*" : "Views"}</button>
+            <button type="button" class="team-status-btn" data-user-id="${profile.user_id}" ${isSelf ? "disabled" : ""}>
+              ${profile.status === "suspended" ? "Reinstate" : "Suspend"}
+            </button>
+          </div>
+        </div>
+        ${viewsOpen ? renderTeamViewsPanel(profile, isSelf) : ""}
+      `;
+    }
+
+    function renderTeamViewsPanel(profile, isSelf) {
+      const allowed = profile.allowed_views;
+      const restricted = Array.isArray(allowed) && allowed.length > 0;
+      return `
+        <div class="team-views-panel" data-user-id="${profile.user_id}">
+          <div class="team-views-head">
+            <strong>Visible pages for ${escapeHtml(profile.display_name || profile.email || "this teammate")}</strong>
+            <span>${isSelf ? "You can't restrict your own access." : restricted ? "Restricted to the checked pages below." : "Unrestricted — sees every page their role allows."}</span>
+          </div>
+          <div class="team-views-grid">
+            ${NAV_VIEWS.map(entry => `
+              <label class="team-view-check">
+                <input type="checkbox" class="team-view-checkbox" data-user-id="${profile.user_id}" data-view-id="${entry.id}" ${(!restricted || allowed.includes(entry.id)) ? "checked" : ""} ${isSelf ? "disabled" : ""}>
+                ${escapeHtml(entry.label)}
+              </label>
+            `).join("")}
+          </div>
+          <div class="form-actions">
+            <button type="button" class="team-views-reset" data-user-id="${profile.user_id}" ${isSelf ? "disabled" : ""}>Reset to unrestricted</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function bindTeamControls() {
+      document.querySelectorAll(".team-message-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          state.view = "messages";
+          state.messageThreadWith = button.dataset.userId;
+          state.messageThreadEmail = button.dataset.email;
+          state.messageComposeOpen = false;
+          render();
+        });
+      });
+      document.querySelectorAll(".team-role-select").forEach(select => {
+        select.addEventListener("change", event => updateTeamRole(event.target.dataset.userId, event.target.value));
+      });
+      document.querySelectorAll(".team-status-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          const profile = state.teamProfiles.find(candidate => candidate.user_id === button.dataset.userId);
+          const nextStatus = profile?.status === "suspended" ? "active" : "suspended";
+          updateTeamStatus(button.dataset.userId, nextStatus);
+        });
+      });
+      document.querySelectorAll(".team-views-toggle").forEach(button => {
+        button.addEventListener("click", () => {
+          const id = button.dataset.userId;
+          state.teamViewsOpenId = state.teamViewsOpenId === id ? null : id;
+          renderBoard();
+        });
+      });
+      document.querySelectorAll(".team-view-checkbox").forEach(checkbox => {
+        checkbox.addEventListener("change", () => {
+          const userId = checkbox.dataset.userId;
+          const checked = Array.from(document.querySelectorAll(`.team-view-checkbox[data-user-id="${userId}"]`))
+            .filter(input => input.checked)
+            .map(input => input.dataset.viewId);
+          updateTeammateViews(userId, checked);
+        });
+      });
+      document.querySelectorAll(".team-views-reset").forEach(button => {
+        button.addEventListener("click", () => updateTeammateViews(button.dataset.userId, []));
+      });
+    }
+
+    async function updateTeammateViews(userId, views) {
+      const value = views.length ? views : null;
+      const { error } = await supabaseClient.from("profiles").update({ allowed_views: value }).eq("user_id", userId);
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      state.teamProfiles = state.teamProfiles.map(profile => profile.user_id === userId ? { ...profile, allowed_views: value } : profile);
+      if (userId === state.session?.user?.id) state.profile = { ...state.profile, allowed_views: value };
+      render();
+      flash("Access updated");
+    }
+
+    function renderProfileView() {
+      const profile = state.profile || {};
+      board.innerHTML = `
+        <section class="overview" aria-label="My profile">
+          <div class="activity-panel">
+            <h2>Account</h2>
+            <div class="approval-fields">
+              <div class="approval-field"><strong>Email</strong><span>${escapeHtml(profile.email || "")}</span></div>
+              <div class="approval-field"><strong>Role</strong><span class="role-badge">${label(currentRole())}</span></div>
+              <div class="approval-field"><strong>Status</strong><span>${label(profile.status || "active")}</span></div>
+            </div>
+          </div>
+          <div class="activity-panel">
+            <h2>HR details</h2>
+            <form class="form" id="profileForm">
+              <label>Display name<input name="display_name" value="${escapeAttr(profile.display_name || "")}"></label>
+              <div class="form-grid">
+                <label>Phone<input name="phone" value="${escapeAttr(profile.phone || "")}"></label>
+                <label>Job title<input name="job_title" value="${escapeAttr(profile.job_title || "")}"></label>
+              </div>
+              <div class="form-grid">
+                <label>Department<input name="department" value="${escapeAttr(profile.department || "")}"></label>
+                <label>Employee ID<input name="employee_id" value="${escapeAttr(profile.employee_id || "")}"></label>
+              </div>
+              <div class="form-grid">
+                <label>Start date<input name="start_date" type="date" value="${escapeAttr(profile.start_date || "")}"></label>
+                <label>Address<input name="address" value="${escapeAttr(profile.address || "")}"></label>
+              </div>
+              <div class="form-grid">
+                <label>Emergency contact name<input name="emergency_contact_name" value="${escapeAttr(profile.emergency_contact_name || "")}"></label>
+                <label>Emergency contact phone<input name="emergency_contact_phone" value="${escapeAttr(profile.emergency_contact_phone || "")}"></label>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="primary">Save profile</button>
+              </div>
+            </form>
+          </div>
+        </section>
+      `;
+      document.getElementById("profileForm").addEventListener("submit", saveMyProfile);
+    }
+
+    async function saveMyProfile(event) {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      const patch = {
+        display_name: form.get("display_name").trim(),
+        phone: form.get("phone").trim(),
+        job_title: form.get("job_title").trim(),
+        department: form.get("department").trim(),
+        employee_id: form.get("employee_id").trim(),
+        start_date: form.get("start_date") || null,
+        address: form.get("address").trim(),
+        emergency_contact_name: form.get("emergency_contact_name").trim(),
+        emergency_contact_phone: form.get("emergency_contact_phone").trim()
+      };
+
+      const { data, error } = await supabaseClient
+        .from("profiles")
+        .update(patch)
+        .eq("user_id", state.session.user.id)
+        .select("user_id,email,role,display_name,status,allowed_views,phone,department,job_title,start_date,employee_id,emergency_contact_name,emergency_contact_phone,address")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      state.profile = data;
+      render();
+      flash("Profile updated");
+    }
+
+    async function loadTeamProfiles() {
+      if (!isManager()) {
+        state.teamProfiles = [];
+        return;
+      }
+      const { data, error } = await supabaseClient
+        .from("profiles")
+        .select("user_id,email,role,display_name,status,allowed_views")
+        .order("email", { ascending: true });
+
+      if (error) throw error;
+      state.teamProfiles = data || [];
+    }
+
+    async function updateTeamRole(userId, role) {
+      const { error } = await supabaseClient.from("profiles").update({ role }).eq("user_id", userId);
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      state.teamProfiles = state.teamProfiles.map(profile => profile.user_id === userId ? { ...profile, role } : profile);
+      render();
+      flash("Role updated");
+    }
+
+    async function updateTeamStatus(userId, status) {
+      const { error } = await supabaseClient.from("profiles").update({ status }).eq("user_id", userId);
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      state.teamProfiles = state.teamProfiles.map(profile => profile.user_id === userId ? { ...profile, status } : profile);
+      render();
+      flash(status === "suspended" ? "Teammate suspended" : "Teammate reinstated");
+    }
+
+    const SERVICE_UNITS = ["flat", "hourly", "per seat", "monthly"];
+
+    function renderPricingView() {
+      if (!isAdmin()) {
+        board.innerHTML = `<section class="overview"><div class="empty">Only admins can access the pricing calculator.</div></section>`;
+        return;
+      }
+
+      const editing = state.services.find(service => service.id === state.editingServiceId);
+
+      board.innerHTML = `
+        <section class="overview" aria-label="Service pricing calculator">
+          <div class="activity-panel">
+            <h2>${editing ? "Edit service" : "Add a service"}</h2>
+            <form class="form" id="serviceForm">
+              <label>Service name<input name="name" value="${editing ? escapeAttr(editing.name) : ""}" placeholder="e.g. Website build" required></label>
+              <div class="form-grid">
+                <label>Unit price (USD)<input name="unit_price" type="number" min="0" step="1" value="${editing ? Number(editing.unit_price) : ""}" required></label>
+                <label>Billed
+                  <select name="unit_label">
+                    ${SERVICE_UNITS.map(unit => option(unit, editing?.unit_label || "flat", label(unit))).join("")}
+                  </select>
+                </label>
+              </div>
+              <div class="form-actions">
+                ${editing ? `<button type="button" id="cancelEditService">Cancel</button>` : ""}
+                <button type="submit" class="primary">${editing ? "Save changes" : "Add service"}</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="activity-panel">
+            <h2>Service catalog (${state.services.length})</h2>
+            <div style="display:grid;gap:8px;">
+              <div class="team-row header"><span>Service</span><span>Billed</span><span>Price</span><span></span></div>
+              ${state.services.map(renderServiceRow).join("") || `<div class="empty">No services yet. Add your first service above.</div>`}
+            </div>
+          </div>
+
+          <div class="activity-panel">
+            <h2>Quote calculator</h2>
+            <div class="calc-grid" id="calcGrid">
+              ${state.services.map(renderCalcRow).join("") || `<div class="empty">Add services to the catalog to start calculating a quote.</div>`}
+            </div>
+            <div class="calc-summary">
+              <div class="form-grid">
+                <label>Discount %<input type="number" min="0" max="100" step="1" id="calcDiscount" value="${state.calcDiscount}"></label>
+                <label>Tax %<input type="number" min="0" max="100" step="1" id="calcTax" value="${state.calcTax}"></label>
+              </div>
+              <div class="calc-summary-row"><span>Subtotal</span><strong id="calcSubtotal">$0</strong></div>
+              <div class="calc-summary-row"><span>Discount</span><strong id="calcDiscountAmount">-$0</strong></div>
+              <div class="calc-summary-row"><span>Tax</span><strong id="calcTaxAmount">+$0</strong></div>
+              <div class="calc-summary-row total"><span>Total</span><strong id="calcTotal">$0</strong></div>
+              <div class="form-actions"><button type="button" id="calcResetBtn">Reset calculator</button></div>
+            </div>
+          </div>
+        </section>
+      `;
+      bindPricingControls();
+      updateCalculatorSummary();
+    }
+
+    function renderServiceRow(service) {
+      return `
+        <div class="team-row" data-service-id="${service.id}">
+          <strong>${escapeHtml(service.name)}</strong>
+          <span>${label(service.unit_label)}</span>
+          <span>${money(service.unit_price)}</span>
+          <div style="display:flex;gap:6px;justify-content:flex-end;">
+            <button type="button" class="service-edit-btn" data-service-id="${service.id}">Edit</button>
+            <button type="button" class="mini-delete service-delete-btn" data-service-id="${service.id}" title="Delete">&times;</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCalcRow(service) {
+      const qty = state.calcQty[service.id] || 0;
+      return `
+        <div class="calc-row" data-service-id="${service.id}">
+          <strong>${escapeHtml(service.name)}</strong>
+          <span>${money(service.unit_price)} / ${label(service.unit_label)}</span>
+          <input type="number" min="0" step="1" class="calc-qty-input" data-service-id="${service.id}" value="${qty}" aria-label="Quantity for ${escapeAttr(service.name)}">
+          <span class="calc-line-total" data-service-id="${service.id}">${money(qty * Number(service.unit_price))}</span>
+        </div>
+      `;
+    }
+
+    function computeCalculatorTotals() {
+      const subtotal = state.services.reduce((sum, service) => {
+        const qty = Number(state.calcQty[service.id]) || 0;
+        return sum + qty * Number(service.unit_price || 0);
+      }, 0);
+      const discountAmount = subtotal * (Number(state.calcDiscount) || 0) / 100;
+      const taxable = subtotal - discountAmount;
+      const taxAmount = taxable * (Number(state.calcTax) || 0) / 100;
+      return { subtotal, discountAmount, taxAmount, total: taxable + taxAmount };
+    }
+
+    function updateCalculatorSummary() {
+      const subtotalEl = document.getElementById("calcSubtotal");
+      if (!subtotalEl) return;
+      const { subtotal, discountAmount, taxAmount, total } = computeCalculatorTotals();
+      subtotalEl.textContent = money(subtotal);
+      document.getElementById("calcDiscountAmount").textContent = `-${money(discountAmount)}`;
+      document.getElementById("calcTaxAmount").textContent = `+${money(taxAmount)}`;
+      document.getElementById("calcTotal").textContent = money(total);
+    }
+
+    function bindPricingControls() {
+      document.getElementById("serviceForm").addEventListener("submit", saveServiceFromForm);
+      const cancelBtn = document.getElementById("cancelEditService");
+      if (cancelBtn) {
+        cancelBtn.addEventListener("click", () => {
+          state.editingServiceId = null;
+          renderBoard();
+        });
+      }
+
+      document.querySelectorAll(".service-edit-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          state.editingServiceId = button.dataset.serviceId;
+          renderBoard();
+        });
+      });
+      document.querySelectorAll(".service-delete-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          confirmAction("Delete this service from the catalog? This can't be undone.", () => deleteService(button.dataset.serviceId));
+        });
+      });
+
+      document.querySelectorAll(".calc-qty-input").forEach(input => {
+        input.addEventListener("input", event => {
+          const id = event.target.dataset.serviceId;
+          const qty = Math.max(0, Number(event.target.value) || 0);
+          state.calcQty[id] = qty;
+          const service = state.services.find(candidate => candidate.id === id);
+          const lineTotalEl = document.querySelector(`.calc-line-total[data-service-id="${id}"]`);
+          if (lineTotalEl && service) lineTotalEl.textContent = money(qty * Number(service.unit_price));
+          updateCalculatorSummary();
+        });
+      });
+
+      document.getElementById("calcDiscount").addEventListener("input", event => {
+        state.calcDiscount = Math.min(100, Math.max(0, Number(event.target.value) || 0));
+        updateCalculatorSummary();
+      });
+      document.getElementById("calcTax").addEventListener("input", event => {
+        state.calcTax = Math.min(100, Math.max(0, Number(event.target.value) || 0));
+        updateCalculatorSummary();
+      });
+      document.getElementById("calcResetBtn").addEventListener("click", () => {
+        state.calcQty = {};
+        state.calcDiscount = 0;
+        state.calcTax = 0;
+        renderBoard();
+      });
+    }
+
+    async function saveServiceFromForm(event) {
+      event.preventDefault();
+      if (!isAdmin()) return;
+      const form = new FormData(event.currentTarget);
+      const payload = {
+        name: form.get("name").trim(),
+        unit_label: form.get("unit_label"),
+        unit_price: Number(form.get("unit_price") || 0)
+      };
+      if (!payload.name) {
+        flash("Enter a service name");
+        return;
+      }
+
+      if (state.editingServiceId) {
+        const { data, error } = await supabaseClient
+          .from("crm_services")
+          .update(payload)
+          .eq("id", state.editingServiceId)
+          .select("id,name,unit_price,unit_label,created_at")
+          .single();
+        if (error) {
+          flash(error.message);
+          return;
+        }
+        state.services = state.services.map(service => service.id === data.id ? data : service);
+        state.editingServiceId = null;
+        render();
+        flash("Service updated");
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("crm_services")
+        .insert(payload)
+        .select("id,name,unit_price,unit_label,created_at")
+        .single();
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      state.services.push(data);
+      render();
+      flash("Service added");
+    }
+
+    async function deleteService(id) {
+      if (!isAdmin()) return;
+      const { error } = await supabaseClient.from("crm_services").delete().eq("id", id);
+      if (error) {
+        flash(error.message);
+        return;
+      }
+      state.services = state.services.filter(service => service.id !== id);
+      delete state.calcQty[id];
+      render();
+      flash("Service deleted");
+    }
+
+    async function loadServices() {
+      if (!isAdmin()) {
+        state.services = [];
+        return;
+      }
+      const { data, error } = await supabaseClient
+        .from("crm_services")
+        .select("id,name,unit_price,unit_label,created_at")
+        .order("name", { ascending: true });
+      if (error) throw error;
+      state.services = data || [];
     }
 
     function renderKpi(labelText, value) {
@@ -1487,11 +3390,11 @@
     function renderActivityComposer() {
       return `
         <form class="activity-form" id="activityForm">
-          <input name="title" placeholder="${isDemoMode() ? "Sign in to save daily activity" : "Daily activity"}" ${isDemoMode() ? "disabled" : ""}>
-          <select name="channel" ${isDemoMode() ? "disabled" : ""}>
+          <input name="title" placeholder="${canEdit() ? "Daily activity" : "Sign in to save daily activity"}" ${canEdit() ? "" : "disabled"}>
+          <select name="channel" ${canEdit() ? "" : "disabled"}>
             ${["email", "call", "meeting", "proposal", "delivery", "admin", "general"].map(value => option(value, "general")).join("")}
           </select>
-          <button class="primary" type="submit" ${isDemoMode() ? "disabled" : ""}>Add</button>
+          <button class="primary" type="submit" ${canEdit() ? "" : "disabled"}>Add</button>
         </form>
       `;
     }
@@ -1513,7 +3416,10 @@
         input.addEventListener("change", event => toggleActivity(event.currentTarget.closest(".activity-item").dataset.activityId, event.currentTarget.checked));
       });
       document.querySelectorAll(".activity-item[data-activity-id] .mini-delete").forEach(button => {
-        button.addEventListener("click", event => deleteActivity(event.currentTarget.closest(".activity-item").dataset.activityId));
+        button.addEventListener("click", event => {
+          const id = event.currentTarget.closest(".activity-item").dataset.activityId;
+          confirmAction("Delete this activity?", () => deleteActivity(id));
+        });
       });
     }
 
@@ -1532,11 +3438,11 @@
       const pendingCount = pendingRequestsForItem(item.id).length;
       return `
         <article class="card${selected}" draggable="true" data-id="${item.id}">
-          <h3>${escapeHtml(item.title)}</h3>
+          <h3>${escapeHtml(item.title)}${item.document_url ? ` <span title="Has a sales document link">🔗</span>` : ""}</h3>
           <div class="company">${escapeHtml(item.company)} &middot; ${escapeHtml(item.owner)}</div>
           <div class="card-row">
             <span class="pill priority-${item.priority}">${label(item.priority)}</span>
-            <span class="value">${item.value ? money(item.value) : dueLabel(item.due)}</span>
+            <span class="value">${canSeeFinancials() && item.value ? money(item.value) : dueLabel(item.due)}</span>
           </div>
           <div class="card-row">
             <span class="pill">${label(item.type)}</span>
@@ -1549,21 +3455,18 @@
 
     function renderMetrics() {
       const items = visibleItems();
-      const openValue = items
-        .filter(item => !["won", "done", "project_done"].includes(item.status))
-        .reduce((sum, item) => sum + Number(item.value || 0), 0);
-      document.getElementById("totalValue").textContent = money(openValue);
+      document.getElementById("openValueMetric").hidden = !canSeeFinancials();
+      if (canSeeFinancials()) {
+        const openValue = items
+          .filter(item => !["won", "done", "project_done"].includes(item.status))
+          .reduce((sum, item) => sum + Number(item.value || 0), 0);
+        document.getElementById("totalValue").textContent = money(openValue);
+      }
       document.getElementById("dueWeek").textContent = items.filter(item => daysUntil(item.due) <= 7).length;
     }
 
     function renderDetail() {
       const item = visibleItems().find(candidate => candidate.id === state.selectedId);
-      if (!state.session) {
-        sideTitle.textContent = "Details";
-        detail.innerHTML = `<div class="empty">You are viewing demo data. Sign in to read live CRM tables, edit cards, and save daily activities. Your real data is protected by Supabase Auth and row-level security.</div>`;
-        return;
-      }
-
       if (!item) {
         sideTitle.textContent = "Details";
         detail.innerHTML = `
@@ -1585,45 +3488,75 @@
       sidePanel.classList.add("open");
       sideTitle.textContent = item.company;
       const pending = pendingRequestsForItem(item.id);
+      const readOnly = isViewer();
+      const linkedDocs = visibleDocuments().filter(doc => doc.board_item_id === item.id);
       detail.innerHTML = `
         ${pending.length ? `<div class="status-note">${pending.length} pending edit${pending.length === 1 ? "" : "s"} waiting for approval. Approved board data stays unchanged until review.</div>` : ""}
+        ${readOnly ? `<div class="status-note">You have read-only access to this record.</div>` : ""}
         <form class="form" id="itemForm">
-          <label>Title<input name="title" value="${escapeAttr(item.title)}"></label>
-          <label>Company<input name="company" value="${escapeAttr(item.company)}"></label>
+          <label>Title<input name="title" value="${escapeAttr(item.title)}" ${readOnly ? "disabled" : ""}></label>
+          <label>Company<input name="company" value="${escapeAttr(item.company)}" ${readOnly ? "disabled" : ""}></label>
           <div class="form-grid">
-            <label>Owner<input name="owner" value="${escapeAttr(item.owner)}"></label>
+            <label>Owner<input name="owner" value="${escapeAttr(item.owner)}" ${readOnly ? "disabled" : ""}></label>
             <label>Type
-              <select name="type">
+              <select name="type" ${readOnly ? "disabled" : ""}>
                 ${["deal", "project", "task"].map(value => option(value, item.type)).join("")}
               </select>
             </label>
           </div>
           <div class="form-grid">
             <label>Priority
-              <select name="priority">
+              <select name="priority" ${readOnly ? "disabled" : ""}>
                 ${["high", "medium", "low"].map(value => option(value, item.priority)).join("")}
               </select>
             </label>
             <label>Status
-              <select name="status">
+              <select name="status" ${readOnly ? "disabled" : ""}>
                 ${columns().map(column => option(column.id, normalizeStatus(item), column.title)).join("")}
               </select>
             </label>
           </div>
           <div class="form-grid">
-            <label>Value<input name="value" type="number" min="0" step="100" value="${Number(item.value || 0)}"></label>
-            <label>Due date<input name="due" type="date" value="${escapeAttr(item.due)}"></label>
+            ${canSeeFinancials()
+              ? `<label>Value<input name="value" type="number" min="0" step="100" value="${Number(item.value || 0)}" ${readOnly ? "disabled" : ""}></label>`
+              : `<input type="hidden" name="value" value="${Number(item.value || 0)}">`}
+            <label>Due date<input name="due" type="date" value="${escapeAttr(item.due)}" ${readOnly ? "disabled" : ""}></label>
           </div>
-          <label>Notes<textarea name="notes">${escapeHtml(item.notes)}</textarea></label>
-          <div class="form-actions">
-            <button type="button" class="danger" id="deleteBtn">Delete</button>
-            <button type="submit" class="primary">${isManager() ? "Save" : "Send for approval"}</button>
-          </div>
+          <label>Notes<textarea name="notes" ${readOnly ? "disabled" : ""}>${escapeHtml(item.notes)}</textarea></label>
+          <label>Sales document link<input name="document_url" type="url" placeholder="https://..." value="${escapeAttr(item.document_url || "")}" ${readOnly ? "disabled" : ""}></label>
+          ${item.document_url ? (isSafeUrl(item.document_url)
+            ? `<a href="${escapeAttr(item.document_url)}" target="_blank" rel="noopener noreferrer"><button type="button" class="link-btn">Open sales document &#8599;</button></a>`
+            : `<div class="empty">Document link must start with http:// or https://</div>`) : ""}
+          ${readOnly ? "" : `
+            <div class="form-actions">
+              <button type="button" class="danger" id="deleteBtn">Delete</button>
+              <button type="submit" class="primary">${isManager() ? "Save" : "Send for approval"}</button>
+            </div>
+          `}
         </form>
+        <div class="activity-panel" style="padding:0;border:0;">
+          <h2>Documents (${linkedDocs.length})</h2>
+          <div class="doc-grid">
+            ${linkedDocs.map(renderDocCard).join("") || `<div class="empty">No documents linked to this record yet. Upload one from the Documents tab.</div>`}
+          </div>
+        </div>
       `;
 
       document.getElementById("itemForm").addEventListener("submit", saveSelectedFromForm);
-      document.getElementById("deleteBtn").addEventListener("click", deleteSelected);
+      const deleteBtn = document.getElementById("deleteBtn");
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", () => {
+          confirmAction(`Delete "${item.title}" at ${item.company}? This can't be undone.`, deleteSelected);
+        });
+      }
+      document.querySelectorAll("#detail .doc-preview-btn").forEach(button => {
+        button.addEventListener("click", () => openPreview(button.dataset.docId));
+      });
+      document.querySelectorAll("#detail .doc-delete-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          confirmAction("Delete this document? This can't be undone.", () => deleteDocument(button.dataset.docId));
+        });
+      });
     }
 
     function renderInsight(title, percent, caption) {
@@ -1658,7 +3591,7 @@
 
       const { data, error } = await supabaseClient
         .from("crm_board_items")
-        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,document_url,created_at,updated_at")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -1689,22 +3622,32 @@
       const fallback = {
         user_id: state.session.user.id,
         email: state.session.user.email,
-        role: state.session.user.email?.toLowerCase() === "iseolu6@gmail.com" ? "manager" : "owner",
+        role: ADMIN_BOOTSTRAP_EMAILS.includes(state.session.user.email?.toLowerCase()) ? "admin" : "owner",
         display_name: state.session.user.email?.split("@")[0] || "User",
-        status: "active"
+        status: "active",
+        allowed_views: null,
+        phone: "",
+        department: "",
+        job_title: "",
+        start_date: null,
+        employee_id: "",
+        emergency_contact_name: "",
+        emergency_contact_phone: "",
+        address: ""
       };
 
       const { data, error } = await supabaseClient
         .from("profiles")
-        .select("user_id,email,role,display_name,status")
+        .select("user_id,email,role,display_name,status,allowed_views,phone,department,job_title,start_date,employee_id,emergency_contact_name,emergency_contact_phone,address")
         .eq("user_id", state.session.user.id)
         .single();
 
-      if (error) {
-        state.profile = fallback;
-        return;
+      state.profile = error ? fallback : (data || fallback);
+
+      if (state.profile.status === "suspended") {
+        flash("Your account has been suspended. Contact your admin.");
+        await supabaseClient.auth.signOut();
       }
-      state.profile = data || fallback;
     }
 
     async function loadRemoteActivities() {
@@ -1743,8 +3686,8 @@
 
     async function addActivity(event) {
       event.preventDefault();
-      if (!state.session) {
-        flash("Sign in to save activity");
+      if (!canEdit()) {
+        flash(isViewer() ? "Viewers have read-only access" : "Sign in to save activity");
         return;
       }
       const form = new FormData(event.currentTarget);
@@ -1819,6 +3762,11 @@
     async function saveSelectedFromForm(event) {
       event.preventDefault();
       const form = new FormData(event.currentTarget);
+      const documentUrl = form.get("document_url").trim();
+      if (documentUrl && !isSafeUrl(documentUrl)) {
+        flash("Document link must start with http:// or https://");
+        return;
+      }
       const patch = {
         title: form.get("title").trim(),
         company: form.get("company").trim(),
@@ -1828,7 +3776,8 @@
         status: form.get("status"),
         value: Number(form.get("value") || 0),
         due: form.get("due") || null,
-        notes: form.get("notes").trim()
+        notes: form.get("notes").trim(),
+        document_url: documentUrl
       };
 
       const item = state.items.find(candidate => candidate.id === state.selectedId);
@@ -1841,7 +3790,7 @@
         .from("crm_board_items")
         .update(patch)
         .eq("id", state.selectedId)
-        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,document_url,created_at,updated_at")
         .single();
 
       if (error) {
@@ -1891,7 +3840,7 @@
         .from("crm_board_items")
         .update({ status })
         .eq("id", id)
-        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,document_url,created_at,updated_at")
         .single();
 
       if (error) {
@@ -1915,6 +3864,10 @@
         flash("Sign in first");
         return;
       }
+      if (isViewer()) {
+        flash("Viewers have read-only access");
+        return;
+      }
       const status = state.view === "projects" ? "project_brief" : "responded_email";
       const item = {
         user_id: state.session.user.id,
@@ -1928,7 +3881,8 @@
         value: 0,
         due: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
         status,
-        notes: ""
+        notes: "",
+        document_url: ""
       };
 
       if (!isManager()) {
@@ -1939,7 +3893,7 @@
       const { data, error } = await supabaseClient
         .from("crm_board_items")
         .insert(item)
-        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,created_at,updated_at")
+        .select("id,user_id,assigned_to,visibility,type,title,company,owner,priority,value,due,status,notes,document_url,created_at,updated_at")
         .single();
 
       if (error) {
@@ -2014,6 +3968,27 @@
       }
     }
 
+    async function cancelChangeRequest(id) {
+      const request = state.changeRequests.find(candidate => candidate.id === id);
+      if (!request || request.requested_by !== state.session?.user?.id) return;
+
+      const { data, error } = await supabaseClient
+        .from("crm_change_requests")
+        .update({ status: "cancelled" })
+        .eq("id", id)
+        .select("id,board_item_id,action,requested_by,requested_at,status,payload,before_payload,reviewed_by,reviewed_at,review_note")
+        .single();
+
+      if (error) {
+        flash(error.message);
+        return;
+      }
+
+      state.changeRequests = state.changeRequests.map(candidate => candidate.id === id ? data : candidate);
+      render();
+      flash("Request withdrawn");
+    }
+
     async function applyApprovedRequest(request) {
       if (request.action === "create") {
         const { error } = await supabaseClient
@@ -2054,7 +4029,8 @@
         value: Number(item.value || 0),
         due: item.due || null,
         status: item.status,
-        notes: item.notes || ""
+        notes: item.notes || "",
+        document_url: item.document_url || ""
       };
     }
 
@@ -2132,6 +4108,10 @@
       return escapeHtml(value).replace(/`/g, "&#096;");
     }
 
+    function isSafeUrl(url) {
+      return /^https?:\/\//i.test(url || "");
+    }
+
     function flash(message) {
       toast.textContent = message;
       toast.classList.add("show");
@@ -2139,32 +4119,43 @@
       flash.timer = setTimeout(() => toast.classList.remove("show"), 1300);
     }
 
-    async function signIn() {
-      const email = authEmail.value.trim();
-      const password = authPassword.value;
+    async function handleAuthSubmit(event) {
+      event.preventDefault();
+      const email = loginEmail.value.trim();
+      const password = loginPassword.value;
       if (!email || !password) {
-        flash("Enter email and password");
+        loginError.textContent = "Enter email and password";
+        loginError.hidden = false;
         return;
       }
 
-      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) flash(error.message);
+      loginSubmit.disabled = true;
+      loginError.hidden = true;
+      try {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      } catch (error) {
+        loginError.textContent = error.message;
+        loginError.hidden = false;
+      } finally {
+        loginSubmit.disabled = false;
+      }
     }
 
-    async function signUp() {
-      const email = authEmail.value.trim();
-      const password = authPassword.value;
-      if (!email || !password) {
-        flash("Enter email and password");
+    async function forgotPassword() {
+      const email = loginEmail.value.trim();
+      if (!email) {
+        loginError.textContent = "Enter your email above first";
+        loginError.hidden = false;
         return;
       }
-
-      const { error } = await supabaseClient.auth.signUp({ email, password });
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
       if (error) {
-        flash(error.message);
+        loginError.textContent = error.message;
+        loginError.hidden = false;
         return;
       }
-      flash("Account created. Check your email if confirmation is enabled.");
+      flash("Password reset email sent");
     }
 
     async function signOut() {
@@ -2179,6 +4170,10 @@
         await loadRemoteItems();
         await loadRemoteActivities();
         await loadChangeRequests();
+        await loadDocuments();
+        await loadTeamProfiles();
+        await loadServices();
+        await loadMessages();
       } catch (error) {
         flash(error.message);
       } finally {
@@ -2205,6 +4200,15 @@
         .on("postgres_changes", { event: "*", schema: "public", table: "crm_change_requests" }, () => {
           loadChangeRequests().then(render).catch(error => flash(error.message));
         })
+        .on("postgres_changes", { event: "*", schema: "public", table: "crm_documents" }, () => {
+          loadDocuments().then(render).catch(error => flash(error.message));
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "crm_services" }, () => {
+          loadServices().then(render).catch(error => flash(error.message));
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "crm_messages" }, () => {
+          loadMessages().then(render).catch(error => flash(error.message));
+        })
         .subscribe();
     }
 
@@ -2217,6 +4221,10 @@
         await loadRemoteItems();
         await loadRemoteActivities();
         await loadChangeRequests();
+        await loadDocuments();
+        await loadTeamProfiles();
+        await loadServices();
+        await loadMessages();
         subscribeToChanges();
       } catch (error) {
         flash(error.message);
@@ -2233,6 +4241,14 @@
           state.items = [];
           state.activities = [];
           state.changeRequests = [];
+          state.documents = [];
+          state.teamProfiles = [];
+          state.services = [];
+          state.editingServiceId = null;
+          state.messages = [];
+          state.messageThreadWith = null;
+          state.messageThreadEmail = null;
+          state.messageComposeOpen = false;
         }
         subscribeToChanges();
         await refreshFromDatabase();
@@ -2245,6 +4261,12 @@
         state.selectedId = null;
         render();
       });
+    });
+
+    document.getElementById("brandHomeBtn").addEventListener("click", () => {
+      state.view = "overview";
+      state.selectedId = null;
+      render();
     });
 
     document.querySelectorAll(".segmented button").forEach(button => {
@@ -2267,16 +4289,72 @@
       renderBoard();
     });
     document.getElementById("addBtn").addEventListener("click", addItem);
-    signInBtn.addEventListener("click", signIn);
-    signUpBtn.addEventListener("click", signUp);
-    signOutBtn.addEventListener("click", signOut);
-    authPassword.addEventListener("keydown", event => {
-      if (event.key === "Enter") signIn();
+    signOutBtn.addEventListener("click", () => {
+      signOut();
+      profileDropdown.classList.remove("open");
     });
     document.getElementById("closeSide").addEventListener("click", () => {
       state.selectedId = null;
       sidePanel.classList.remove("open");
       render();
+    });
+
+    loginForm.addEventListener("submit", handleAuthSubmit);
+    document.getElementById("forgotPasswordBtn").addEventListener("click", forgotPassword);
+
+    document.getElementById("themeToggle").addEventListener("click", () => {
+      state.theme = state.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = state.theme;
+      document.getElementById("themeToggle").textContent = state.theme === "dark" ? "☀️" : "🌙";
+      localStorage.setItem("crm-theme", state.theme);
+    });
+    document.getElementById("themeToggle").textContent = state.theme === "dark" ? "☀️" : "🌙";
+
+    document.getElementById("profileAvatarBtn").addEventListener("click", () => {
+      profileDropdown.classList.toggle("open");
+    });
+    document.addEventListener("click", event => {
+      if (!profileMenu.contains(event.target)) profileDropdown.classList.remove("open");
+    });
+
+    document.getElementById("footerYear").textContent = new Date().getFullYear();
+
+    document.getElementById("closePreview").addEventListener("click", closePreview);
+    previewOverlay.addEventListener("click", event => {
+      if (event.target === previewOverlay) closePreview();
+    });
+
+    document.getElementById("closeConfirm").addEventListener("click", closeConfirm);
+    document.getElementById("confirmCancelBtn").addEventListener("click", closeConfirm);
+    document.getElementById("confirmOkBtn").addEventListener("click", () => {
+      const callback = confirmCallback;
+      closeConfirm();
+      if (callback) callback();
+    });
+    confirmOverlay.addEventListener("click", event => {
+      if (event.target === confirmOverlay) closeConfirm();
+    });
+
+    document.addEventListener("keydown", event => {
+      const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
+      if (event.key === "Escape") {
+        if (!confirmOverlay.hidden) closeConfirm();
+        else if (!previewOverlay.hidden) closePreview();
+        else if (sidePanel.classList.contains("open")) {
+          state.selectedId = null;
+          sidePanel.classList.remove("open");
+          render();
+        }
+        return;
+      }
+      if (typing || appRoot.hidden) return;
+      if (event.key === "/") {
+        event.preventDefault();
+        searchInput.focus();
+      } else if (event.key === "n" && canEdit() && ["pipeline", "projects", "focus"].includes(state.view)) {
+        event.preventDefault();
+        addItem();
+      }
     });
 
     initializeSupabase();
