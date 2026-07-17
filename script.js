@@ -69,6 +69,7 @@ const state = {
   documents: [],
   teamProfiles: [],
   teamViewsOpenId: null,
+  inviteFormOpen: false,
   services: [],
   editingServiceId: null,
   calcQty: {},
@@ -1103,7 +1104,21 @@ function renderTeamView() {
   board.innerHTML = `
     <section class="overview" aria-label="Team management">
       <div class="activity-panel">
-        <h2>Teammates (${state.teamProfiles.length})</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <h2 style="margin:0;">Teammates (${state.teamProfiles.length})</h2>
+          <button type="button" class="btn" id="inviteToggleBtn">${state.inviteFormOpen ? "Cancel" : "Invite user"}</button>
+        </div>
+        ${state.inviteFormOpen ? `
+          <form class="form" id="inviteForm" style="margin-top:16px;padding:16px;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;">
+            <div class="form-grid" style="grid-template-columns:1fr auto;">
+              <label>Email address<input type="email" name="email" placeholder="teammate@example.com" required></label>
+              <label>Role<select name="role">${ROLES.map(r => `<option value="${r}" ${r === "owner" ? "selected" : ""}>${r.charAt(0).toUpperCase() + r.slice(1)}</option>`).join("")}</select></label>
+            </div>
+            <div class="form-actions" style="margin-top:12px;">
+              <button type="submit" class="btn btn-primary" id="inviteSubmitBtn">Send invite</button>
+            </div>
+          </form>
+        ` : ""}
         <div class="team-table" style="display:grid;gap:8px;">
           <div class="team-row header"><span>Email</span><span>Role</span><span>Status</span><span></span></div>
           ${state.teamProfiles.map(renderTeamRow).join("") || `<div class="empty">No teammates found yet.</div>`}
@@ -1166,6 +1181,17 @@ function renderTeamViewsPanel(profile, isSelf) {
 }
 
 function bindTeamControls() {
+  const inviteToggle = document.getElementById("inviteToggleBtn");
+  if (inviteToggle) {
+    inviteToggle.addEventListener("click", () => {
+      state.inviteFormOpen = !state.inviteFormOpen;
+      render();
+    });
+  }
+  const inviteForm = document.getElementById("inviteForm");
+  if (inviteForm) {
+    inviteForm.addEventListener("submit", inviteUser);
+  }
   document.querySelectorAll(".team-message-btn").forEach(button => {
     button.addEventListener("click", () => {
       state.view = "messages";
@@ -1326,6 +1352,42 @@ async function updateTeamStatus(userId, status) {
   state.teamProfiles = state.teamProfiles.map(profile => profile.user_id === userId ? { ...profile, status } : profile);
   render();
   flash(status === "suspended" ? "Teammate suspended" : "Teammate reinstated");
+}
+
+async function inviteUser(event) {
+  event.preventDefault();
+  const form = event.target;
+  const data = new FormData(form);
+  const email = data.get("email").trim();
+  const role = data.get("role");
+
+  if (!email) return;
+
+  const submitBtn = document.getElementById("inviteSubmitBtn");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Sending...";
+
+  const { data: result, error } = await supabaseClient.functions.invoke("invite-user", {
+    body: { email, role },
+  });
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Send invite";
+
+  if (error) {
+    flash(error.message);
+    return;
+  }
+
+  if (result?.error) {
+    flash(result.error);
+    return;
+  }
+
+  state.inviteFormOpen = false;
+  await loadTeamProfiles();
+  render();
+  flash("Invite sent to " + email);
 }
 
 const SERVICE_UNITS = ["flat", "hourly", "per seat", "monthly"];
