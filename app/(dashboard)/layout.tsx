@@ -29,12 +29,14 @@ const pageMeta: Record<string, [string, string]> = {
 };
 
 function DashboardInner({ children }: { children: React.ReactNode }) {
-  const { session, loading, theme, setTheme, profile, items, changeRequests, messages, signOut } = useApp();
+  const { session, loading, theme, setTheme, profile, items, changeRequests, messages, signOut, selectedId, setSelectedId } = useApp();
   const router = useRouter();
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const currentView = pathname.split("/").filter(Boolean)[0] || "overview";
 
   useEffect(() => {
@@ -48,6 +50,9 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
     }
     document.addEventListener("click", handleClick);
     return () => document.removeEventListener("click", handleClick);
@@ -58,8 +63,10 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
       const tag = (e.target as HTMLElement).tagName;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
       if (e.key === "Escape") {
+        setSidebarOpen(false);
         setDropdownOpen(false);
-        setDetailOpen(false);
+        setMobileMenuOpen(false);
+        setSelectedId(null);
       }
       if (e.key === "/") {
         e.preventDefault();
@@ -101,15 +108,27 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   const showDetailToggle = ["pipeline", "projects", "focus", "overview"].includes(currentView);
 
   return (
-    <div className="h-screen grid max-lg:grid-cols-[74px_minmax(0,1fr)] max-md:grid-cols-1 max-md:h-auto max-md:min-h-screen overflow-hidden max-md:overflow-auto"
-      style={{ gridTemplateColumns: detailOpen ? "240px minmax(0,1fr) 340px" : "240px minmax(0,1fr)" }}
+    <>
+    <div className="h-screen grid max-lg:grid-cols-[74px_minmax(0,1fr)] max-md:!grid-cols-1 max-md:h-screen overflow-hidden"
+      style={{ gridTemplateColumns: "240px minmax(0,1fr)" }}
     >
-      <Sidebar />
-      <main className="grid grid-rows-[auto_auto_minmax(0,1fr)] min-w-0 min-h-0 border-r border-crm-line max-md:border-r-0 max-md:min-h-[calc(100vh-54px)]">
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="grid grid-rows-[auto_auto_minmax(0,1fr)] min-w-0 min-h-0 overflow-hidden border-r border-crm-line max-md:flex max-md:flex-col max-md:border-r-0 max-md:min-h-0">
         <header className="bg-crm-panel border-b border-crm-line p-[14px_18px] flex items-center justify-between gap-3 max-md:flex-col max-md:items-stretch">
-          <div className="title">
-            <h1 className="m-0 text-[20px] leading-[1.2]">{meta[0]}</h1>
-            <p className="m-[4px_0_0] text-crm-muted text-[13px]">{meta[1]}</p>
+          <div className="title flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="hidden max-md:grid w-[34px] h-[34px] place-items-center p-0 shrink-0"
+              title="Open menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12h18M3 6h18M3 18h18" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="m-0 text-[20px] leading-[1.2]">{meta[0]}</h1>
+              <p className="m-[4px_0_0] text-crm-muted text-[13px]">{meta[1]}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2 min-w-0 max-md:w-full max-md:flex-wrap">
             <div className="relative min-w-[260px] max-md:min-w-0 max-md:flex-1 max-md:min-w-[190px]">
@@ -139,15 +158,15 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
             >
               + New
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 max-md:hidden">
               {showDetailToggle && (
                 <button
-                  onClick={() => setDetailOpen(!detailOpen)}
+                  onClick={() => setSelectedId(selectedId ? null : "new")}
                   className="w-[34px] h-[34px] grid place-items-center p-0"
-                  title={detailOpen ? "Close details" : "Open details"}
+                  title={selectedId ? "Close details" : "Open details"}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    {detailOpen
+                    {selectedId
                       ? <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" /></>
                       : <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M15 3v18" /></>
                     }
@@ -181,10 +200,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
                       </span>
                     </div>
                     <button
-                      onClick={() => {
-                        signOut();
-                        setDropdownOpen(false);
-                      }}
+                      onClick={() => { signOut(); setDropdownOpen(false); }}
                       className="w-full"
                     >
                       Sign out
@@ -192,6 +208,63 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
               </div>
+            </div>
+            <div className="relative hidden md:block"></div>
+            <div className="relative md:hidden" ref={mobileMenuRef}>
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="w-[34px] h-[34px] grid place-items-center p-0"
+                title="More actions"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="5" r="1.5" />
+                  <circle cx="12" cy="12" r="1.5" />
+                  <circle cx="12" cy="19" r="1.5" />
+                </svg>
+              </button>
+              {mobileMenuOpen && (
+                <div
+                  className="absolute right-0 top-[42px] w-[220px] bg-crm-panel border border-crm-line rounded-[var(--radius,8px)]
+                    shadow-[0_12px_30px_rgba(15,23,42,.08)] p-2 grid gap-1 z-20 origin-top-right"
+                >
+                  {showDetailToggle && (
+                    <button
+                      onClick={() => { setSelectedId(selectedId ? null : "new"); setMobileMenuOpen(false); }}
+                      className="flex items-center gap-3 px-3 py-2 rounded-[6px] hover:bg-crm-panel-strong text-[13px] w-full text-left"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                        {selectedId
+                          ? <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" /></>
+                          : <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M15 3v18" /></>
+                        }
+                      </svg>
+                      {selectedId ? "Close details" : "Open details"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); setMobileMenuOpen(false); }}
+                    className="flex items-center gap-3 px-3 py-2 rounded-[6px] hover:bg-crm-panel-strong text-[13px] w-full text-left"
+                  >
+                    <span className="w-4 h-4 grid place-items-center shrink-0 text-[14px]">{theme === "dark" ? "☀️" : "🌙"}</span>
+                    {theme === "dark" ? "Light mode" : "Dark mode"}
+                  </button>
+                  <div className="border-t border-crm-line my-1" />
+                  <div className="px-3 py-2">
+                    <div className="text-[13px] font-medium truncate">{session.user.email}</div>
+                    <div className="text-crm-muted text-[11px] mt-0.5">
+                      <span className="inline-flex items-center h-[18px] rounded-[9px] px-2 text-[10px] font-bold uppercase tracking-[.02em] bg-[rgba(15,118,110,.12)] text-crm-accent-strong">
+                        {label(role || "owner")}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { signOut(); setMobileMenuOpen(false); }}
+                    className="flex items-center gap-3 px-3 py-2 rounded-[6px] hover:bg-crm-panel-strong text-[13px] w-full text-left text-red-500"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -214,10 +287,13 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
           </section>
         )}
 
-        {children}
+        <div className="overflow-y-auto min-h-0 max-md:flex-1 max-md:min-h-0">
+          {children}
+        </div>
       </main>
-      {detailOpen && <DetailPanel />}
     </div>
+    {selectedId && <DetailPanel />}
+    </>
   );
 }
 

@@ -64,7 +64,12 @@ const SVG_ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { profile, items, messages } = useApp();
@@ -95,21 +100,18 @@ export default function Sidebar() {
     return days >= 0 && days <= 7;
   }).length;
 
-  return (
-      <aside
-        className="bg-crm-sidebar text-crm-sidebar-text p-[18px_14px] flex flex-col gap-[18px] min-w-0 h-screen overflow-y-auto
-        max-lg:p-[14px_10px] max-md:sticky max-md:top-0 max-md:z-4 max-md:flex-row max-md:items-center max-md:p-[10px] max-md:h-auto max-md:overflow-visible"
-      >
+  const sidebarContent = (
+    <>
       <Link
         href="/overview"
+        onClick={onClose}
         className="flex items-center gap-[10px] p-[0_6px_10px] border-b border-[rgba(255,255,255,.12)] w-full bg-transparent
-          border-l-0 border-r-0 border-t-0 text-left cursor-pointer min-h-auto no-underline text-inherit
-          max-md:border-0 max-md:p-0 hover:[&_.mark]:bg-[rgba(255,255,255,.14)]"
+          border-l-0 border-r-0 border-t-0 text-left cursor-pointer min-h-auto no-underline text-inherit"
       >
         <div className="w-[38px] h-[38px] rounded-[8px] bg-[rgba(255,255,255,.08)] border border-[rgba(255,255,255,.12)] grid place-items-center overflow-hidden shrink-0">
           <Image src="/supertelque-logo.png" alt="SuperTelque" width={34} height={34} className="object-contain" />
         </div>
-        <div className="max-lg:hidden">
+        <div>
           <strong className="block text-[15px]">SuperTelque CRM</strong>
           <span className="block text-crm-sidebar-muted text-[12px] mt-[2px]">
             Client journey and delivery
@@ -117,29 +119,29 @@ export default function Sidebar() {
         </div>
       </Link>
 
-      <nav className="grid gap-[4px] max-md:grid-flow-col max-md:overflow-x-auto max-md:flex-1">
+      <nav className="grid gap-[4px]">
         {NAV_VIEWS.filter((v) => canSeeView(v.id)).map((view) => {
           const isActive = currentView === view.id;
           return (
             <Link
               key={view.id}
               href={`/${view.id}`}
+              onClick={onClose}
               className={`flex gap-[10px] items-center rounded-[6px] text-left p-[9px_10px] no-underline
                 transition-[background,color,transform] duration-150
-                max-lg:justify-center max-lg:p-[10px]
                 ${isActive ? "bg-[rgba(255,255,255,.09)] text-white" : "text-crm-sidebar-text"}
                 hover:bg-[rgba(255,255,255,.09)] hover:text-white active:scale-[.97]
               `}
             >
               {SVG_ICONS[view.id]}
-              <span className="max-lg:hidden">{view.label}</span>
+              <span>{view.label}</span>
             </Link>
           );
         })}
       </nav>
 
       {isAdmin && (
-        <div className="mt-auto grid gap-[10px] max-lg:hidden">
+        <div className="mt-auto grid gap-[10px]">
           <div className="bg-[rgba(255,255,255,.08)] border border-[rgba(255,255,255,.1)] rounded-[var(--radius,8px)] p-[12px]">
             <span className="text-crm-sidebar-muted text-[12px]">Open value</span>
             <strong className="block mt-[6px] text-[20px]">
@@ -152,6 +154,32 @@ export default function Sidebar() {
           </div>
         </div>
       )}
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      <aside
+        className="bg-crm-sidebar text-crm-sidebar-text p-[18px_14px] flex flex-col gap-[18px] min-w-0 h-screen overflow-y-auto
+        max-lg:p-[14px_10px] max-md:hidden"
+      >
+        {sidebarContent}
+      </aside>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+          <aside className="absolute left-0 top-0 bottom-0 w-[260px] bg-crm-sidebar text-crm-sidebar-text p-[18px_14px] flex flex-col gap-[18px] overflow-y-auto shadow-xl animate-slide-in">
+            <div className="flex justify-end">
+              <button onClick={onClose} className="w-[30px] h-[30px] grid place-items-center p-0 text-crm-sidebar-muted hover:text-white">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }
