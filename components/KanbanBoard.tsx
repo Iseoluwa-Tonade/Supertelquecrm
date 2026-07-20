@@ -14,7 +14,7 @@ const supabase = createClient();
 export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | "focus" }) {
   const {
     items, session, profile, changeRequests, documents, search, type, owner, priority,
-    selectedId, setSelectedId, loadRemoteItems,
+    selectedId, setSelectedId, setType, setOwner, setPriority, loadRemoteItems,
   } = useApp();
   const { flash } = useToast();
   const dragItem = useRef<string | null>(null);
@@ -108,6 +108,7 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
           {["all", "deal", "project", "task"].map((t) => (
             <button
               key={t}
+              onClick={() => setType(t)}
               className={`border-0 rounded-none min-h-[32px] px-3 bg-transparent ${type === t ? "bg-crm-panel text-crm-text shadow-[inset_0_-2px_0_var(--color-crm-accent)]" : "text-crm-muted"}`}
             >
               {t === "all" ? "All" : `${t.charAt(0).toUpperCase()}${t.slice(1)}s`}
@@ -117,13 +118,14 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
         <div className="filters flex items-center gap-2 max-md:w-full max-md:flex-wrap">
           <select
             value={owner}
+            onChange={(e) => setOwner(e.target.value)}
             className="h-[32px]"
             aria-label="Owner filter"
           >
             <option value="all">All owners</option>
             {owners.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
-          <select value={priority} className="h-[32px]" aria-label="Priority filter">
+          <select value={priority} onChange={(e) => setPriority(e.target.value)} className="h-[32px]" aria-label="Priority filter">
             <option value="all">All priorities</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
