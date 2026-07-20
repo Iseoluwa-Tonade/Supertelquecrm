@@ -1,3 +1,5 @@
+import { PIPELINE_COLUMNS, PROJECT_COLUMNS, FOCUS_COLUMNS } from "@/lib/types";
+
 export function cn(...classes: (string | boolean | undefined | null)[]): string {
   return classes.filter(Boolean).join(" ");
 }
@@ -78,3 +80,8 @@ export function formatChangeValue(value: unknown): string {
   return String(value);
 }
 
+export function normalizeStatus(status: string): string {
+  const all = [...PIPELINE_COLUMNS, ...PROJECT_COLUMNS, ...FOCUS_COLUMNS];
+  const found = all.find((c) => c.id === status);
+  return found ? status : "responded_email";
+}

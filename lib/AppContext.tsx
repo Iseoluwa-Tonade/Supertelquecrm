@@ -368,6 +368,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCalcTax: (t) => setState((prev) => ({ ...prev, calcTax: t })),
     setTeamViewsOpenId: (id) => setState((prev) => ({ ...prev, teamViewsOpenId: id })),
     setPreviewDoc: (doc) => setState((prev) => ({ ...prev, previewDoc: doc })),
+    setTheme,
     refreshData,
     loadDocuments,
     loadMessages,

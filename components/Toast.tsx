@@ -15,17 +15,17 @@ export function useToast() {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState("");
   const [visible, setVisible] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<number>(0);
 
   const flash = useCallback((msg: string) => {
     setMessage(msg);
     setVisible(true);
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setVisible(false), 1300);
+    window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => setVisible(false), 1300);
   }, []);
 
   useEffect(() => {
-    return () => clearTimeout(timerRef.current);
+    return () => window.clearTimeout(timerRef.current);
   }, []);
 
   return (

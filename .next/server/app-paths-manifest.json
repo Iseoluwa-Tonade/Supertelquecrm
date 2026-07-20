@@ -1,17 +1,4 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/invite-user/route": "app/api/invite-user/route.js",
   "/login/page": "app/login/page.js",
-  "/page": "app/page.js",
-  "/(dashboard)/activity/page": "app/(dashboard)/activity/page.js",
-  "/(dashboard)/approvals/page": "app/(dashboard)/approvals/page.js",
-  "/(dashboard)/focus/page": "app/(dashboard)/focus/page.js",
-  "/(dashboard)/messages/page": "app/(dashboard)/messages/page.js",
-  "/(dashboard)/overview/page": "app/(dashboard)/overview/page.js",
-  "/(dashboard)/documents/page": "app/(dashboard)/documents/page.js",
-  "/(dashboard)/pipeline/page": "app/(dashboard)/pipeline/page.js",
-  "/(dashboard)/profile/page": "app/(dashboard)/profile/page.js",
-  "/(dashboard)/projects/page": "app/(dashboard)/projects/page.js",
-  "/(dashboard)/pricing/page": "app/(dashboard)/pricing/page.js",
-  "/(dashboard)/team/page": "app/(dashboard)/team/page.js"
+  "/(dashboard)/overview/page": "app/(dashboard)/overview/page.js"
 }
