@@ -96,7 +96,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="h-screen grid max-lg:grid-cols-[74px_minmax(0,1fr)] max-md:grid-cols-1 max-md:h-auto max-md:min-h-screen overflow-hidden max-md:overflow-auto">
+    <div className="h-screen grid grid-cols-[240px_minmax(0,1fr)] max-lg:grid-cols-[74px_minmax(0,1fr)] max-md:grid-cols-1 max-md:h-auto max-md:min-h-screen overflow-hidden max-md:overflow-auto">
       <Sidebar />
       <main className="grid grid-rows-[auto_auto_minmax(0,1fr)] min-w-0 min-h-0 border-r border-crm-line max-md:border-r-0 max-md:min-h-[calc(100vh-54px)]">
         <header className="bg-crm-panel border-b border-crm-line p-[14px_18px] flex items-center justify-between gap-3 max-md:flex-col max-md:items-stretch">

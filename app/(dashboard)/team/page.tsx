@@ -144,7 +144,7 @@ export default function TeamPage() {
                       <div>
                         <strong className="text-[13px] block">Visible pages for {p.display_name || p.email || "this teammate"}</strong>
                         <span className="text-crm-muted text-[12px]">
-                          {isSelf ? "You can't restrict your own access." : restricted ? "Restricted to the checked pages below." : "Unrestricted — sees every page their role allows."}
+                          {isSelf ? "You can't restrict your own access." : restricted ? "Restricted to the checked pages below." : "Unrestricted â€” sees every page their role allows."}
                         </span>
                       </div>
                       <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
