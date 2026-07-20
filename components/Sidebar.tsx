@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { NAV_VIEWS } from "@/lib/types";
+import Image from "next/image";
 import Link from "next/link";
 
 const SVG_ICONS: Record<string, React.ReactNode> = {
@@ -95,10 +96,10 @@ export default function Sidebar() {
   }).length;
 
   return (
-    <aside
-      className="bg-crm-sidebar text-crm-sidebar-text p-[18px_14px] flex flex-col gap-[18px] min-w-0 overflow-hidden
-        max-lg:p-[14px_10px] max-md:sticky max-md:top-0 max-md:z-4 max-md:flex-row max-md:items-center max-md:p-[10px]"
-    >
+      <aside
+        className="bg-crm-sidebar text-crm-sidebar-text p-[18px_14px] flex flex-col gap-[18px] min-w-0 h-screen overflow-y-auto
+        max-lg:p-[14px_10px] max-md:sticky max-md:top-0 max-md:z-4 max-md:flex-row max-md:items-center max-md:p-[10px] max-md:h-auto max-md:overflow-visible"
+      >
       <Link
         href="/overview"
         className="flex items-center gap-[10px] p-[0_6px_10px] border-b border-[rgba(255,255,255,.12)] w-full bg-transparent
@@ -106,7 +107,7 @@ export default function Sidebar() {
           max-md:border-0 max-md:p-0 hover:[&_.mark]:bg-[rgba(255,255,255,.14)]"
       >
         <div className="w-[38px] h-[38px] rounded-[8px] bg-[rgba(255,255,255,.08)] border border-[rgba(255,255,255,.12)] grid place-items-center overflow-hidden shrink-0">
-          <img src="/supertelque-logo.png" alt="SuperTelque" className="w-[34px] h-[34px] object-contain" />
+          <Image src="/supertelque-logo.png" alt="SuperTelque" width={34} height={34} className="object-contain" />
         </div>
         <div className="max-lg:hidden">
           <strong className="block text-[15px]">SuperTelque CRM</strong>

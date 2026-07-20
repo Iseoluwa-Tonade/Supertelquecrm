@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -87,10 +88,12 @@ export default function LoginPage() {
           <div className="w-full max-w-[340px] grid gap-[18px]">
             <div className="flex items-center gap-[10px]">
               <div className="w-[42px] h-[42px] rounded-[9px] bg-[#202a36] grid place-items-center overflow-hidden shrink-0">
-                <img
+                <Image
                   src="/supertelque-logo.png"
                   alt="SuperTelque"
-                  className="w-[36px] h-[36px] object-contain"
+                  width={36}
+                  height={36}
+                  className="object-contain"
                 />
               </div>
               <div>

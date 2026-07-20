@@ -3,6 +3,7 @@
 import { AppProvider, useApp } from "@/lib/AppContext";
 import { ToastProvider } from "@/components/Toast";
 import Sidebar from "@/components/Sidebar";
+import DetailPanel from "@/components/DetailPanel";
 import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -32,6 +33,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const currentView = pathname.split("/").filter(Boolean)[0] || "overview";
 
@@ -57,6 +59,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
       if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
       if (e.key === "Escape") {
         setDropdownOpen(false);
+        setDetailOpen(false);
       }
       if (e.key === "/") {
         e.preventDefault();
@@ -95,8 +98,12 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
     return PIPELINE_COLUMNS;
   }
 
+  const showDetailToggle = ["pipeline", "projects", "focus", "overview"].includes(currentView);
+
   return (
-    <div className="h-screen grid grid-cols-[240px_minmax(0,1fr)] max-lg:grid-cols-[74px_minmax(0,1fr)] max-md:grid-cols-1 max-md:h-auto max-md:min-h-screen overflow-hidden max-md:overflow-auto">
+    <div className="h-screen grid max-lg:grid-cols-[74px_minmax(0,1fr)] max-md:grid-cols-1 max-md:h-auto max-md:min-h-screen overflow-hidden max-md:overflow-auto"
+      style={{ gridTemplateColumns: detailOpen ? "240px minmax(0,1fr) 340px" : "240px minmax(0,1fr)" }}
+    >
       <Sidebar />
       <main className="grid grid-rows-[auto_auto_minmax(0,1fr)] min-w-0 min-h-0 border-r border-crm-line max-md:border-r-0 max-md:min-h-[calc(100vh-54px)]">
         <header className="bg-crm-panel border-b border-crm-line p-[14px_18px] flex items-center justify-between gap-3 max-md:flex-col max-md:items-stretch">
@@ -133,6 +140,20 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
               + New
             </button>
             <div className="flex items-center gap-2">
+              {showDetailToggle && (
+                <button
+                  onClick={() => setDetailOpen(!detailOpen)}
+                  className="w-[34px] h-[34px] grid place-items-center p-0"
+                  title={detailOpen ? "Close details" : "Open details"}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {detailOpen
+                      ? <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" /></>
+                      : <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M15 3v18" /></>
+                    }
+                  </svg>
+                </button>
+              )}
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className="w-[34px] h-[34px] grid place-items-center p-0"
@@ -195,6 +216,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
 
         {children}
       </main>
+      {detailOpen && <DetailPanel />}
     </div>
   );
 }
