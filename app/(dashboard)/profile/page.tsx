@@ -1,0 +1,145 @@
+"use client";
+
+import { useApp } from "@/lib/AppContext";
+import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/Toast";
+import { useCallback, useState, useEffect } from "react";
+import { label } from "@/lib/utils";
+
+const supabase = createClient();
+
+export default function ProfilePage() {
+  const { session, profile, loadRemoteItems } = useApp();
+  const { flash } = useToast();
+
+  const [form, setForm] = useState({
+    display_name: "",
+    phone: "",
+    job_title: "",
+    department: "",
+    employee_id: "",
+    start_date: "",
+    address: "",
+    emergency_contact_name: "",
+    emergency_contact_phone: "",
+  });
+
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        display_name: profile.display_name || "",
+        phone: profile.phone || "",
+        job_title: profile.job_title || "",
+        department: profile.department || "",
+        employee_id: profile.employee_id || "",
+        start_date: profile.start_date || "",
+        address: profile.address || "",
+        emergency_contact_name: profile.emergency_contact_name || "",
+        emergency_contact_phone: profile.emergency_contact_phone || "",
+      });
+    }
+  }, [profile]);
+
+  const saveProfile = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session) return;
+    const patch = {
+      display_name: form.display_name.trim(),
+      phone: form.phone.trim(),
+      job_title: form.job_title.trim(),
+      department: form.department.trim(),
+      employee_id: form.employee_id.trim(),
+      start_date: form.start_date || null,
+      address: form.address.trim(),
+      emergency_contact_name: form.emergency_contact_name.trim(),
+      emergency_contact_phone: form.emergency_contact_phone.trim(),
+    };
+
+    const { error } = await supabase.from("profiles").update(patch).eq("user_id", session.user.id);
+    if (error) { flash(error.message); return; }
+    await loadRemoteItems();
+    flash("Profile updated");
+  }, [session, form, supabase, loadRemoteItems, flash]);
+
+  return (
+    <div className="board-scroll overflow-auto min-h-0">
+      <section className="overview p-[16px_18px] overflow-auto grid gap-[14px] content-start animate-[fadeInUp_0.3s_ease_both]">
+        <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
+          <h2 className="m-0 text-[15px]">Account</h2>
+          <div className="grid gap-[7px] text-[12px]">
+            <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
+              <strong className="text-crm-muted text-[12px]">Email</strong>
+              <span>{profile?.email || ""}</span>
+            </div>
+            <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
+              <strong className="text-crm-muted text-[12px]">Role</strong>
+              <span className="inline-flex items-center h-[20px] rounded-[10px] px-2 text-[11px] font-bold uppercase tracking-[.02em] bg-[rgba(15,118,110,.12)] text-crm-accent-strong w-fit">
+                {label(profile?.role || "owner")}
+              </span>
+            </div>
+            <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
+              <strong className="text-crm-muted text-[12px]">Status</strong>
+              <span>{label(profile?.status || "active")}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
+          <h2 className="m-0 text-[15px]">HR details</h2>
+          <form onSubmit={saveProfile} className="grid gap-3">
+            <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+              Display name
+              <input name="display_name" value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} />
+            </label>
+            <div className="grid grid-cols-2 gap-[10px]">
+              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                Phone
+                <input name="phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+              </label>
+              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                Job title
+                <input name="job_title" value={form.job_title} onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))} />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-[10px]">
+              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                Department
+                <input name="department" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))} />
+              </label>
+              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                Employee ID
+                <input name="employee_id" value={form.employee_id} onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))} />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-[10px]">
+              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                Start date
+                <input name="start_date" type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} />
+              </label>
+              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                Address
+                <input name="address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-[10px]">
+              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                Emergency contact name
+                <input name="emergency_contact_name" value={form.emergency_contact_name} onChange={(e) => setForm((f) => ({ ...f, emergency_contact_name: e.target.value }))} />
+              </label>
+              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                Emergency contact phone
+                <input name="emergency_contact_phone" value={form.emergency_contact_phone} onChange={(e) => setForm((f) => ({ ...f, emergency_contact_phone: e.target.value }))} />
+              </label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="submit"
+                className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
+                Save profile
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+  );
+}

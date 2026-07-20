@@ -1,0 +1,210 @@
+"use client";
+
+import { AppProvider, useApp } from "@/lib/AppContext";
+import { ToastProvider } from "@/components/Toast";
+import Sidebar from "@/components/Sidebar";
+import { useEffect, useState, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { NAV_VIEWS, FOCUS_COLUMNS } from "@/lib/types";
+import type { Column } from "@/lib/types";
+import { label, money, daysUntil, statusTitle, statusColor, cn } from "@/lib/utils";
+import { PIPELINE_COLUMNS, PROJECT_COLUMNS } from "@/lib/types";
+
+const supabase = createClient();
+
+const pageMeta: Record<string, [string, string]> = {
+  overview: ["CRM Overview", "See the journey, open value, project health, and today's daily work."],
+  pipeline: ["Client Journey", "Move every account from responded email to project done."],
+  projects: ["Project Delivery", "Move client work from backlog through shipped outcomes."],
+  activity: ["Daily Activities", "Track calls, emails, proposals, delivery work, and admin follow-ups."],
+  documents: ["Documents", "Upload, organize, and preview files linked to accounts and projects."],
+  messages: ["Messages", "Direct messages between you and your manager or teammates."],
+  approvals: ["Approval Queue", "Review team changes before they become approved CRM records."],
+  focus: ["Focus Queue", "High-priority and near-due work across the whole book."],
+  team: ["Team", "Manage teammate roles and access."],
+  pricing: ["Pricing Calculator", "Manage the service catalog and quote a client."],
+  profile: ["My Profile", "Your account, contact, and HR details."],
+};
+
+function DashboardInner({ children }: { children: React.ReactNode }) {
+  const { session, loading, theme, setTheme, profile, items, changeRequests, messages, signOut } = useApp();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const currentView = pathname.split("/").filter(Boolean)[0] || "overview";
+
+  useEffect(() => {
+    if (!loading && !session) {
+      router.push("/login");
+    }
+  }, [loading, session, router]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
+      if (e.key === "Escape") {
+        setDropdownOpen(false);
+      }
+      if (e.key === "/") {
+        e.preventDefault();
+        document.querySelector<HTMLInputElement>('[data-search-input]')?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-crm-bg text-crm-muted">
+        Loading the CRM database...
+      </div>
+    );
+  }
+
+  if (!session) return null;
+
+  const meta = pageMeta[currentView] || pageMeta.overview;
+  const role = profile?.role;
+  const isAdmin = role === "admin";
+  const isManager = role === "manager" || role === "admin";
+  const isViewer = role === "viewer";
+
+  const pendingApprovalsCount = changeRequests.filter((r) => r.status === "pending").length;
+  const unreadMessages = messages.filter(
+    (msg) => msg.recipient_id === session.user.id && !msg.read_at
+  ).length;
+
+  const showToolbar = ["pipeline", "projects", "focus"].includes(currentView);
+
+  function columns(): Column[] {
+    if (currentView === "projects") return PROJECT_COLUMNS;
+    return PIPELINE_COLUMNS;
+  }
+
+  return (
+    <div className="h-screen grid max-lg:grid-cols-[74px_minmax(0,1fr)] max-md:grid-cols-1 max-md:h-auto max-md:min-h-screen overflow-hidden max-md:overflow-auto">
+      <Sidebar />
+      <main className="grid grid-rows-[auto_auto_minmax(0,1fr)] min-w-0 min-h-0 border-r border-crm-line max-md:border-r-0 max-md:min-h-[calc(100vh-54px)]">
+        <header className="bg-crm-panel border-b border-crm-line p-[14px_18px] flex items-center justify-between gap-3 max-md:flex-col max-md:items-stretch">
+          <div className="title">
+            <h1 className="m-0 text-[20px] leading-[1.2]">{meta[0]}</h1>
+            <p className="m-[4px_0_0] text-crm-muted text-[13px]">{meta[1]}</p>
+          </div>
+          <div className="flex items-center gap-2 min-w-0 max-md:w-full max-md:flex-wrap">
+            <div className="relative min-w-[260px] max-md:min-w-0 max-md:flex-1 max-md:min-w-[190px]">
+              <svg
+                className="absolute left-[10px] top-[9px] text-crm-muted pointer-events-none"
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              <input
+                data-search-input
+                type="search"
+                placeholder="Search account, owner, task"
+                className="h-[36px] pl-[34px] bg-crm-panel-strong rounded-[6px]"
+              />
+            </div>
+            <button
+              className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3 hover:brightness-105 hover:-translate-y-px hover:shadow-[0_8px_18px_rgba(15,118,110,.28)] active:translate-y-0 disabled:bg-crm-panel-strong disabled:text-crm-muted disabled:border-crm-line disabled:cursor-not-allowed disabled:brightness-100 disabled:translate-y-0 disabled:shadow-none"
+              hidden={!["pipeline", "projects", "focus"].includes(currentView)}
+              disabled={isViewer}
+            >
+              + New
+            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="w-[34px] h-[34px] grid place-items-center p-0"
+                title="Toggle dark mode"
+              >
+                {theme === "dark" ? "☀️" : "🌙"}
+              </button>
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="w-[34px] h-[34px] rounded-full border border-crm-line bg-crm-accent text-white font-bold text-[13px] grid place-items-center p-0"
+                  title="Account menu"
+                >
+                  {(session.user.email || "?")[0].toUpperCase()}
+                </button>
+                {dropdownOpen && (
+                  <div
+                    className="absolute right-0 top-[42px] w-[240px] bg-crm-panel border border-crm-line rounded-[var(--radius,8px)]
+                      shadow-[0_12px_30px_rgba(15,23,42,.08)] p-3 grid gap-[10px] z-20 origin-top-right"
+                  >
+                    <strong className="text-[13px] break-all">{session.user.email}</strong>
+                    <div className="text-crm-muted text-[12px]">
+                      <span className="inline-flex items-center h-[20px] rounded-[10px] px-2 text-[11px] font-bold uppercase tracking-[.02em] bg-[rgba(15,118,110,.12)] text-crm-accent-strong">
+                        {label(role || "owner")}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        signOut();
+                        setDropdownOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {showToolbar && (
+          <section className="bg-crm-panel border-b border-crm-line p-[10px_18px] flex items-center justify-between gap-3 max-md:flex-col max-md:items-stretch">
+            <div
+              className="inline-grid grid-flow-col border border-crm-line rounded-[7px] overflow-hidden bg-crm-panel-strong"
+              role="tablist"
+            >
+              {["all", "deal", "project", "task"].map((type) => (
+                <button
+                  key={type}
+                  className="border-0 rounded-none min-h-[32px] px-3 bg-transparent text-crm-muted data-[active=true]:bg-crm-panel data-[active=true]:text-crm-text data-[active=true]:shadow-[inset_0_-2px_0_var(--color-crm-accent)]"
+                >
+                  {type === "all" ? "All" : `${type.charAt(0).toUpperCase()}${type.slice(1)}s`}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {children}
+      </main>
+    </div>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AppProvider>
+      <ToastProvider>
+        <DashboardInner>{children}</DashboardInner>
+      </ToastProvider>
+    </AppProvider>
+  );
+}
