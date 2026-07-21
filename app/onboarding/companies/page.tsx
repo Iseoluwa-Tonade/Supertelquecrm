@@ -11,6 +11,7 @@ export default function CompaniesPage() {
   const supabase = createClient();
   const [orgs, setOrgs] = useState<Organisation[]>([]);
   const [orgsLoading, setOrgsLoading] = useState(true);
+  const [inviting, setInviting] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -41,8 +42,9 @@ export default function CompaniesPage() {
   }, []);
 
   async function requestInvite(orgId: string) {
+    setInviting(orgId);
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { router.push("/login"); return; }
+    if (!session) { setInviting(null); router.push("/login"); return; }
 
     const { error: profileError } = await supabase.from("profiles").upsert({
       user_id: session.user.id,
@@ -53,7 +55,7 @@ export default function CompaniesPage() {
       registration_complete: true,
     });
 
-    if (profileError) { console.error(profileError.message); return; }
+    if (profileError) { setInviting(null); console.error(profileError.message); return; }
 
     sessionStorage.removeItem("signup_choice");
     sessionStorage.removeItem("signup_email");
@@ -98,10 +100,10 @@ export default function CompaniesPage() {
                     {org.email && <span className="text-crm-muted text-[12px]">{org.email}</span>}
                   </div>
                   <button
-                    onClick={() => requestInvite(org.id)}
-                    className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3 text-[12px] whitespace-nowrap hover:brightness-105"
+                    onClick={() => requestInvite(org.id)} disabled={inviting !== null}
+                    className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3 text-[12px] whitespace-nowrap hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Request invite
+                    {inviting === org.id ? "Requesting..." : "Request invite"}
                   </button>
                 </div>
               ))}
