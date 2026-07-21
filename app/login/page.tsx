@@ -16,6 +16,9 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resentMsg, setResentMsg] = useState("");
   const router = useRouter();
   const supabase = createClient();
 
@@ -27,13 +30,19 @@ export default function LoginPage() {
     }
     setLoading(true);
     setError("");
+    setUnverifiedEmail("");
+    setResentMsg("");
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     if (authError) {
-      setError(authError.message);
       setLoading(false);
+      if (authError.message?.toLowerCase().includes("email not confirmed") || authError.message?.toLowerCase().includes("email not verified")) {
+        setUnverifiedEmail(email);
+        return;
+      }
+      setError(authError.message);
       return;
     }
 
@@ -64,6 +73,8 @@ export default function LoginPage() {
     }
     setLoading(true);
     setError("");
+    setUnverifiedEmail("");
+    setResentMsg("");
     const { error: signUpError, data } = await supabase.auth.signUp({
       email,
       password,
@@ -80,6 +91,12 @@ export default function LoginPage() {
       setError("An account with this email already exists. Sign in instead.");
       return;
     }
+    if (!data?.user?.email_confirmed_at) {
+      setUnverifiedEmail(email);
+      sessionStorage.setItem("signup_choice", signupChoice);
+      sessionStorage.setItem("signup_email", email);
+      return;
+    }
     sessionStorage.setItem("signup_choice", signupChoice);
     sessionStorage.setItem("signup_email", email);
     router.push(signupChoice === "org" ? "/onboarding/organisation" : "/onboarding/companies");
@@ -91,10 +108,30 @@ export default function LoginPage() {
       return;
     }
     setError("");
+    setUnverifiedEmail("");
+    setResentMsg("");
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
     if (resetError) {
       setError(resetError.message);
     }
+  }
+
+  async function handleResendVerification() {
+    const target = unverifiedEmail || email;
+    if (!target) return;
+    setResending(true);
+    setResentMsg("");
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: target,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
+    setResending(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setResentMsg("Verification email sent! Check your inbox.");
   }
 
   async function handleGoogleOAuth() {
@@ -116,6 +153,8 @@ export default function LoginPage() {
     setMode(m);
     setError("");
     setSignupChoice(null);
+    setUnverifiedEmail("");
+    setResentMsg("");
   }
 
   const isSignUp = mode === "signup" || mode === "choose";
@@ -233,18 +272,35 @@ export default function LoginPage() {
                   </div>
                 </label>
 
-                {error && (
-                  <div className="border border-[#fecdd3] bg-[#fff1f2] text-crm-rose rounded-[7px] p-[8px_10px] text-[12px]">
-                    {error}
+                {unverifiedEmail ? (
+                  <div className="border border-[#fde68a] bg-[#fffbeb] text-crm-amber rounded-[7px] p-[10px_12px] text-[12px] grid gap-2">
+                    <span>
+                      <strong>Email not verified.</strong> Check <strong>{unverifiedEmail}</strong> for a confirmation link, or resend it below.
+                    </span>
+                    {resentMsg && <span className="text-crm-green">{resentMsg}</span>}
+                    <button
+                      type="button" onClick={handleResendVerification} disabled={resending}
+                      className="justify-self-start bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[32px] rounded-[6px] px-3 text-[12px] hover:brightness-105 disabled:opacity-50"
+                    >
+                      {resending ? "Sending..." : "Resend verification"}
+                    </button>
                   </div>
-                )}
+                ) : (
+                  <>
+                    {error && (
+                      <div className="border border-[#fecdd3] bg-[#fff1f2] text-crm-rose rounded-[7px] p-[8px_10px] text-[12px]">
+                        {error}
+                      </div>
+                    )}
 
-                <button
-                  type="submit" disabled={loading}
-                  className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[38px] rounded-[6px] hover:brightness-105 hover:-translate-y-px hover:shadow-[0_8px_18px_rgba(15,118,110,.28)] active:translate-y-0 active:shadow-none disabled:bg-crm-panel-strong disabled:text-crm-muted disabled:border-crm-line disabled:brightness-100 disabled:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed"
-                >
-                  {loading ? "Signing in..." : "Sign in"}
-                </button>
+                    <button
+                      type="submit" disabled={loading}
+                      className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[38px] rounded-[6px] hover:brightness-105 hover:-translate-y-px hover:shadow-[0_8px_18px_rgba(15,118,110,.28)] active:translate-y-0 active:shadow-none disabled:bg-crm-panel-strong disabled:text-crm-muted disabled:border-crm-line disabled:brightness-100 disabled:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed"
+                    >
+                      {loading ? "Signing in..." : "Sign in"}
+                    </button>
+                  </>
+                )}
 
                 <button
                   type="button" onClick={handleForgotPassword}
@@ -318,18 +374,35 @@ export default function LoginPage() {
                   <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required minLength={6} />
                 </label>
 
-                {error && (
-                  <div className="border border-[#fecdd3] bg-[#fff1f2] text-crm-rose rounded-[7px] p-[8px_10px] text-[12px]">
-                    {error}
+                {unverifiedEmail ? (
+                  <div className="border border-[#fde68a] bg-[#fffbeb] text-crm-amber rounded-[7px] p-[10px_12px] text-[12px] grid gap-2">
+                    <span>
+                      <strong>Account created!</strong> Check <strong>{unverifiedEmail}</strong> for a confirmation link to activate your account.
+                    </span>
+                    {resentMsg && <span className="text-crm-green">{resentMsg}</span>}
+                    <button
+                      type="button" onClick={handleResendVerification} disabled={resending}
+                      className="justify-self-start bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[32px] rounded-[6px] px-3 text-[12px] hover:brightness-105 disabled:opacity-50"
+                    >
+                      {resending ? "Sending..." : "Resend confirmation"}
+                    </button>
                   </div>
-                )}
+                ) : (
+                  <>
+                    {error && (
+                      <div className="border border-[#fecdd3] bg-[#fff1f2] text-crm-rose rounded-[7px] p-[8px_10px] text-[12px]">
+                        {error}
+                      </div>
+                    )}
 
-                <button
-                  type="submit" disabled={loading}
-                  className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[38px] rounded-[6px] hover:brightness-105 hover:-translate-y-px hover:shadow-[0_8px_18px_rgba(15,118,110,.28)] active:translate-y-0 active:shadow-none disabled:bg-crm-panel-strong disabled:text-crm-muted disabled:border-crm-line disabled:brightness-100 disabled:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed"
-                >
-                  {loading ? "Creating account..." : "Create account"}
-                </button>
+                    <button
+                      type="submit" disabled={loading}
+                      className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[38px] rounded-[6px] hover:brightness-105 hover:-translate-y-px hover:shadow-[0_8px_18px_rgba(15,118,110,.28)] active:translate-y-0 active:shadow-none disabled:bg-crm-panel-strong disabled:text-crm-muted disabled:border-crm-line disabled:brightness-100 disabled:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed"
+                    >
+                      {loading ? "Creating account..." : "Create account"}
+                    </button>
+                  </>
+                )}
 
                 <div className="flex items-center gap-3 before:flex-1 before:h-px before:bg-crm-line after:flex-1 after:h-px after:bg-crm-line text-crm-muted text-[11px] font-medium">
                   or
