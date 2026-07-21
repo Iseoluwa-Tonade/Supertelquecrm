@@ -89,14 +89,7 @@ create policy "organisations_insert_own"
   with check (true);
 
 -- 7. RLS policies – data tables scoped to organisation -----------------------
--- Profiles: users see profiles in their org; managers see all in org
-drop policy if exists "profiles_select_org" on public.profiles;
-create policy "profiles_select_org"
-  on public.profiles for select
-  to authenticated
-  using (
-    organisation_id = (select p.organisation_id from public.profiles p where p.user_id = (select auth.uid()))
-  );
+-- Profiles: users see their own row, plus others in the same organisation
 
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own"
@@ -104,16 +97,45 @@ create policy "profiles_select_own"
   to authenticated
   using (user_id = (select auth.uid()));
 
+-- Security-definer helper to avoid RLS recursion when self-referencing profiles
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to authenticated;
+
+create or replace function private.get_user_org_id()
+returns uuid
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select organisation_id from public.profiles where user_id = auth.uid();
+$$;
+
+revoke all on function private.get_user_org_id() from public;
+revoke all on function private.get_user_org_id() from anon;
+grant execute on function private.get_user_org_id() to authenticated;
+
+drop policy if exists "profiles_select_org" on public.profiles;
+create policy "profiles_select_org"
+  on public.profiles for select
+  to authenticated
+  using (
+    organisation_id = private.get_user_org_id()
+  );
+
 drop policy if exists "profiles_update_org" on public.profiles;
 create policy "profiles_update_org"
   on public.profiles for update
   to authenticated
   using (
     user_id = (select auth.uid())
-    or exists (
-      select 1 from public.profiles p
-      where p.user_id = (select auth.uid()) and p.role in ('admin', 'manager') and p.status = 'active'
-        and p.organisation_id = public.profiles.organisation_id
+    or (
+      organisation_id = private.get_user_org_id()
+      and exists (
+        select 1 from public.profiles
+        where user_id = (select auth.uid()) and role in ('admin', 'manager') and status = 'active'
+      )
     )
   );
 

@@ -40,15 +40,38 @@ export default function CompaniesPage() {
     });
   }, []);
 
-  function requestInvite(orgId: string) {
-    sessionStorage.setItem("selected_org_id", orgId);
-    router.push("/onboarding/profile");
+  async function requestInvite(orgId: string) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { router.push("/login"); return; }
+
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      user_id: session.user.id,
+      email: session.user.email || "",
+      role: "viewer",
+      status: "active",
+      organisation_id: orgId,
+      registration_complete: true,
+    });
+
+    if (profileError) { console.error(profileError.message); return; }
+
+    const { error: inviteError } = await supabase.from("invite_requests").insert({
+      user_id: session.user.id,
+      organisation_id: orgId,
+      status: "pending",
+    });
+
+    if (inviteError) { console.error(inviteError.message); return; }
+
+    sessionStorage.removeItem("signup_choice");
+    sessionStorage.removeItem("signup_email");
+    router.push("/profile");
   }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-crm-bg p-6">
-      <div className="w-full max-w-[540px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] p-[46px_40px] max-md:p-[34px_26px]">
-        <div className="grid gap-[18px]">
+    <div className="min-h-screen grid place-items-center bg-crm-bg p-6 max-md:p-0 max-md:items-stretch">
+      <div className="w-full max-w-[540px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] p-[46px_40px] max-md:p-0 max-md:rounded-none max-md:shadow-none max-md:min-h-screen max-md:overflow-auto">
+        <div className="grid gap-[18px] max-md:p-[34px_26px]">
           <div className="flex items-center gap-[10px]">
             <div className="w-[42px] h-[42px] rounded-[9px] bg-[#202a36] grid place-items-center overflow-hidden shrink-0">
               <Image
@@ -92,19 +115,6 @@ export default function CompaniesPage() {
               ))}
             </div>
           )}
-
-          <div className="border-t border-crm-line my-1" />
-
-          <button
-            onClick={() => router.push("/onboarding/organisation")}
-            className="flex items-center gap-3 p-4 rounded-[10px] border border-dashed border-crm-line bg-crm-panel text-left hover:bg-crm-accent/5 hover:border-crm-accent transition-all"
-          >
-            <div className="w-10 h-10 rounded-[10px] bg-gradient-to-br from-[#14b8a6] to-[#0f766e] grid place-items-center text-white text-lg shrink-0">+</div>
-            <div>
-              <strong className="block text-[14px]">Create your own organisation</strong>
-              <span className="text-crm-muted text-[12px]">Set up a new CRM workspace for your company</span>
-            </div>
-          </button>
         </div>
       </div>
 
