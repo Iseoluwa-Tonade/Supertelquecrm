@@ -84,8 +84,18 @@ export default function ProfilePage() {
 
     const { error } = await supabase.from("profiles").update(patch).eq("user_id", session.user.id);
     if (error) { flash(error.message); return; }
-    flash("Profile updated");
-  }, [session, form, supabase, flash]);
+
+    if (inviteStatus === null && profile?.organisation_id && profile.role !== "admin") {
+      const { error: inviteError } = await supabase.from("invite_requests").upsert({
+        user_id: session.user.id,
+        organisation_id: profile.organisation_id,
+        status: "pending",
+      }, { onConflict: "user_id,organisation_id" });
+      if (!inviteError) setInviteStatus("pending");
+    }
+
+    flash("Profile saved. Your invite request has been sent to the admin.");
+  }, [session, form, inviteStatus, profile, supabase, flash]);
 
   return (
     <div className="board-scroll overflow-auto min-h-0">

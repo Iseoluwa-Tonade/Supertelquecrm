@@ -55,14 +55,6 @@ export default function CompaniesPage() {
 
     if (profileError) { console.error(profileError.message); return; }
 
-    const { error: inviteError } = await supabase.from("invite_requests").insert({
-      user_id: session.user.id,
-      organisation_id: orgId,
-      status: "pending",
-    });
-
-    if (inviteError) { console.error(inviteError.message); return; }
-
     sessionStorage.removeItem("signup_choice");
     sessionStorage.removeItem("signup_email");
     router.push("/profile");
