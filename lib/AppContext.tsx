@@ -10,8 +10,9 @@ import type {
   ChangeRequest,
   CrmService,
   MessageThread,
+  Organisation,
+  InviteRequest,
 } from "@/lib/types";
-import { ADMIN_BOOTSTRAP_EMAILS } from "@/lib/types";
 import {
   createContext,
   useContext,
@@ -25,6 +26,7 @@ import type { Session } from "@supabase/supabase-js";
 interface AppState {
   session: Session | null;
   profile: Profile | null;
+  organisation: Organisation | null;
   loading: boolean;
   theme: string;
   items: BoardItem[];
@@ -33,6 +35,7 @@ interface AppState {
   messages: CrmMessage[];
   changeRequests: ChangeRequest[];
   teamProfiles: Profile[];
+  inviteRequests: InviteRequest[];
   services: CrmService[];
   selectedId: string | null;
   search: string;
@@ -74,6 +77,7 @@ interface AppActions {
   loadDocuments: () => Promise<void>;
   loadMessages: () => Promise<void>;
   loadTeamProfiles: () => Promise<void>;
+  loadInviteRequests: () => Promise<void>;
   loadServices: () => Promise<void>;
   loadRemoteItems: () => Promise<void>;
   loadRemoteActivities: () => Promise<void>;
@@ -91,6 +95,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>({
     session: null,
     profile: null,
+    organisation: null,
     loading: true,
     theme: "light",
     items: [],
@@ -99,6 +104,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     messages: [],
     changeRequests: [],
     teamProfiles: [],
+    inviteRequests: [],
     services: [],
     selectedId: null,
     search: "",
@@ -128,24 +134,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const loadProfile = useCallback(async (session: Session | null) => {
     if (!session) return null;
-    const fallback: Profile = {
-      user_id: session.user.id,
-      email: session.user.email || "",
-      role: ADMIN_BOOTSTRAP_EMAILS.includes(session.user.email?.toLowerCase() || "")
-        ? "admin"
-        : "owner",
-      display_name: session.user.email?.split("@")[0] || "User",
-      status: "active",
-      allowed_views: null,
-      phone: "",
-      department: "",
-      job_title: "",
-      start_date: null,
-      employee_id: "",
-      emergency_contact_name: "",
-      emergency_contact_phone: "",
-      address: "",
-    };
 
     const { data } = await supabase
       .from("profiles")
@@ -162,6 +150,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return null;
     }
     return data as Profile;
+  }, []);
+
+  const loadOrganisation = useCallback(async (orgId: string | null) => {
+    if (!orgId) return;
+    const { data } = await supabase
+      .from("organisations")
+      .select("*")
+      .eq("id", orgId)
+      .single();
+    if (data) setState((s) => ({ ...s, organisation: data as Organisation }));
   }, []);
 
   const loadRemoteItems = useCallback(async () => {
@@ -214,9 +212,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     const { data } = await supabase
       .from("profiles")
-      .select("user_id,email,role,display_name,status,allowed_views,phone,department,job_title,start_date,employee_id,emergency_contact_name,emergency_contact_phone,address")
+      .select("user_id,email,role,display_name,status,allowed_views,organisation_id,registration_complete,phone,department,job_title,start_date,employee_id,emergency_contact_name,emergency_contact_phone,address")
       .order("email", { ascending: true });
     setState((s) => ({ ...s, teamProfiles: (data as Profile[]) || [] }));
+  }, [state.profile?.role]);
+
+  const loadInviteRequests = useCallback(async () => {
+    const role = state.profile?.role;
+    if (role !== "admin" && role !== "manager") {
+      setState((s) => ({ ...s, inviteRequests: [] }));
+      return;
+    }
+    const { data } = await supabase
+      .from("invite_requests")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    if (data) {
+      const enriched = await Promise.all(
+        (data as InviteRequest[]).map(async (req) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name, email, job_title, phone, department, address")
+            .eq("user_id", req.user_id)
+            .single();
+          return { ...req, requester: profile || {} };
+        })
+      );
+      setState((s) => ({ ...s, inviteRequests: enriched as unknown as InviteRequest[] }));
+    }
   }, [state.profile?.role]);
 
   const loadServices = useCallback(async () => {
@@ -242,6 +266,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     const profile = await loadProfile(session);
     setState((s) => ({ ...s, session, profile }));
+    if (profile?.organisation_id) {
+      await loadOrganisation(profile.organisation_id);
+    }
     await Promise.all([
       loadRemoteItems(),
       loadRemoteActivities(),
@@ -249,17 +276,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loadMessages(),
       loadChangeRequests(),
       loadTeamProfiles(),
+      loadInviteRequests(),
       loadServices(),
     ]);
     setState((s) => ({ ...s, loading: false }));
   }, [
     loadProfile,
+    loadOrganisation,
     loadRemoteItems,
     loadRemoteActivities,
     loadDocuments,
     loadMessages,
     loadChangeRequests,
     loadTeamProfiles,
+    loadInviteRequests,
     loadServices,
   ]);
 
@@ -274,18 +304,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...s,
           session: null,
           profile: null,
+          organisation: null,
           items: [],
           activities: [],
           documents: [],
           messages: [],
           changeRequests: [],
           teamProfiles: [],
+          inviteRequests: [],
           services: [],
         }));
       }
       if (session) {
         const profile = await loadProfile(session);
         setState((s) => ({ ...s, session, profile }));
+        if (profile?.organisation_id) {
+          await loadOrganisation(profile.organisation_id);
+        }
         await Promise.all([
           loadRemoteItems(),
           loadRemoteActivities(),
@@ -293,6 +328,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           loadMessages(),
           loadChangeRequests(),
           loadTeamProfiles(),
+          loadInviteRequests(),
           loadServices(),
         ]);
       }
@@ -376,6 +412,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadDocuments,
     loadMessages,
     loadTeamProfiles,
+    loadInviteRequests,
     loadServices,
     loadRemoteItems,
     loadRemoteActivities,

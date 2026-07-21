@@ -3,20 +3,22 @@
 import { useApp } from "@/lib/AppContext";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { label } from "@/lib/utils";
 import { ROLES, NAV_VIEWS } from "@/lib/types";
+import type { InviteRequest, Profile } from "@/lib/types";
 
 const supabase = createClient();
 
 export default function TeamPage() {
-  const { session, profile, teamProfiles, setInviteFormOpen, inviteFormOpen,
-    loadTeamProfiles, setMessageThreadWith, setMessageThreadEmail, loadRemoteItems } = useApp();
+  const { session, profile, teamProfiles, inviteRequests, setInviteFormOpen, inviteFormOpen,
+    loadTeamProfiles, loadInviteRequests, setMessageThreadWith, setMessageThreadEmail, loadRemoteItems } = useApp();
   const { flash } = useToast();
   const [viewsOpenId, setViewsOpenId] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("owner");
   const [inviting, setInviting] = useState(false);
+  const [viewingRequester, setViewingRequester] = useState<Profile | null>(null);
 
   const isManager = profile?.role === "manager" || profile?.role === "admin";
 
@@ -34,6 +36,40 @@ export default function TeamPage() {
     await loadTeamProfiles();
     flash("Invite sent to " + inviteEmail);
   }, [inviteEmail, inviteRole, supabase, loadTeamProfiles, flash, setInviteFormOpen]);
+
+  const approveRequest = useCallback(async (req: InviteRequest) => {
+    const { error } = await supabase
+      .from("invite_requests")
+      .update({ status: "approved" })
+      .eq("id", req.id);
+    if (error) { flash(error.message); return; }
+    await supabase
+      .from("profiles")
+      .update({ role: "owner" })
+      .eq("user_id", req.user_id);
+    await loadInviteRequests();
+    await loadTeamProfiles();
+    flash("Invite approved");
+  }, [supabase, loadInviteRequests, loadTeamProfiles, flash]);
+
+  const rejectRequest = useCallback(async (req: InviteRequest) => {
+    const { error } = await supabase
+      .from("invite_requests")
+      .update({ status: "rejected" })
+      .eq("id", req.id);
+    if (error) { flash(error.message); return; }
+    await loadInviteRequests();
+    flash("Request rejected");
+  }, [supabase, loadInviteRequests, flash]);
+
+  const viewRequesterProfile = useCallback(async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+    if (data) setViewingRequester(data as Profile);
+  }, []);
 
   const updateRole = useCallback(async (userId: string, role: string) => {
     const { error } = await supabase.from("profiles").update({ role }).eq("user_id", userId);
@@ -76,6 +112,82 @@ export default function TeamPage() {
   return (
     <div className="board-scroll overflow-auto min-h-0">
       <section className="overview p-[16px_18px] overflow-auto grid gap-[14px] content-start animate-[fadeInUp_0.3s_ease_both]">
+        {viewingRequester ? (
+          <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="m-0 text-[15px]">Requester profile</h2>
+              <button onClick={() => setViewingRequester(null)}
+                className="min-h-[34px] rounded-[6px] px-3">Close</button>
+            </div>
+            <div className="grid gap-[7px] text-[12px]">
+              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
+                <strong className="text-crm-muted">Name</strong>
+                <span>{viewingRequester.display_name || "—"}</span>
+              </div>
+              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
+                <strong className="text-crm-muted">Email</strong>
+                <span>{viewingRequester.email}</span>
+              </div>
+              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
+                <strong className="text-crm-muted">Job title</strong>
+                <span>{viewingRequester.job_title || "—"}</span>
+              </div>
+              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
+                <strong className="text-crm-muted">Phone</strong>
+                <span>{viewingRequester.phone || "—"}</span>
+              </div>
+              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
+                <strong className="text-crm-muted">Department</strong>
+                <span>{viewingRequester.department || "—"}</span>
+              </div>
+              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
+                <strong className="text-crm-muted">Address</strong>
+                <span>{viewingRequester.address || "—"}</span>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {inviteRequests.length > 0 && (
+          <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
+            <h2 className="m-0 text-[15px]">Pending requests ({inviteRequests.length})</h2>
+            <div className="grid gap-2">
+              {inviteRequests.map((req) => {
+                const r = req as InviteRequest & { requester?: Partial<Profile> };
+                return (
+                  <div key={req.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] max-md:grid-cols-1 gap-[10px] items-center border border-crm-line rounded-[7px] p-[9px_10px] text-[12px]">
+                    <div>
+                      <strong className="text-[13px] block">{r.requester?.display_name || "New member"}</strong>
+                      <span className="text-crm-muted">{r.requester?.email || "—"}</span>
+                      {(r.requester?.job_title) && <span className="text-crm-muted"> &middot; {r.requester?.job_title}</span>}
+                    </div>
+                    <button
+                      onClick={() => viewRequesterProfile(req.user_id)}
+                      className="text-[12px] min-h-auto py-1 px-2"
+                    >
+                      View profile
+                    </button>
+                    <div className="flex gap-[6px]">
+                      <button
+                        onClick={() => approveRequest(req)}
+                        className="text-[12px] min-h-auto py-1 px-2 bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent rounded-[6px]"
+                      >
+                        Invite
+                      </button>
+                      <button
+                        onClick={() => rejectRequest(req)}
+                        className="text-[12px] min-h-auto py-1 px-2"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="m-0 text-[15px]">Teammates ({teamProfiles.length})</h2>

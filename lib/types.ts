@@ -1,3 +1,15 @@
+export interface Organisation {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  website: string;
+  logo_url: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Profile {
   user_id: string;
   email: string;
@@ -5,6 +17,8 @@ export interface Profile {
   display_name: string;
   status: "active" | "suspended";
   allowed_views: string[] | null;
+  organisation_id: string | null;
+  registration_complete: boolean;
   phone: string;
   department: string;
   job_title: string;
@@ -15,9 +29,18 @@ export interface Profile {
   address: string;
 }
 
+export interface InviteRequest {
+  id: string;
+  user_id: string;
+  organisation_id: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
 export interface BoardItem {
   id: string;
   user_id: string;
+  organisation_id: string | null;
   assigned_to: string;
   visibility: string;
   type: "deal" | "project" | "task";
@@ -36,6 +59,7 @@ export interface BoardItem {
 
 export interface DailyActivity {
   id: string;
+  organisation_id: string | null;
   board_item_id: string | null;
   activity_date: string;
   title: string;
@@ -48,6 +72,7 @@ export interface DailyActivity {
 
 export interface CrmDocument {
   id: string;
+  organisation_id: string | null;
   board_item_id: string | null;
   file_name: string;
   file_path: string;
@@ -60,6 +85,7 @@ export interface CrmDocument {
 
 export interface CrmMessage {
   id: string;
+  organisation_id: string | null;
   sender_id: string;
   sender_email: string;
   recipient_id: string;
@@ -71,6 +97,7 @@ export interface CrmMessage {
 
 export interface ChangeRequest {
   id: string;
+  organisation_id: string | null;
   board_item_id: string | null;
   action: "create" | "update" | "delete";
   requested_by: string;
@@ -85,6 +112,7 @@ export interface ChangeRequest {
 
 export interface CrmService {
   id: string;
+  organisation_id: string | null;
   name: string;
   unit_price: number;
   unit_label: string;

@@ -39,11 +39,33 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const currentView = pathname.split("/").filter(Boolean)[0] || "overview";
 
+  const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+
   useEffect(() => {
     if (!loading && !session) {
       router.push("/login");
     }
   }, [loading, session, router]);
+
+  useEffect(() => {
+    if (!session || !profile) return;
+    if (!profile.registration_complete) {
+      router.push("/onboarding");
+      return;
+    }
+    if (profile.role !== "admin") {
+      supabase
+        .from("invite_requests")
+        .select("status")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setInviteStatus(data.status);
+        });
+    }
+  }, [session, profile, loading]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -86,6 +108,11 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   }
 
   if (!session) return null;
+
+  if (inviteStatus === "pending" && currentView !== "profile") {
+    router.push("/profile");
+    return null;
+  }
 
   const meta = pageMeta[currentView] || pageMeta.overview;
   const role = profile?.role;

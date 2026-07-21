@@ -4,7 +4,6 @@ import { createServerClient } from "@supabase/ssr";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/overview";
 
   if (code) {
     const supabase = createServerClient(
@@ -26,10 +25,26 @@ export async function GET(request: NextRequest) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const url = new URL(`${origin}${next}`);
-      url.searchParams.delete("code");
-      url.searchParams.delete("next");
-      return NextResponse.redirect(url);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("organisation_id, registration_complete")
+          .eq("user_id", user.id)
+          .single();
+
+        if (!profile) {
+          return NextResponse.redirect(`${origin}/login`);
+        }
+        if (!profile.registration_complete) {
+          return NextResponse.redirect(`${origin}/onboarding`);
+        }
+      }
+
+      return NextResponse.redirect(`${origin}/overview`);
     }
   }
 
