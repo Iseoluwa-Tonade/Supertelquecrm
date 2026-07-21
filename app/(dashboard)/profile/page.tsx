@@ -5,12 +5,15 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
 import { useCallback, useState, useEffect } from "react";
 import { label } from "@/lib/utils";
+import type { Organisation } from "@/lib/types";
 
 const supabase = createClient();
 
 export default function ProfilePage() {
-  const { session, profile, loadRemoteItems } = useApp();
+  const { session, profile } = useApp();
   const { flash } = useToast();
+  const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+  const [organisation, setOrganisation] = useState<Organisation | null>(null);
 
   const [form, setForm] = useState({
     display_name: "",
@@ -37,8 +40,32 @@ export default function ProfilePage() {
         emergency_contact_name: profile.emergency_contact_name || "",
         emergency_contact_phone: profile.emergency_contact_phone || "",
       });
+
+      if (profile.organisation_id) {
+        supabase
+          .from("organisations")
+          .select("*")
+          .eq("id", profile.organisation_id)
+          .single()
+          .then(({ data }) => {
+            if (data) setOrganisation(data as Organisation);
+          });
+      }
+
+      if (profile.role !== "admin" && session) {
+        supabase
+          .from("invite_requests")
+          .select("status")
+          .eq("user_id", session.user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data) setInviteStatus(data.status);
+          });
+      }
     }
-  }, [profile]);
+  }, [profile, session]);
 
   const saveProfile = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,19 +84,40 @@ export default function ProfilePage() {
 
     const { error } = await supabase.from("profiles").update(patch).eq("user_id", session.user.id);
     if (error) { flash(error.message); return; }
-    await loadRemoteItems();
     flash("Profile updated");
-  }, [session, form, supabase, loadRemoteItems, flash]);
+  }, [session, form, supabase, flash]);
 
   return (
     <div className="board-scroll overflow-auto min-h-0">
       <section className="overview p-[16px_18px] overflow-auto grid gap-[14px] content-start animate-[fadeInUp_0.3s_ease_both]">
+        {inviteStatus === "pending" && (
+          <div className="border border-[#fde68a] bg-[#fffbeb] text-crm-amber rounded-[var(--radius,8px)] p-[10px_12px] text-[13px] flex items-center gap-2">
+            <span>&#9203;</span>
+            <span>
+              Your request to join <strong>{organisation?.name || "your organisation"}</strong> is pending approval from the admin.
+              You'll get access once they approve your invite.
+            </span>
+          </div>
+        )}
+        {inviteStatus === "approved" && (
+          <div className="border border-[#bbf7d0] bg-[#f0fdf4] text-crm-green rounded-[var(--radius,8px)] p-[10px_12px] text-[13px] flex items-center gap-2">
+            <span>&#10003;</span>
+            <span>
+              You're now a member of <strong>{organisation?.name || "your organisation"}</strong>.
+            </span>
+          </div>
+        )}
+
         <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
           <h2 className="m-0 text-[15px]">Account</h2>
           <div className="grid gap-[7px] text-[12px]">
             <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
               <strong className="text-crm-muted text-[12px]">Email</strong>
               <span>{profile?.email || ""}</span>
+            </div>
+            <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
+              <strong className="text-crm-muted text-[12px]">Organisation</strong>
+              <span>{organisation?.name || "—"}</span>
             </div>
             <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
               <strong className="text-crm-muted text-[12px]">Role</strong>

@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
           .single();
 
         if (!profile) {
-          return NextResponse.redirect(`${origin}/login`);
+          return NextResponse.redirect(`${origin}/onboarding`);
         }
         if (!profile.registration_complete) {
           return NextResponse.redirect(`${origin}/onboarding`);
