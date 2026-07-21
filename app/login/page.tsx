@@ -65,7 +65,7 @@ export default function LoginPage() {
     }
     sessionStorage.setItem("signup_choice", signupChoice);
     sessionStorage.setItem("signup_email", email);
-    router.push(`/onboarding/${signupChoice === "org" ? "organisation" : "join"}`);
+    router.push(signupChoice === "org" ? "/onboarding/organisation" : "/onboarding/companies");
   }
 
   async function handleForgotPassword() {
