@@ -4,12 +4,14 @@ import { useApp } from "@/lib/AppContext";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
 import { useCallback, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { label } from "@/lib/utils";
 import type { Organisation } from "@/lib/types";
 
 const supabase = createClient();
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { session, profile } = useApp();
   const { flash } = useToast();
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
@@ -115,6 +117,20 @@ export default function ProfilePage() {
             <span>
               You're now a member of <strong>{organisation?.name || "your organisation"}</strong>.
             </span>
+          </div>
+        )}
+        {!inviteStatus && !profile?.organisation_id && (
+          <div className="border border-[#d9e0e8] bg-crm-panel-strong rounded-[var(--radius,8px)] p-[10px_12px] text-[13px] flex items-center gap-2">
+            <span>&#9432;</span>
+            <span className="flex-1">
+              You haven't joined an organisation yet.
+            </span>
+            <button
+              onClick={() => router.push("/organisations")}
+              className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[32px] rounded-[6px] px-3 text-[12px] whitespace-nowrap hover:brightness-105"
+            >
+              Browse organisations
+            </button>
           </div>
         )}
 

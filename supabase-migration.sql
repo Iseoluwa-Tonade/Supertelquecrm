@@ -124,6 +124,12 @@ create policy "profiles_select_org"
     organisation_id = private.get_user_org_id()
   );
 
+drop policy if exists "profiles_insert_own" on public.profiles;
+create policy "profiles_insert_own"
+  on public.profiles for insert
+  to authenticated
+  with check (user_id = (select auth.uid()));
+
 drop policy if exists "profiles_update_org" on public.profiles;
 create policy "profiles_update_org"
   on public.profiles for update

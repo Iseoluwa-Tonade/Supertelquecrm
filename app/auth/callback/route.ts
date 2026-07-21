@@ -40,9 +40,16 @@ export async function GET(request: NextRequest) {
           .maybeSingle();
 
         if (!profile) {
-          redirectUrl = `${origin}/onboarding/companies`;
+          await supabase.from("profiles").upsert({
+            user_id: user.id,
+            email: user.email || "",
+            role: "viewer",
+            status: "active",
+            registration_complete: false,
+          });
+          redirectUrl = `${origin}/profile`;
         } else if (!profile.registration_complete) {
-          redirectUrl = `${origin}/onboarding`;
+          redirectUrl = `${origin}/profile`;
         } else {
           redirectUrl = `${origin}/overview`;
         }

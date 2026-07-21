@@ -40,7 +40,7 @@ export default function InviteSentPage() {
   }, []);
 
   return (
-    <div className="min-h-dvh grid place-items-center bg-crm-bg p-6">
+    <div className="min-h-dvh grid place-items-center bg-crm-bg p-6 overflow-y-auto">
       <div className="w-full max-w-[440px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] p-[46px_40px] max-md:p-[34px_26px] text-center">
         <div className="grid gap-[18px] place-items-center">
           <div className="w-[64px] h-[64px] rounded-full bg-gradient-to-br from-[#6366f1] to-[#4f46e5] grid place-items-center text-white text-2xl">

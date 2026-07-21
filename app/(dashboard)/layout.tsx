@@ -26,6 +26,7 @@ const pageMeta: Record<string, [string, string]> = {
   team: ["Team", "Manage teammate roles and access."],
   pricing: ["Pricing Calculator", "Manage the service catalog and quote a client."],
   profile: ["My Profile", "Your account, contact, and HR details."],
+  organisations: ["Organisations", "Browse companies and request to join."],
 };
 
 function DashboardInner({ children }: { children: React.ReactNode }) {
@@ -50,7 +51,9 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!session || !profile) return;
     if (!profile.registration_complete) {
-      router.push("/onboarding");
+      if (currentView !== "profile" && currentView !== "organisations") {
+        router.push("/profile");
+      }
       return;
     }
     if (profile.role !== "admin") {

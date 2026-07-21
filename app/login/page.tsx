@@ -56,13 +56,22 @@ export default function LoginPage() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (profile?.registration_complete) {
+      if (!profile) {
+        await supabase.from("profiles").upsert({
+          user_id: user.id,
+          email: user.email || "",
+          role: "viewer",
+          status: "active",
+          registration_complete: false,
+        });
+        router.push("/profile");
+      } else if (profile.registration_complete) {
         router.push("/overview");
       } else {
-        router.push("/onboarding/companies");
+        router.push("/profile");
       }
     } else {
-      router.push("/overview");
+      router.push("/profile");
     }
     setLoading(false);
   }
@@ -97,15 +106,19 @@ export default function LoginPage() {
       setError("An account with this email already exists. Sign in instead.");
       return;
     }
+    await supabase.from("profiles").upsert({
+      user_id: data.user.id,
+      email: data.user.email || "",
+      role: "viewer",
+      status: "active",
+      registration_complete: false,
+    });
+
     if (!data?.user?.email_confirmed_at) {
       setUnverifiedEmail(email);
-      sessionStorage.setItem("signup_choice", signupChoice);
-      sessionStorage.setItem("signup_email", email);
       return;
     }
-    sessionStorage.setItem("signup_choice", signupChoice);
-    sessionStorage.setItem("signup_email", email);
-    router.push(signupChoice === "org" ? "/onboarding/organisation" : "/onboarding/companies");
+    router.push("/profile");
   }
 
   async function handleForgotPassword() {
@@ -179,7 +192,7 @@ export default function LoginPage() {
   const isSignUp = mode === "signup" || mode === "choose";
 
   return (
-    <div className="min-h-dvh grid place-items-center bg-crm-bg p-6">
+    <div className="min-h-dvh grid place-items-center bg-crm-bg p-6 overflow-y-auto">
       <div className="w-full max-w-[940px] grid grid-cols-[1.05fr_1fr] max-md:grid-cols-1 rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both]">
         <div className="relative p-12 bg-gradient-to-br from-[#14b8a6] via-[#0f766e] to-[#0b3d3a] text-[#eafffa] overflow-hidden hidden md:flex items-center">
           <div className="absolute w-[260px] h-[260px] rounded-full bg-[#5eead4] top-[-70px] right-[-60px] opacity-55 blur-[46px] pointer-events-none" />

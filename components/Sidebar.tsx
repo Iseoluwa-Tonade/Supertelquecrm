@@ -62,6 +62,11 @@ const SVG_ICONS: Record<string, React.ReactNode> = {
       <rect x="2" y="4" width="20" height="16" rx="2" /><circle cx="9" cy="11" r="2.5" /><path d="M6 17c.5-2 1.5-3 3-3s2.5 1 3 3" /><path d="M15 10h4M15 14h4" />
     </svg>
   ),
+  organisations: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[17px] h-[17px] shrink-0">
+      <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /><rect x="8" y="12" width="8" height="2" />
+    </svg>
+  ),
 };
 
 interface SidebarProps {
@@ -77,12 +82,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const role = profile?.role;
   const isAdmin = role === "admin";
   const isManager = role === "manager" || role === "admin";
+  const registrationComplete = profile?.registration_complete;
 
   const pendingApprovals = messages.filter(
     (msg) => msg.recipient_id === profile?.user_id && !msg.read_at
   ).length;
 
   function canSeeView(viewId: string) {
+    if (!registrationComplete) {
+      return viewId === "profile" || viewId === "organisations";
+    }
     if (viewId === "pricing" && !isAdmin) return false;
     if (viewId === "pipeline" && !isAdmin) return false;
     if (viewId === "team" && !isManager) return false;
