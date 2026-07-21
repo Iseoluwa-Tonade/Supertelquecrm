@@ -153,12 +153,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .eq("user_id", session.user.id)
       .single();
 
-    const profile = data || fallback;
-    if (profile.status === "suspended") {
+    if (!data) {
       await supabase.auth.signOut();
       return null;
     }
-    return profile as Profile;
+    if (data.status === "suspended") {
+      await supabase.auth.signOut();
+      return null;
+    }
+    return data as Profile;
   }, []);
 
   const loadRemoteItems = useCallback(async () => {
