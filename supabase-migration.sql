@@ -98,6 +98,12 @@ create policy "profiles_select_org"
     organisation_id = (select p.organisation_id from public.profiles p where p.user_id = (select auth.uid()))
   );
 
+drop policy if exists "profiles_select_own" on public.profiles;
+create policy "profiles_select_own"
+  on public.profiles for select
+  to authenticated
+  using (user_id = (select auth.uid()));
+
 drop policy if exists "profiles_update_org" on public.profiles;
 create policy "profiles_update_org"
   on public.profiles for update

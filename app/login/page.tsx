@@ -31,12 +31,29 @@ export default function LoginPage() {
       email,
       password,
     });
-    setLoading(false);
     if (authError) {
       setError(authError.message);
+      setLoading(false);
       return;
     }
-    router.push("/overview");
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("organisation_id, registration_complete")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (profile?.registration_complete) {
+        router.push("/overview");
+      } else {
+        router.push("/onboarding/companies");
+      }
+    } else {
+      router.push("/overview");
+    }
+    setLoading(false);
   }
 
   async function handleSignUp(e: FormEvent) {

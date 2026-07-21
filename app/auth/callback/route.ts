@@ -6,6 +6,9 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
 
   if (code) {
+    let redirectUrl = `${origin}/login?error=auth_failed`;
+    const supabaseResponse = NextResponse.next({ request });
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -15,8 +18,8 @@ export async function GET(request: NextRequest) {
             return request.cookies.getAll();
           },
           setAll(cookiesToSet: { name: string; value: string; options: Record<string, unknown> }[]) {
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value)
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
             );
           },
         },
@@ -34,18 +37,23 @@ export async function GET(request: NextRequest) {
           .from("profiles")
           .select("organisation_id, registration_complete")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
         if (!profile) {
-          return NextResponse.redirect(`${origin}/onboarding/companies`);
-        }
-        if (!profile.registration_complete) {
-          return NextResponse.redirect(`${origin}/onboarding`);
+          redirectUrl = `${origin}/onboarding/companies`;
+        } else if (!profile.registration_complete) {
+          redirectUrl = `${origin}/onboarding`;
+        } else {
+          redirectUrl = `${origin}/overview`;
         }
       }
-
-      return NextResponse.redirect(`${origin}/overview`);
     }
+
+    const finalResponse = NextResponse.redirect(redirectUrl);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      finalResponse.cookies.set(cookie.name, cookie.value);
+    });
+    return finalResponse;
   }
 
   return NextResponse.redirect(`${origin}/login?error=auth_failed`);
