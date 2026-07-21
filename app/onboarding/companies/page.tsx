@@ -69,8 +69,8 @@ export default function CompaniesPage() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-crm-bg p-6 max-md:p-0 max-md:items-stretch">
-      <div className="w-full max-w-[540px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] p-[46px_40px] max-md:p-0 max-md:rounded-none max-md:shadow-none max-md:min-h-screen max-md:overflow-auto">
+    <div className="min-h-dvh grid place-items-center bg-crm-bg p-6 max-md:p-0 max-md:items-stretch">
+      <div className="w-full max-w-[540px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] p-[46px_40px] max-md:p-0 max-md:rounded-none max-md:shadow-none max-md:min-h-dvh max-md:overflow-auto">
         <div className="grid gap-[18px] max-md:p-[34px_26px]">
           <div className="flex items-center gap-[10px]">
             <div className="w-[42px] h-[42px] rounded-[9px] bg-[#202a36] grid place-items-center overflow-hidden shrink-0">

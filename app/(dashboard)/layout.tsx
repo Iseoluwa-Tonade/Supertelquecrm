@@ -101,7 +101,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen grid place-items-center bg-crm-bg text-crm-muted">
+      <div className="min-h-dvh grid place-items-center bg-crm-bg text-crm-muted">
         Loading the CRM database...
       </div>
     );
@@ -136,7 +136,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-    <div className="h-screen grid max-lg:grid-cols-[74px_minmax(0,1fr)] max-md:!grid-cols-1 max-md:h-screen overflow-hidden"
+    <div className="h-dvh grid max-lg:grid-cols-[74px_minmax(0,1fr)] max-md:!grid-cols-1 max-md:h-dvh overflow-hidden"
       style={{ gridTemplateColumns: "240px minmax(0,1fr)" }}
     >
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />

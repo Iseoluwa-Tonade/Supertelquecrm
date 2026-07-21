@@ -80,7 +80,7 @@ export default function OnboardOrganisationPage() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-crm-bg p-6">
+    <div className="min-h-dvh grid place-items-center bg-crm-bg p-6">
       <div className="w-full max-w-[520px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both]">
         <div className="p-[46px_40px] max-md:p-[34px_26px]">
           <div className="w-full grid gap-[18px]">

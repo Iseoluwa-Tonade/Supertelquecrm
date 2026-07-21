@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
@@ -19,6 +19,8 @@ export default function LoginPage() {
   const [unverifiedEmail, setUnverifiedEmail] = useState("");
   const [resending, setResending] = useState(false);
   const [resentMsg, setResentMsg] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
@@ -84,10 +86,14 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (signUpError) {
+      if (signUpError.message?.toLowerCase().includes("already registered") || signUpError.message?.toLowerCase().includes("already exists")) {
+        setError("An account with this email already exists. Sign in instead.");
+        return;
+      }
       setError(signUpError.message);
       return;
     }
-    if (data?.user?.identities?.length === 0) {
+    if (!data?.user || data?.user?.identities?.length === 0) {
       setError("An account with this email already exists. Sign in instead.");
       return;
     }
@@ -116,9 +122,21 @@ export default function LoginPage() {
     }
   }
 
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      cooldownRef.current = setInterval(() => {
+        setResendCooldown((c) => {
+          if (c <= 1) { clearInterval(cooldownRef.current!); return 0; }
+          return c - 1;
+        });
+      }, 1000);
+    }
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
+  }, [resendCooldown > 0]);
+
   async function handleResendVerification() {
     const target = unverifiedEmail || email;
-    if (!target) return;
+    if (!target || resendCooldown > 0) return;
     setResending(true);
     setResentMsg("");
     const { error } = await supabase.auth.resend({
@@ -132,6 +150,7 @@ export default function LoginPage() {
       return;
     }
     setResentMsg("Verification email sent! Check your inbox.");
+    setResendCooldown(60);
   }
 
   async function handleGoogleOAuth() {
@@ -160,7 +179,7 @@ export default function LoginPage() {
   const isSignUp = mode === "signup" || mode === "choose";
 
   return (
-    <div className="min-h-screen grid place-items-center bg-crm-bg p-6">
+    <div className="min-h-dvh grid place-items-center bg-crm-bg p-6">
       <div className="w-full max-w-[940px] grid grid-cols-[1.05fr_1fr] max-md:grid-cols-1 rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both]">
         <div className="relative p-12 bg-gradient-to-br from-[#14b8a6] via-[#0f766e] to-[#0b3d3a] text-[#eafffa] overflow-hidden hidden md:flex items-center">
           <div className="absolute w-[260px] h-[260px] rounded-full bg-[#5eead4] top-[-70px] right-[-60px] opacity-55 blur-[46px] pointer-events-none" />
@@ -279,10 +298,10 @@ export default function LoginPage() {
                     </span>
                     {resentMsg && <span className="text-crm-green">{resentMsg}</span>}
                     <button
-                      type="button" onClick={handleResendVerification} disabled={resending}
+                      type="button" onClick={handleResendVerification} disabled={resending || resendCooldown > 0}
                       className="justify-self-start bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[32px] rounded-[6px] px-3 text-[12px] hover:brightness-105 disabled:opacity-50"
                     >
-                      {resending ? "Sending..." : "Resend verification"}
+                      {resending ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend verification"}
                     </button>
                   </div>
                 ) : (
@@ -371,7 +390,31 @@ export default function LoginPage() {
 
                 <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
                   Password
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required minLength={6} />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"} value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pr-[34px]" autoComplete="new-password" required minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-[8px] top-1/2 -translate-y-1/2 w-[26px] h-[26px] p-0 grid place-items-center border-0 bg-transparent text-crm-muted cursor-pointer hover:text-crm-accent-strong"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </label>
 
                 {unverifiedEmail ? (
@@ -381,10 +424,10 @@ export default function LoginPage() {
                     </span>
                     {resentMsg && <span className="text-crm-green">{resentMsg}</span>}
                     <button
-                      type="button" onClick={handleResendVerification} disabled={resending}
+                      type="button" onClick={handleResendVerification} disabled={resending || resendCooldown > 0}
                       className="justify-self-start bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[32px] rounded-[6px] px-3 text-[12px] hover:brightness-105 disabled:opacity-50"
                     >
-                      {resending ? "Sending..." : "Resend confirmation"}
+                      {resending ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend confirmation"}
                     </button>
                   </div>
                 ) : (
