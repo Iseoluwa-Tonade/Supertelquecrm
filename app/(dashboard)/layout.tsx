@@ -128,6 +128,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
     (msg) => msg.recipient_id === session.user.id && !msg.read_at
   ).length;
 
+  const showSearch = !["profile", "activity", "messages", "pricing"].includes(currentView);
   const showToolbar = ["pipeline", "projects", "focus"].includes(currentView);
 
   function columns(): Column[] {
@@ -145,7 +146,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="grid grid-rows-[auto_auto_minmax(0,1fr)] min-w-0 min-h-0 overflow-hidden border-r border-crm-line max-md:flex max-md:flex-col max-md:border-r-0 max-md:min-h-0">
         <header className="bg-crm-panel border-b border-crm-line p-[14px_18px] flex items-center justify-between gap-3 max-md:flex-col max-md:items-stretch">
-          <div className="title flex items-center gap-3">
+          <div className="title flex items-center gap-3 max-md:flex-1">
             <button
               onClick={() => setSidebarOpen(true)}
               className="hidden max-md:grid w-[34px] h-[34px] place-items-center p-0 shrink-0"
@@ -155,12 +156,69 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
                 <path d="M3 12h18M3 6h18M3 18h18" />
               </svg>
             </button>
-            <div>
+            <div className="max-md:flex-1">
               <h1 className="m-0 text-[20px] leading-[1.2]">{meta[0]}</h1>
               <p className="m-[4px_0_0] text-crm-muted text-[13px]">{meta[1]}</p>
             </div>
+            <div className="relative md:hidden" ref={mobileMenuRef}>
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="w-[34px] h-[34px] grid place-items-center p-0"
+                title="More actions"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="5" r="1.5" />
+                  <circle cx="12" cy="12" r="1.5" />
+                  <circle cx="12" cy="19" r="1.5" />
+                </svg>
+              </button>
+              {mobileMenuOpen && (
+                <div
+                  className="absolute right-0 top-[42px] w-[220px] bg-crm-panel border border-crm-line rounded-[var(--radius,8px)]
+                    shadow-[0_12px_30px_rgba(15,23,42,.08)] p-2 grid gap-1 z-20 origin-top-right"
+                >
+                  {showDetailToggle && (
+                    <button
+                      onClick={() => { setSelectedId(selectedId ? null : "new"); setMobileMenuOpen(false); }}
+                      className="flex items-center gap-3 px-3 py-2 rounded-[6px] hover:bg-crm-panel-strong text-[13px] w-full text-left"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                        {selectedId
+                          ? <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" /></>
+                          : <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M15 3v18" /></>
+                        }
+                      </svg>
+                      {selectedId ? "Close details" : "Open details"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); setMobileMenuOpen(false); }}
+                    className="flex items-center gap-3 px-3 py-2 rounded-[6px] hover:bg-crm-panel-strong text-[13px] w-full text-left"
+                  >
+                    <span className="w-4 h-4 grid place-items-center shrink-0 text-[14px]">{theme === "dark" ? "☀️" : "🌙"}</span>
+                    {theme === "dark" ? "Light mode" : "Dark mode"}
+                  </button>
+                  <div className="border-t border-crm-line my-1" />
+                  <div className="px-3 py-2">
+                    <div className="text-[13px] font-medium truncate">{session.user.email}</div>
+                    <div className="text-crm-muted text-[11px] mt-0.5">
+                      <span className="inline-flex items-center h-[18px] rounded-[9px] px-2 text-[10px] font-bold uppercase tracking-[.02em] bg-[rgba(15,118,110,.12)] text-crm-accent-strong">
+                        {label(role || "owner")}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { signOut(); setMobileMenuOpen(false); }}
+                    className="flex items-center gap-3 px-3 py-2 rounded-[6px] hover:bg-crm-panel-strong text-[13px] w-full text-left text-red-500"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2 min-w-0 max-md:w-full max-md:flex-wrap">
+            {showSearch && (
             <div className="relative min-w-[260px] max-md:min-w-0 max-md:flex-1 max-md:min-w-[190px]">
               <svg
                 className="absolute left-[10px] top-[9px] text-crm-muted pointer-events-none"
@@ -181,6 +239,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
                 className="h-[36px] pl-[34px] bg-crm-panel-strong rounded-[6px]"
               />
             </div>
+            )}
             <button
               className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3 hover:brightness-105 hover:-translate-y-px hover:shadow-[0_8px_18px_rgba(15,118,110,.28)] active:translate-y-0 disabled:bg-crm-panel-strong disabled:text-crm-muted disabled:border-crm-line disabled:cursor-not-allowed disabled:brightness-100 disabled:translate-y-0 disabled:shadow-none"
               hidden={!["pipeline", "projects", "focus"].includes(currentView)}
@@ -240,62 +299,6 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <div className="relative hidden md:block"></div>
-            <div className="relative md:hidden" ref={mobileMenuRef}>
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="w-[34px] h-[34px] grid place-items-center p-0"
-                title="More actions"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="5" r="1.5" />
-                  <circle cx="12" cy="12" r="1.5" />
-                  <circle cx="12" cy="19" r="1.5" />
-                </svg>
-              </button>
-              {mobileMenuOpen && (
-                <div
-                  className="absolute right-0 top-[42px] w-[220px] bg-crm-panel border border-crm-line rounded-[var(--radius,8px)]
-                    shadow-[0_12px_30px_rgba(15,23,42,.08)] p-2 grid gap-1 z-20 origin-top-right"
-                >
-                  {showDetailToggle && (
-                    <button
-                      onClick={() => { setSelectedId(selectedId ? null : "new"); setMobileMenuOpen(false); }}
-                      className="flex items-center gap-3 px-3 py-2 rounded-[6px] hover:bg-crm-panel-strong text-[13px] w-full text-left"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-                        {selectedId
-                          ? <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" /></>
-                          : <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M15 3v18" /></>
-                        }
-                      </svg>
-                      {selectedId ? "Close details" : "Open details"}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); setMobileMenuOpen(false); }}
-                    className="flex items-center gap-3 px-3 py-2 rounded-[6px] hover:bg-crm-panel-strong text-[13px] w-full text-left"
-                  >
-                    <span className="w-4 h-4 grid place-items-center shrink-0 text-[14px]">{theme === "dark" ? "☀️" : "🌙"}</span>
-                    {theme === "dark" ? "Light mode" : "Dark mode"}
-                  </button>
-                  <div className="border-t border-crm-line my-1" />
-                  <div className="px-3 py-2">
-                    <div className="text-[13px] font-medium truncate">{session.user.email}</div>
-                    <div className="text-crm-muted text-[11px] mt-0.5">
-                      <span className="inline-flex items-center h-[18px] rounded-[9px] px-2 text-[10px] font-bold uppercase tracking-[.02em] bg-[rgba(15,118,110,.12)] text-crm-accent-strong">
-                        {label(role || "owner")}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => { signOut(); setMobileMenuOpen(false); }}
-                    className="flex items-center gap-3 px-3 py-2 rounded-[6px] hover:bg-crm-panel-strong text-[13px] w-full text-left text-red-500"
-                  >
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         </header>
 

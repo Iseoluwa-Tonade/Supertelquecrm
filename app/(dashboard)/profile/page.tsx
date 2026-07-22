@@ -99,6 +99,10 @@ export default function ProfilePage() {
     flash("Profile saved. Your invite request has been sent to the admin.");
   }, [session, form, inviteStatus, profile, supabase, flash]);
 
+  const isApproved = profile?.role === "admin" || inviteStatus === "approved";
+  const displayRole = isApproved ? (profile?.role || "viewer") : "user";
+  const displayStatus = isApproved ? (profile?.status || "active") : "uninvited";
+
   return (
     <div className="board-scroll overflow-auto min-h-0">
       <section className="overview p-[16px_18px] overflow-auto grid gap-[14px] content-start animate-[fadeInUp_0.3s_ease_both]">
@@ -148,12 +152,12 @@ export default function ProfilePage() {
             <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
               <strong className="text-crm-muted text-[12px]">Role</strong>
               <span className="inline-flex items-center h-[20px] rounded-[10px] px-2 text-[11px] font-bold uppercase tracking-[.02em] bg-[rgba(15,118,110,.12)] text-crm-accent-strong w-fit">
-                {label(profile?.role || "owner")}
+                {label(displayRole)}
               </span>
             </div>
             <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
               <strong className="text-crm-muted text-[12px]">Status</strong>
-              <span>{label(profile?.status || "active")}</span>
+              <span>{label(displayStatus)}</span>
             </div>
           </div>
         </div>
@@ -165,7 +169,7 @@ export default function ProfilePage() {
               Display name
               <input name="display_name" value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} />
             </label>
-            <div className="grid grid-cols-2 gap-[10px]">
+            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
               <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
                 Phone
                 <input name="phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
@@ -175,7 +179,7 @@ export default function ProfilePage() {
                 <input name="job_title" value={form.job_title} onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))} />
               </label>
             </div>
-            <div className="grid grid-cols-2 gap-[10px]">
+            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
               <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
                 Department
                 <input name="department" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))} />
@@ -185,7 +189,7 @@ export default function ProfilePage() {
                 <input name="employee_id" value={form.employee_id} onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))} />
               </label>
             </div>
-            <div className="grid grid-cols-2 gap-[10px]">
+            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
               <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
                 Start date
                 <input name="start_date" type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} />
@@ -195,7 +199,7 @@ export default function ProfilePage() {
                 <input name="address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
               </label>
             </div>
-            <div className="grid grid-cols-2 gap-[10px]">
+            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
               <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
                 Emergency contact name
                 <input name="emergency_contact_name" value={form.emergency_contact_name} onChange={(e) => setForm((f) => ({ ...f, emergency_contact_name: e.target.value }))} />
