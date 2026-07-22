@@ -116,7 +116,10 @@ alter table public.profiles add column if not exists address text default '';
 -- 5. Company type and feature flags for organisations ---------------------
 
 alter table public.organisations add column if not exists company_type text default '';
-alter table public.organisations add column if not exists enabled_features text[] default array['overview','profile'];
+alter table public.organisations add column if not exists enabled_features text[] default array['overview','pipeline','projects','activity','documents','messages','approvals','focus','team','pricing','profile'];
+
+-- Give existing organisations all features by default
+update public.organisations set enabled_features = array['overview','pipeline','projects','activity','documents','messages','approvals','focus','team','pricing','profile'] where enabled_features is null or enabled_features = array['overview','profile'];
 
 -- Managers and admins can view and update every teammate's profile (Team
 -- page). This is deliberately additive/OR'd with the original build's

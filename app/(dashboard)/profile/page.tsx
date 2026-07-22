@@ -6,17 +6,32 @@ import { useToast } from "@/components/Toast";
 import { useCallback, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { label } from "@/lib/utils";
+import { COMPANY_TYPES, FEATURE_LABELS, NAV_VIEWS } from "@/lib/types";
 import type { Organisation } from "@/lib/types";
 
 const supabase = createClient();
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { session, profile } = useApp();
+  const { session, profile, organisation: ctxOrg, refreshData } = useApp();
   const { flash } = useToast();
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
 
+  const isAdmin = profile?.role === "admin";
+
+  // Org settings state (admin only)
+  const [orgForm, setOrgForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    website: "",
+    company_type: "agency",
+  });
+  const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
+
+  // HR form state (non-admin)
   const [form, setForm] = useState({
     display_name: "",
     phone: "",
@@ -50,11 +65,25 @@ export default function ProfilePage() {
           .eq("id", profile.organisation_id)
           .single()
           .then(({ data }) => {
-            if (data) setOrganisation(data as Organisation);
+            if (data) {
+              const org = data as Organisation;
+              setOrganisation(org);
+              if (isAdmin) {
+                setOrgForm({
+                  name: org.name || "",
+                  email: org.email || "",
+                  phone: org.phone || "",
+                  address: org.address || "",
+                  website: org.website || "",
+                  company_type: org.company_type || "agency",
+                });
+                setEnabledFeatures(org.enabled_features || []);
+              }
+            }
           });
       }
 
-      if (profile.role !== "admin" && session) {
+      if (!isAdmin && session) {
         supabase
           .from("invite_requests")
           .select("status")
@@ -67,7 +96,44 @@ export default function ProfilePage() {
           });
       }
     }
-  }, [profile, session]);
+  }, [profile, session, isAdmin]);
+
+  useEffect(() => {
+    if (orgForm.company_type && enabledFeatures.length === 0) {
+      const ct = COMPANY_TYPES.find((t) => t.id === orgForm.company_type);
+      if (ct) setEnabledFeatures(ct.defaultFeatures);
+    }
+  }, [orgForm.company_type]);
+
+  function toggleFeature(id: string) {
+    setEnabledFeatures((prev) =>
+      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+    );
+  }
+
+  const saveOrgSettings = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session || !profile?.organisation_id) return;
+    if (enabledFeatures.length === 0) {
+      flash("Select at least one feature");
+      return;
+    }
+    const { error } = await supabase
+      .from("organisations")
+      .update({
+        name: orgForm.name.trim(),
+        email: orgForm.email.trim(),
+        phone: orgForm.phone.trim(),
+        address: orgForm.address.trim(),
+        website: orgForm.website.trim(),
+        company_type: orgForm.company_type,
+        enabled_features: enabledFeatures,
+      })
+      .eq("id", profile.organisation_id);
+    if (error) { flash(error.message); return; }
+    await refreshData();
+    flash("Organisation settings saved");
+  }, [session, profile, orgForm, enabledFeatures, supabase, flash, refreshData]);
 
   const saveProfile = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +153,7 @@ export default function ProfilePage() {
     const { error } = await supabase.from("profiles").update(patch).eq("user_id", session.user.id);
     if (error) { flash(error.message); return; }
 
-    if (inviteStatus === null && profile?.organisation_id && profile.role !== "admin") {
+    if (inviteStatus === null && profile?.organisation_id && !isAdmin) {
       const { error: inviteError } = await supabase.from("invite_requests").upsert({
         user_id: session.user.id,
         organisation_id: profile.organisation_id,
@@ -96,12 +162,12 @@ export default function ProfilePage() {
       if (!inviteError) setInviteStatus("pending");
     }
 
-    flash("Profile saved. Your invite request has been sent to the admin.");
-  }, [session, form, inviteStatus, profile, supabase, flash]);
+    flash(isAdmin ? "Profile saved" : "Profile saved. Your invite request has been sent to the admin.");
+  }, [session, form, inviteStatus, profile, isAdmin, supabase, flash]);
 
-  const isApproved = profile?.role === "admin" || inviteStatus === "approved";
-  const displayRole = isApproved ? (profile?.role || "viewer") : "user";
-  const displayStatus = isApproved ? (profile?.status || "active") : "uninvited";
+  const displayRole = isAdmin ? (profile?.role || "admin") : (inviteStatus === "approved" ? (profile?.role || "viewer") : "user");
+  const displayStatus = isAdmin ? (profile?.status || "active") : (inviteStatus === "approved" ? (profile?.status || "active") : "uninvited");
+  const selectedType = COMPANY_TYPES.find((t) => t.id === orgForm.company_type);
 
   return (
     <div className="board-scroll overflow-auto min-h-0">
@@ -129,20 +195,18 @@ export default function ProfilePage() {
             <span className="flex-1">
               You haven't joined an organisation yet.
             </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => router.push("/onboarding/setup")}
-                className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[32px] rounded-[6px] px-3 text-[12px] whitespace-nowrap hover:brightness-105"
-              >
-                Set up your company
-              </button>
-              <button
-                onClick={() => router.push("/organisations")}
-                className="min-h-[32px] rounded-[6px] px-3 text-[12px] whitespace-nowrap"
-              >
-                Browse organisations
-              </button>
-            </div>
+            <button
+              onClick={() => router.push("/onboarding/setup")}
+              className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[32px] rounded-[6px] px-3 text-[12px] whitespace-nowrap hover:brightness-105"
+            >
+              Set up your company
+            </button>
+            <button
+              onClick={() => router.push("/organisations")}
+              className="min-h-[32px] rounded-[6px] px-3 text-[12px] whitespace-nowrap"
+            >
+              Browse organisations
+            </button>
           </div>
         )}
 
@@ -170,61 +234,170 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-          <h2 className="m-0 text-[15px]">HR details</h2>
-          <form onSubmit={saveProfile} className="grid gap-3">
-            <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-              Display name
-              <input name="display_name" value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} />
-            </label>
-            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Phone
-                <input name="phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
-              </label>
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Job title
-                <input name="job_title" value={form.job_title} onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))} />
-              </label>
+        {isAdmin ? (
+          <>
+            <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
+              <h2 className="m-0 text-[15px]">Organisation settings</h2>
+              <form onSubmit={saveOrgSettings} className="grid gap-[10px]">
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Company name
+                  <input value={orgForm.name} onChange={(e) => setOrgForm((f) => ({ ...f, name: e.target.value }))} required />
+                </label>
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Company email
+                  <input type="email" value={orgForm.email} onChange={(e) => setOrgForm((f) => ({ ...f, email: e.target.value }))} />
+                </label>
+                <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
+                  <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                    Phone
+                    <input value={orgForm.phone} onChange={(e) => setOrgForm((f) => ({ ...f, phone: e.target.value }))} />
+                  </label>
+                  <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                    Website
+                    <input value={orgForm.website} onChange={(e) => setOrgForm((f) => ({ ...f, website: e.target.value }))} />
+                  </label>
+                </div>
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Address
+                  <input value={orgForm.address} onChange={(e) => setOrgForm((f) => ({ ...f, address: e.target.value }))} />
+                </label>
+
+                <div className="border-t border-crm-line my-2" />
+
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Company type
+                  <select value={orgForm.company_type} onChange={(e) => setOrgForm((f) => ({ ...f, company_type: e.target.value }))} className="h-[36px]">
+                    {COMPANY_TYPES.map((ct) => (
+                      <option key={ct.id} value={ct.id}>{ct.label}</option>
+                    ))}
+                  </select>
+                  {selectedType && (
+                    <span className="text-crm-muted text-[11px]">{selectedType.description}</span>
+                  )}
+                </label>
+
+                <div className="border-t border-crm-line my-2" />
+
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Enabled CRM features
+                  <span className="text-crm-muted text-[11px] font-normal">
+                    Toggle pages your company needs. Disabled features are hidden from the sidebar.
+                  </span>
+                </label>
+                <div className="grid grid-cols-2 max-md:grid-cols-1 gap-2">
+                  {NAV_VIEWS.filter((v) => v.id !== "profile").map((view) => (
+                    <label
+                      key={view.id}
+                      className={`flex items-center gap-[8px] p-[10px_12px] rounded-[7px] border cursor-pointer transition-all text-[13px] ${
+                        enabledFeatures.includes(view.id)
+                          ? "border-crm-accent bg-crm-accent/5"
+                          : "border-crm-line bg-crm-panel-strong"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={enabledFeatures.includes(view.id)}
+                        onChange={() => toggleFeature(view.id)}
+                        className="w-[16px] h-[16px] shrink-0"
+                      />
+                      <span>{FEATURE_LABELS[view.id] || view.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-crm-muted text-[11px]">My Profile is always available.</p>
+
+                <div className="flex justify-end gap-2">
+                  <button type="submit"
+                    className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
+                    Save organisation settings
+                  </button>
+                </div>
+              </form>
             </div>
-            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Department
-                <input name="department" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))} />
-              </label>
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Employee ID
-                <input name="employee_id" value={form.employee_id} onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))} />
-              </label>
+
+            <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
+              <h2 className="m-0 text-[15px]">Your profile</h2>
+              <form onSubmit={saveProfile} className="grid gap-3">
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Display name
+                  <input name="display_name" value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} />
+                </label>
+                <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
+                  <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                    Phone
+                    <input name="phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+                  </label>
+                  <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                    Job title
+                    <input name="job_title" value={form.job_title} onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))} />
+                  </label>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button type="submit"
+                    className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
+                    Save profile
+                  </button>
+                </div>
+              </form>
             </div>
-            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
+          </>
+        ) : (
+          <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
+            <h2 className="m-0 text-[15px]">HR details</h2>
+            <form onSubmit={saveProfile} className="grid gap-3">
               <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Start date
-                <input name="start_date" type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} />
+                Display name
+                <input name="display_name" value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} />
               </label>
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Address
-                <input name="address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
-              </label>
-            </div>
-            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Emergency contact name
-                <input name="emergency_contact_name" value={form.emergency_contact_name} onChange={(e) => setForm((f) => ({ ...f, emergency_contact_name: e.target.value }))} />
-              </label>
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Emergency contact phone
-                <input name="emergency_contact_phone" value={form.emergency_contact_phone} onChange={(e) => setForm((f) => ({ ...f, emergency_contact_phone: e.target.value }))} />
-              </label>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button type="submit"
-                className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
-                Save profile
-              </button>
-            </div>
-          </form>
-        </div>
+              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Phone
+                  <input name="phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+                </label>
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Job title
+                  <input name="job_title" value={form.job_title} onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))} />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Department
+                  <input name="department" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))} />
+                </label>
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Employee ID
+                  <input name="employee_id" value={form.employee_id} onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))} />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Start date
+                  <input name="start_date" type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} />
+                </label>
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Address
+                  <input name="address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Emergency contact name
+                  <input name="emergency_contact_name" value={form.emergency_contact_name} onChange={(e) => setForm((f) => ({ ...f, emergency_contact_name: e.target.value }))} />
+                </label>
+                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                  Emergency contact phone
+                  <input name="emergency_contact_phone" value={form.emergency_contact_phone} onChange={(e) => setForm((f) => ({ ...f, emergency_contact_phone: e.target.value }))} />
+                </label>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button type="submit"
+                  className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
+                  Save profile
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </section>
     </div>
   );
