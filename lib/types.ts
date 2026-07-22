@@ -6,6 +6,8 @@ export interface Organisation {
   address: string;
   website: string;
   logo_url: string;
+  company_type: string;
+  enabled_features: string[];
   created_at: string;
   updated_at: string;
 }
@@ -180,3 +182,69 @@ export const FOCUS_COLUMNS: Column[] = [
   { id: "soon", title: "Next 7 days", color: "#b45309" },
   { id: "later", title: "Later", color: "#0f766e" },
 ];
+
+export interface CompanyType {
+  id: string;
+  label: string;
+  description: string;
+  defaultFeatures: string[];
+}
+
+export const COMPANY_TYPES: CompanyType[] = [
+  {
+    id: "b2b",
+    label: "B2B",
+    description: "Business-to-business sales and client management",
+    defaultFeatures: ["overview", "projects", "activity", "documents", "messages", "approvals", "focus", "team", "pricing", "profile"],
+  },
+  {
+    id: "b2c",
+    label: "B2C",
+    description: "Business-to-consumer service delivery",
+    defaultFeatures: ["overview", "pipeline", "activity", "documents", "messages", "focus", "profile"],
+  },
+  {
+    id: "agency",
+    label: "Agency",
+    description: "Full-service agency with client projects and pipeline",
+    defaultFeatures: ["overview", "pipeline", "projects", "activity", "documents", "messages", "approvals", "focus", "team", "pricing", "profile"],
+  },
+  {
+    id: "saas",
+    label: "SaaS",
+    description: "Software-as-a-Service customer operations",
+    defaultFeatures: ["overview", "projects", "activity", "documents", "messages", "approvals", "focus", "team", "pricing", "profile"],
+  },
+  {
+    id: "marketplace",
+    label: "Marketplace",
+    description: "Multi-vendor marketplace management",
+    defaultFeatures: ["overview", "pipeline", "projects", "activity", "documents", "messages", "approvals", "focus", "team", "profile"],
+  },
+  {
+    id: "nonprofit",
+    label: "Nonprofit",
+    description: "Non-profit organisation donor and grant tracking",
+    defaultFeatures: ["overview", "projects", "activity", "documents", "messages", "focus", "team", "profile"],
+  },
+  {
+    id: "other",
+    label: "Other",
+    description: "Custom CRM setup — toggle features as needed",
+    defaultFeatures: ["overview", "pipeline", "projects", "activity", "documents", "messages", "approvals", "focus", "team", "pricing", "profile"],
+  },
+];
+
+export const FEATURE_LABELS: Record<string, string> = {
+  overview: "Overview Dashboard",
+  pipeline: "Pipeline Board",
+  projects: "Project Delivery",
+  activity: "Daily Activities",
+  documents: "Documents",
+  messages: "Messages",
+  approvals: "Approvals Queue",
+  focus: "Focus Queue",
+  team: "Team Management",
+  pricing: "Pricing Calculator",
+  profile: "My Profile",
+};

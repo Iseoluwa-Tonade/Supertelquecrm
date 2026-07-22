@@ -68,7 +68,12 @@ export default function LoginPage() {
       } else if (profile.registration_complete) {
         router.push("/overview");
       } else {
-        router.push("/profile");
+        const savedChoice = sessionStorage.getItem("signup_choice");
+        if (savedChoice === "org") {
+          router.push("/onboarding/setup");
+        } else {
+          router.push("/profile");
+        }
       }
     } else {
       router.push("/profile");
@@ -114,11 +119,18 @@ export default function LoginPage() {
       registration_complete: false,
     });
 
+    sessionStorage.setItem("signup_choice", signupChoice);
+    sessionStorage.setItem("signup_email", email);
+
     if (!data?.user?.email_confirmed_at) {
       setUnverifiedEmail(email);
       return;
     }
-    router.push("/profile");
+    if (signupChoice === "org") {
+      router.push("/onboarding/setup");
+    } else {
+      router.push("/profile");
+    }
   }
 
   async function handleForgotPassword() {

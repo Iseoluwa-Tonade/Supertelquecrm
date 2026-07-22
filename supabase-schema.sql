@@ -113,6 +113,11 @@ alter table public.profiles add column if not exists emergency_contact_name text
 alter table public.profiles add column if not exists emergency_contact_phone text default '';
 alter table public.profiles add column if not exists address text default '';
 
+-- 5. Company type and feature flags for organisations ---------------------
+
+alter table public.organisations add column if not exists company_type text default '';
+alter table public.organisations add column if not exists enabled_features text[] default array['overview','profile'];
+
 -- Managers and admins can view and update every teammate's profile (Team
 -- page). This is deliberately additive/OR'd with the original build's
 -- `profiles_select_own` / `profiles_update_own_name` policies (not a

@@ -77,7 +77,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile, items, messages } = useApp();
+  const { profile, items, messages, organisation } = useApp();
   const currentView = pathname.split("/").filter(Boolean)[0] || "overview";
   const role = profile?.role;
   const isAdmin = role === "admin";
@@ -92,6 +92,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (!registrationComplete) {
       return viewId === "profile" || viewId === "organisations";
     }
+    if (!organisation?.enabled_features?.includes(viewId)) return false;
     if (viewId === "pricing" && !isAdmin) return false;
     if (viewId === "pipeline" && !isAdmin) return false;
     if (viewId === "team" && !isManager) return false;

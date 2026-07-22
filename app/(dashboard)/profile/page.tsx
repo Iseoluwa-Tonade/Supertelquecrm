@@ -124,17 +124,25 @@ export default function ProfilePage() {
           </div>
         )}
         {!inviteStatus && !profile?.organisation_id && (
-          <div className="border border-[#d9e0e8] bg-crm-panel-strong rounded-[var(--radius,8px)] p-[10px_12px] text-[13px] flex items-center gap-2">
+          <div className="border border-[#d9e0e8] bg-crm-panel-strong rounded-[var(--radius,8px)] p-[10px_12px] text-[13px] flex items-center gap-2 flex-wrap">
             <span>&#9432;</span>
             <span className="flex-1">
               You haven't joined an organisation yet.
             </span>
-            <button
-              onClick={() => router.push("/organisations")}
-              className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[32px] rounded-[6px] px-3 text-[12px] whitespace-nowrap hover:brightness-105"
-            >
-              Browse organisations
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => router.push("/onboarding/setup")}
+                className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[32px] rounded-[6px] px-3 text-[12px] whitespace-nowrap hover:brightness-105"
+              >
+                Set up your company
+              </button>
+              <button
+                onClick={() => router.push("/organisations")}
+                className="min-h-[32px] rounded-[6px] px-3 text-[12px] whitespace-nowrap"
+              >
+                Browse organisations
+              </button>
+            </div>
           </div>
         )}
 

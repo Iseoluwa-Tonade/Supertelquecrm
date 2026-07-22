@@ -4,36 +4,48 @@ import { useState, useEffect, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { COMPANY_TYPES, FEATURE_LABELS, NAV_VIEWS } from "@/lib/types";
 
-export default function OnboardOrganisationPage() {
+export default function OnboardSetupPage() {
+  const [orgName, setOrgName] = useState("");
+  const [orgEmail, setOrgEmail] = useState("");
+  const [companyType, setCompanyType] = useState("agency");
+  const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
+  const [displayName, setDisplayName] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
+    const email = sessionStorage.getItem("signup_email");
+    if (email) setOrgEmail(email);
     const choice = sessionStorage.getItem("signup_choice");
-    if (choice === "org") {
-      router.replace("/onboarding/setup");
+    if (choice !== "org") {
+      router.replace("/onboarding/companies");
+      return;
     }
   }, []);
 
-  const [orgName, setOrgName] = useState("");
-  const [orgEmail, setOrgEmail] = useState("");
-  const [orgPhone, setOrgPhone] = useState("");
-  const [orgAddress, setOrgAddress] = useState("");
-  const [orgWebsite, setOrgWebsite] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
   useEffect(() => {
-    const email = sessionStorage.getItem("signup_email");
-    if (email) setOrgEmail(email);
-  }, []);
+    const ct = COMPANY_TYPES.find((t) => t.id === companyType);
+    if (ct) setEnabledFeatures(ct.defaultFeatures);
+  }, [companyType]);
+
+  function toggleFeature(id: string) {
+    setEnabledFeatures((prev) =>
+      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+    );
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!orgName.trim()) {
       setError("Organisation name is required");
+      return;
+    }
+    if (enabledFeatures.length === 0) {
+      setError("Select at least one feature");
       return;
     }
     setLoading(true);
@@ -53,11 +65,8 @@ export default function OnboardOrganisationPage() {
       .insert({
         name: orgName.trim(),
         email: orgEmail.trim() || session.user.email,
-        phone: orgPhone.trim(),
-        address: orgAddress.trim(),
-        website: orgWebsite.trim(),
-        company_type: "other",
-        enabled_features: ["overview", "pipeline", "projects", "activity", "documents", "messages", "approvals", "focus", "team", "pricing", "profile"],
+        company_type: companyType,
+        enabled_features: enabledFeatures,
       })
       .select()
       .single();
@@ -89,9 +98,11 @@ export default function OnboardOrganisationPage() {
     router.push("/overview");
   }
 
+  const selectedType = COMPANY_TYPES.find((t) => t.id === companyType);
+
   return (
     <div className="min-h-dvh grid place-items-center bg-crm-bg p-6 overflow-y-auto">
-      <div className="w-full max-w-[520px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both]">
+      <div className="w-full max-w-[600px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both]">
         <div className="p-[46px_40px] max-md:p-[34px_26px]">
           <div className="w-full grid gap-[18px]">
             <div className="flex items-center gap-[10px]">
@@ -105,9 +116,9 @@ export default function OnboardOrganisationPage() {
                 />
               </div>
               <div>
-                <h1 className="m-0 text-[18px]">Set up your organisation</h1>
+                <h1 className="m-0 text-[18px]">Set up your CRM</h1>
                 <p className="m-[2px_0_0] text-crm-muted text-[12px]">
-                  Fill in your company details to create your CRM workspace
+                  Configure your company profile and choose the features you need
                 </p>
               </div>
             </div>
@@ -133,33 +144,57 @@ export default function OnboardOrganisationPage() {
                 />
               </label>
 
-              <div className="grid grid-cols-2 gap-[10px]">
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Phone
-                  <input
-                    value={orgPhone}
-                    onChange={(e) => setOrgPhone(e.target.value)}
-                    placeholder="+44 20 1234 5678"
-                  />
-                </label>
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Website
-                  <input
-                    value={orgWebsite}
-                    onChange={(e) => setOrgWebsite(e.target.value)}
-                    placeholder="https://example.com"
-                  />
-                </label>
-              </div>
+              <div className="border-t border-crm-line my-2" />
 
               <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Address
-                <input
-                  value={orgAddress}
-                  onChange={(e) => setOrgAddress(e.target.value)}
-                  placeholder="123 High Street, London"
-                />
+                Company type
+                <select
+                  value={companyType}
+                  onChange={(e) => setCompanyType(e.target.value)}
+                  className="h-[36px]"
+                >
+                  {COMPANY_TYPES.map((ct) => (
+                    <option key={ct.id} value={ct.id}>{ct.label}</option>
+                  ))}
+                </select>
+                {selectedType && (
+                  <span className="text-crm-muted text-[11px]">{selectedType.description}</span>
+                )}
               </label>
+
+              <div className="border-t border-crm-line my-2" />
+
+              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                CRM features
+                <span className="text-crm-muted text-[11px] font-normal">
+                  Toggle the pages your company needs. Deselect a feature to hide it from the sidebar.
+                </span>
+              </label>
+
+              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-2">
+                {NAV_VIEWS.filter((v) => v.id !== "profile").map((view) => (
+                  <label
+                    key={view.id}
+                    className={`flex items-center gap-[8px] p-[10px_12px] rounded-[7px] border cursor-pointer transition-all text-[13px] ${
+                      enabledFeatures.includes(view.id)
+                        ? "border-crm-accent bg-crm-accent/5"
+                        : "border-crm-line bg-crm-panel-strong"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={enabledFeatures.includes(view.id)}
+                      onChange={() => toggleFeature(view.id)}
+                      className="w-[16px] h-[16px] shrink-0"
+                    />
+                    <span>{FEATURE_LABELS[view.id] || view.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <p className="text-crm-muted text-[11px]">
+                My Profile is always available and cannot be disabled.
+              </p>
 
               <div className="border-t border-crm-line my-2" />
 
@@ -183,7 +218,7 @@ export default function OnboardOrganisationPage() {
                 disabled={loading}
                 className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[38px] rounded-[6px] hover:brightness-105 hover:-translate-y-px hover:shadow-[0_8px_18px_rgba(15,118,110,.28)] active:translate-y-0 active:shadow-none disabled:bg-crm-panel-strong disabled:text-crm-muted disabled:border-crm-line disabled:brightness-100 disabled:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed"
               >
-                {loading ? "Creating..." : "Create organisation"}
+                {loading ? "Setting up..." : "Complete setup"}
               </button>
             </form>
           </div>

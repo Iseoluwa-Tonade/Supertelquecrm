@@ -158,7 +158,6 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
             </button>
             <div className="max-md:flex-1">
               <h1 className="m-0 text-[20px] leading-[1.2]">{meta[0]}</h1>
-              <p className="m-[4px_0_0] text-crm-muted text-[13px]">{meta[1]}</p>
             </div>
             <div className="relative md:hidden" ref={mobileMenuRef}>
               <button
