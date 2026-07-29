@@ -109,7 +109,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
       .toUpperCase() || "U";
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className="flex h-screen w-full bg-background">
       <aside
         className={cn(
           "sticky top-0 z-30 hidden h-screen shrink-0 flex-col border-r border-border bg-surface/60 transition-[width] duration-200 md:flex",
@@ -232,7 +232,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="flex-1 px-4 py-6 md:px-6 lg:px-8">{children}</main>
+        <main className="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );
