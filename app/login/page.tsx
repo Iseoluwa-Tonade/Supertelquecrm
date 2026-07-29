@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
-type Mode = "signin" | "signup" | "choose";
+type Mode = "signin" | "signup" | "choose" | "forgot";
 
 export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("signin");
@@ -20,6 +20,9 @@ export default function LoginPage() {
   const [resending, setResending] = useState(false);
   const [resentMsg, setResentMsg] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [resetSent, setResetSent] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
   const supabase = createClient();
@@ -91,11 +94,12 @@ export default function LoginPage() {
     setError("");
     setUnverifiedEmail("");
     setResentMsg("");
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     const { error: signUpError, data } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${siteUrl}/auth/callback`,
       },
     });
     setLoading(false);
@@ -133,18 +137,26 @@ export default function LoginPage() {
     }
   }
 
-  async function handleForgotPassword() {
-    if (!email) {
-      setError("Enter your email above first");
+  async function handleForgotPassword(e: FormEvent) {
+    e.preventDefault();
+    const target = forgotEmail || email;
+    if (!target) {
+      setError("Enter your email address");
       return;
     }
+    setResetLoading(true);
     setError("");
-    setUnverifiedEmail("");
-    setResentMsg("");
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
+    setResetSent(false);
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(target, {
+      redirectTo: `${siteUrl}/auth/callback?type=recovery`,
+    });
+    setResetLoading(false);
     if (resetError) {
       setError(resetError.message);
+      return;
     }
+    setResetSent(true);
   }
 
   useEffect(() => {
@@ -164,10 +176,11 @@ export default function LoginPage() {
     if (!target || resendCooldown > 0) return;
     setResending(true);
     setResentMsg("");
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: target,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: { emailRedirectTo: `${siteUrl}/auth/callback` },
     });
     setResending(false);
     if (error) {
@@ -181,10 +194,11 @@ export default function LoginPage() {
   async function handleGoogleOAuth() {
     setOauthLoading(true);
     setError("");
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${siteUrl}/auth/callback`,
       },
     });
     if (error) {
@@ -261,7 +275,50 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {mode === "signin" ? (
+            {mode === "forgot" ? (
+              <form onSubmit={handleForgotPassword} className="grid gap-[10px]">
+                <button
+                  type="button" onClick={() => { switchMode("signin"); setResetSent(false); setForgotEmail(""); }}
+                  className="text-crm-muted hover:text-crm-text text-[12px] border-0 bg-transparent cursor-pointer p-0 mb-1 flex items-center gap-1"
+                >
+                  &#8592; Back to sign in
+                </button>
+                <h2 className="m-0 text-[16px]">Reset your password</h2>
+                <p className="m-0 text-crm-muted text-[12px]">Enter your email and we'll send you a reset link.</p>
+
+                {resetSent ? (
+                  <div className="border border-[#bbf7d0] bg-[#f0fdf4] text-crm-green rounded-[7px] p-[10px_12px] text-[12px] grid gap-1">
+                    <strong>Check your inbox</strong>
+                    <span>If <strong>{forgotEmail || email}</strong> is registered, you'll receive a password reset link shortly.</span>
+                  </div>
+                ) : (
+                  <>
+                    {error && (
+                      <div className="border border-[#fecdd3] bg-[#fff1f2] text-crm-rose rounded-[7px] p-[8px_10px] text-[12px]">{error}</div>
+                    )}
+                    <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
+                      Email
+                      <div className="relative">
+                        <svg className="absolute left-[11px] top-1/2 -translate-y-1/2 text-crm-muted pointer-events-none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="2" y="4" width="20" height="16" rx="2" />
+                          <path d="m22 6-10 7L2 6" />
+                        </svg>
+                        <input
+                          type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)}
+                          className="pl-[34px]" autoComplete="email" required
+                        />
+                      </div>
+                    </label>
+                    <button
+                      type="submit" disabled={resetLoading}
+                      className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[38px] rounded-[6px] hover:brightness-105 hover:-translate-y-px hover:shadow-[0_8px_18px_rgba(15,118,110,.28)] active:translate-y-0 active:shadow-none disabled:bg-crm-panel-strong disabled:text-crm-muted disabled:border-crm-line disabled:brightness-100 disabled:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed"
+                    >
+                      {resetLoading ? "Sending..." : "Send reset link"}
+                    </button>
+                  </>
+                )}
+              </form>
+            ) : mode === "signin" ? (
               <form onSubmit={handleSignIn} className="grid gap-[10px]">
                 <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
                   Email
@@ -347,7 +404,7 @@ export default function LoginPage() {
                 )}
 
                 <button
-                  type="button" onClick={handleForgotPassword}
+                  type="button" onClick={() => { switchMode("forgot"); setForgotEmail(email); setResetSent(false); }}
                   className="border-0 bg-transparent text-crm-muted min-h-auto p-0 text-left text-[12px] cursor-pointer hover:text-crm-accent-strong"
                 >
                   Forgot your password?

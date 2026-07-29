@@ -6,6 +6,7 @@ import { useApp } from "@/lib/AppContext";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
 import type { Organisation } from "@/lib/types";
+import { Panel, PanelHead, PageHeader, Btn } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -52,41 +53,41 @@ export default function OrganisationsPage() {
   }
 
   return (
-    <div className="board-scroll overflow-auto min-h-0">
-      <section className="overview p-[16px_18px] overflow-auto grid gap-[14px] content-start animate-[fadeInUp_0.3s_ease_both]">
-        <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-          <h2 className="m-0 text-[15px]">Choose your organisation</h2>
-          <p className="text-crm-muted text-[13px] m-0">
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Account"
+        title="Organisations"
+        desc="Browse companies registered on SuperTelque CRM and request to join."
+      />
+
+      <Panel>
+        <PanelHead title="Choose your organisation" />
+        <div className="p-4">
+          <p className="mb-4 text-sm text-muted-foreground">
             Select the company you'd like to join. Your request will be sent to the admin for approval.
           </p>
 
           {loading ? (
-            <div className="text-crm-muted text-[13px] py-4 text-center">Loading organisations...</div>
+            <p className="py-4 text-center text-sm text-muted-foreground">Loading organisations...</p>
           ) : orgs.length === 0 ? (
-            <div className="text-crm-muted text-[13px] py-4 text-center">No organisations registered yet.</div>
+            <p className="py-4 text-center text-sm text-muted-foreground">No organisations registered yet.</p>
           ) : (
-            <div className="grid gap-2">
+            <div className="divide-y divide-border rounded-lg border border-border">
               {orgs.map((org) => (
-                <div
-                  key={org.id}
-                  className="flex items-center justify-between gap-3 p-4 rounded-[10px] border border-crm-line bg-crm-panel"
-                >
+                <div key={org.id} className="flex items-center justify-between gap-3 px-4 py-3">
                   <div>
-                    <strong className="block text-[14px]">{org.name}</strong>
-                    {org.email && <span className="text-crm-muted text-[12px]">{org.email}</span>}
+                    <p className="text-sm font-medium text-foreground">{org.name}</p>
+                    {org.email && <p className="text-xs text-muted-foreground">{org.email}</p>}
                   </div>
-                  <button
-                    onClick={() => requestJoin(org.id)} disabled={requesting !== null}
-                    className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3 text-[12px] whitespace-nowrap hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
+                  <Btn size="sm" variant="primary" onClick={() => requestJoin(org.id)} disabled={requesting !== null}>
                     {requesting === org.id ? "Sending request..." : "Request to join"}
-                  </button>
+                  </Btn>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </section>
+      </Panel>
     </div>
   );
 }

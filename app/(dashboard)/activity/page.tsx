@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
 import { useCallback } from "react";
 import { label, todayIso, dateLabel } from "@/lib/utils";
+import { Panel, PanelHead, PageHeader, Tag, Btn, Input } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -52,52 +53,63 @@ export default function ActivityPage() {
   }, [loadRemoteActivities, flash]);
 
   return (
-    <div className="board-scroll overflow-auto min-h-0">
-      <section className="overview p-[16px_18px] overflow-auto grid gap-[14px] content-start animate-[fadeInUp_0.3s_ease_both]">
-        <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-          <h2 className="m-0 text-[15px]">New Activity</h2>
-          <form onSubmit={addActivity} className="activity-form grid grid-cols-[1fr_130px_92px] max-md:grid-cols-1 gap-2">
-            <input name="title" placeholder={canEdit ? "Daily activity" : "Sign in to save daily activity"} disabled={!canEdit} required />
-            <select name="channel" defaultValue="general" disabled={!canEdit}>
-              {["email", "call", "meeting", "proposal", "delivery", "admin", "general"].map((v) => (
-                <option key={v} value={v}>{label(v)}</option>
-              ))}
-            </select>
-            <button type="submit" disabled={!canEdit}
-              className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] hover:brightness-105 disabled:bg-crm-panel-strong disabled:text-crm-muted disabled:border-crm-line disabled:cursor-not-allowed"
-            >
-              Add
-            </button>
-          </form>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Operations"
+        title="Activity log"
+        desc="Track daily emails, calls, meetings and deliveries."
+      />
 
-        {Object.keys(grouped).sort().reverse().length === 0 ? (
-          <div className="text-crm-muted border border-dashed border-crm-line rounded-[var(--radius,8px)] p-4">
-            No daily activities yet. Add your first email, call, meeting, or delivery task.
-          </div>
-        ) : Object.keys(grouped).sort().reverse().map((date) => (
-          <div key={date} className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-            <h2 className="m-0 text-[15px]">{dateLabel(date)}</h2>
-            <div className="activity-list grid gap-2">
-              {grouped[date].map((activity) => (
-                <div key={activity.id} className={`border border-crm-line rounded-[7px] p-[10px] grid grid-cols-[auto_minmax(0,1fr)_auto] gap-[9px] items-start ${activity.completed ? "opacity-60" : ""}`}>
-                  <input
-                    type="checkbox"
-                    checked={activity.completed}
-                    onChange={(e) => toggleActivity(activity.id, e.target.checked)}
-                    className="w-4 h-4 mt-[2px]"
-                  />
-                  <div>
-                    <strong className={`text-[13px] block ${activity.completed ? "line-through text-crm-muted" : ""}`}>{activity.title}</strong>
-                    <span className="text-crm-muted text-[12px] block mt-[3px]">{label(activity.channel)} - {dateLabel(activity.activity_date)}</span>
-                  </div>
-                  <button type="button" onClick={() => deleteActivity(activity.id)} className="w-[28px] min-h-[28px] text-crm-rose">&times;</button>
-                </div>
-              ))}
+      {canEdit && (
+        <Panel>
+          <PanelHead title="New activity" />
+          <form onSubmit={addActivity} className="grid gap-3 p-4">
+            <div className="grid grid-cols-[1fr_130px] max-md:grid-cols-1 gap-3">
+              <Input name="title" placeholder="What did you work on?" required />
+              <select name="channel" defaultValue="general" className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
+                {["email", "call", "meeting", "proposal", "delivery", "admin", "general"].map((v) => (
+                  <option key={v} value={v}>{label(v)}</option>
+                ))}
+              </select>
             </div>
+            <div className="flex justify-end">
+              <Btn type="submit" variant="primary">Add</Btn>
+            </div>
+          </form>
+        </Panel>
+      )}
+
+      {Object.keys(grouped).sort().reverse().length === 0 ? (
+        <Panel className="p-8 text-center">
+          <p className="text-sm text-muted-foreground">No daily activities yet. Add your first email, call, meeting, or delivery task.</p>
+        </Panel>
+      ) : Object.keys(grouped).sort().reverse().map((date) => (
+        <Panel key={date}>
+          <PanelHead title={dateLabel(date)} />
+          <div className="divide-y divide-border">
+            {grouped[date].map((activity) => (
+              <div key={activity.id} className={`flex items-start gap-3 px-4 py-3 ${activity.completed ? "opacity-60" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={activity.completed}
+                  onChange={(e) => toggleActivity(activity.id, e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm ${activity.completed ? "line-through text-muted-foreground" : "text-foreground"}`}>{activity.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    <Tag tone="neutral">{label(activity.channel)}</Tag>
+                    <span className="ml-2">{dateLabel(activity.activity_date)}</span>
+                  </p>
+                </div>
+                <Btn onClick={() => deleteActivity(activity.id)} variant="danger" size="sm">
+                  &times;
+                </Btn>
+              </div>
+            ))}
           </div>
-        ))}
-      </section>
+        </Panel>
+      ))}
     </div>
   );
 }

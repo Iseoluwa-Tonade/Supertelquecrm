@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { useCallback, useState } from "react";
 import { label, dateLabel } from "@/lib/utils";
 import type { CrmMessage, Profile } from "@/lib/types";
+import { Panel, PanelHead, PageHeader, Tag, Btn, Avatar } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -67,111 +68,102 @@ export default function MessagesPage() {
   }, [myId, messages, loadMessages]);
 
   return (
-    <div className="board-scroll overflow-auto min-h-0">
-      <section className="overview p-[16px_18px] overflow-auto grid gap-[14px] content-start animate-[fadeInUp_0.3s_ease_both]">
-        <div className="overview-grid grid grid-cols-[1.15fr_0.85fr] max-md:grid-cols-1 gap-[14px]">
-          <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-            <div className="flex gap-2 flex-wrap items-center">
-              <h2 className="m-0 text-[15px] flex-1">Conversations ({threads.length})</h2>
-              {isManager && (
-                <button onClick={() => setComposeOpen(!composeOpen)}
-                  className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
-                  New message
-                </button>
-              )}
-            </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Operations"
+        title="Messages"
+        desc="Direct messages between teammates."
+      />
 
-            {composeOpen && (
-              <div className="border-t border-b border-crm-line py-3 grid gap-2">
-                <select value={newRecipient} onChange={(e) => setNewRecipient(e.target.value)}
-                  className="h-[32px]">
-                  <option value="">Choose a teammate...</option>
-                  {teamProfiles.filter((p) => p.user_id !== myId).map((p) => (
-                    <option key={p.user_id} value={p.user_id} data-email={p.email}>{p.display_name || p.email || "Teammate"}</option>
-                  ))}
-                </select>
-                <textarea value={newBody} onChange={(e) => setNewBody(e.target.value)}
-                  rows={2} placeholder="Write a message..." className="resize-y leading-[1.4]" />
-                <div className="flex gap-2 justify-end">
-                  <button onClick={() => setComposeOpen(false)}>Cancel</button>
-                  <button onClick={() => {
-                    if (newRecipient && newBody.trim()) {
-                      const recipient = teamProfiles.find((p) => p.user_id === newRecipient);
-                      setMessageThreadWith(newRecipient);
-                      setMessageThreadEmail(recipient?.email || "");
-                      sendMessage(newRecipient, recipient?.email || "", newBody.trim());
-                    }
-                  }}
-                    className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
-                    Send
-                  </button>
-                </div>
-              </div>
+      <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <Panel>
+          <PanelHead
+            title={`Conversations (${threads.length})`}
+            action={isManager && (
+              <Btn size="sm" variant="primary" onClick={() => setComposeOpen(!composeOpen)}>
+                New message
+              </Btn>
             )}
+          />
 
-            <div className="message-thread-list grid gap-2 max-h-[60vh] overflow-auto">
-              {threads.length === 0 ? (
-                <div className="text-crm-muted border border-dashed border-crm-line rounded-[var(--radius,8px)] p-4">
-                  No conversations yet. {isManager ? "Start one with New message above." : "A manager or admin can start one with you."}
-                </div>
-              ) : threads.map((thread) => {
-                const last = thread.messages[thread.messages.length - 1];
-                const unread = thread.messages.filter((msg) => msg.recipient_id === myId && !msg.read_at).length;
-                return (
-                  <button key={thread.id} onClick={() => { setMessageThreadWith(thread.id); setMessageThreadEmail(thread.email); setComposeOpen(false); markRead(thread.id); }}
-                    className={"grid grid-cols-[1fr_auto] gap-[2px_8px] text-left p-[10px_12px] bg-crm-panel border border-crm-line rounded-[6px] " +
-                      (messageThreadWith === thread.id ? "border-crm-accent" : "")}>
-                    <strong className="text-[13px]">{thread.email || "Teammate"}</strong>
-                    <span className="text-crm-muted text-[12px] overflow-hidden text-ellipsis whitespace-nowrap">{(last?.body || "").slice(0, 60)}</span>
-                    {unread > 0 && (
-                      <span className="row-span-2 self-center min-w-[20px] h-[20px] rounded-[10px] grid place-items-center bg-[#facc15] text-[#1f2933] text-[11px] font-extrabold px-[5px]">
-                        {unread}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {activeThread ? (
-            <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-              <h2 className="m-0 text-[15px]">{activeThread.email || "Teammate"}</h2>
-              <div className="message-list grid gap-2 max-h-[50vh] overflow-auto pr-1">
-                {activeThread.messages.length === 0 ? (
-                  <div className="text-crm-muted border border-dashed border-crm-line rounded-[var(--radius,8px)] p-4">No messages yet. Say hello.</div>
-                ) : activeThread.messages.map((msg) => (
-                  <div key={msg.id}
-                    className={"max-w-[80%] rounded-[10px] p-[8px_12px] " +
-                      (msg.sender_id === myId
-                        ? "justify-self-end bg-crm-accent text-white border-transparent"
-                        : "justify-self-start bg-crm-panel-strong border border-crm-line")}>
-                    <p className="m-0 text-[13px] leading-[1.4] whitespace-pre-wrap break-words">{msg.body}</p>
-                    <span className="block mt-1 text-[11px] opacity-70">
-                      {dateLabel((msg.created_at || "").slice(0, 10))} {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
-                    </span>
-                  </div>
+          {composeOpen && (
+            <div className="border-b border-border p-4 space-y-3">
+              <select value={newRecipient} onChange={(e) => setNewRecipient(e.target.value)} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
+                <option value="">Choose a teammate...</option>
+                {teamProfiles.filter((p) => p.user_id !== myId).map((p) => (
+                  <option key={p.user_id} value={p.user_id} data-email={p.email}>{p.display_name || p.email || "Teammate"}</option>
                 ))}
+              </select>
+              <textarea value={newBody} onChange={(e) => setNewBody(e.target.value)} rows={2} placeholder="Write a message..." className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed" />
+              <div className="flex justify-end gap-2">
+                <Btn size="sm" onClick={() => setComposeOpen(false)}>Cancel</Btn>
+                <Btn size="sm" variant="primary" onClick={() => {
+                  if (newRecipient && newBody.trim()) {
+                    const recipient = teamProfiles.find((p) => p.user_id === newRecipient);
+                    setMessageThreadWith(newRecipient);
+                    setMessageThreadEmail(recipient?.email || "");
+                    sendMessage(newRecipient, recipient?.email || "", newBody.trim());
+                  }
+                }}>Send</Btn>
               </div>
-              <form onSubmit={(e) => { e.preventDefault(); if (replyBody.trim() && messageThreadWith) sendMessage(messageThreadWith, messageThreadEmail || "", replyBody.trim()); }}
-                className="grid gap-2">
-                <textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)}
-                  rows={2} placeholder="Write a reply..." className="resize-y leading-[1.4]" required />
-                <div className="flex justify-end gap-2">
-                  <button type="submit"
-                    className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
-                    Send
-                  </button>
-                </div>
-              </form>
-            </div>
-          ) : (
-            <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-              <div className="text-crm-muted border border-dashed border-crm-line rounded-[var(--radius,8px)] p-4">Select a conversation to view it.</div>
             </div>
           )}
-        </div>
-      </section>
+
+          <div className="max-h-[60vh] overflow-auto">
+            {threads.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">
+                No conversations yet. {isManager ? "Start one with New message above." : "A manager or admin can start one with you."}
+              </div>
+            ) : threads.map((thread) => {
+              const last = thread.messages[thread.messages.length - 1];
+              const unread = thread.messages.filter((msg) => msg.recipient_id === myId && !msg.read_at).length;
+              return (
+                <button key={thread.id} onClick={() => { setMessageThreadWith(thread.id); setMessageThreadEmail(thread.email); setComposeOpen(false); markRead(thread.id); }}
+                  className={`w-full flex items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-raised ${messageThreadWith === thread.id ? "bg-primary/5" : ""}`}>
+                  <Avatar initials={(thread.email || "T").slice(0, 2).toUpperCase()} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">{thread.email || "Teammate"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{(last?.body || "").slice(0, 60)}</p>
+                  </div>
+                  {unread > 0 && (
+                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-warning px-1.5 text-[11px] font-bold text-warning-foreground">
+                      {unread}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </Panel>
+
+        {activeThread ? (
+          <Panel>
+            <PanelHead title={activeThread.email || "Teammate"} />
+            <div className="max-h-[50vh] space-y-2 overflow-auto p-4">
+              {activeThread.messages.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No messages yet. Say hello.</p>
+              ) : activeThread.messages.map((msg) => (
+                <div key={msg.id} className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${msg.sender_id === myId ? "ml-auto bg-primary text-primary-foreground" : "bg-surface-raised border border-border"}`}>
+                  <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.body}</p>
+                  <span className="mt-1 block text-[11px] opacity-70">
+                    {dateLabel((msg.created_at || "").slice(0, 10))} {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); if (replyBody.trim() && messageThreadWith) sendMessage(messageThreadWith, messageThreadEmail || "", replyBody.trim()); }} className="border-t border-border p-4 space-y-2">
+              <textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} rows={2} placeholder="Write a reply..." className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed" required />
+              <div className="flex justify-end">
+                <Btn type="submit" variant="primary" size="sm">Send</Btn>
+              </div>
+            </form>
+          </Panel>
+        ) : (
+          <Panel className="flex items-center justify-center p-8">
+            <p className="text-sm text-muted-foreground">Select a conversation to view it.</p>
+          </Panel>
+        )}
+      </div>
     </div>
   );
 }

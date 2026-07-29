@@ -7,6 +7,7 @@ import { useCallback, useState, useEffect } from "react";
 import { label } from "@/lib/utils";
 import { ROLES, NAV_VIEWS } from "@/lib/types";
 import type { InviteRequest, Profile } from "@/lib/types";
+import { Avatar, PageHeader, Panel, PanelHead, Stat, Tag, Btn, Input } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -96,199 +97,171 @@ export default function TeamPage() {
   }, [supabase, session, loadTeamProfiles, loadRemoteItems, flash]);
 
   const myId = session?.user?.id;
+  const requestCount = inviteRequests.length;
+  const memberCount = teamProfiles.length;
+  const visiblePages = Array.from(new Set(teamProfiles.flatMap((member) => member.allowed_views || []))).length;
 
   if (!isManager) {
     return (
-      <div className="board-scroll overflow-auto min-h-0">
-        <section className="overview p-[16px_18px]">
-          <div className="text-crm-muted border border-dashed border-crm-line rounded-[var(--radius,8px)] p-4">
-            Only managers and admins can manage the team.
-          </div>
-        </section>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Operations" title="Team & invites" />
+        <Panel className="p-6 text-center">
+          <p className="text-sm text-muted-foreground">Only managers and admins can manage the team.</p>
+        </Panel>
       </div>
     );
   }
 
   return (
-    <div className="board-scroll overflow-auto min-h-0">
-      <section className="overview p-[16px_18px] overflow-auto grid gap-[14px] content-start animate-[fadeInUp_0.3s_ease_both]">
-        {viewingRequester ? (
-          <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="m-0 text-[15px]">Requester profile</h2>
-              <button onClick={() => setViewingRequester(null)}
-                className="min-h-[34px] rounded-[6px] px-3">Close</button>
-            </div>
-            <div className="grid gap-[7px] text-[12px]">
-              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
-                <strong className="text-crm-muted">Name</strong>
-                <span>{viewingRequester.display_name || "—"}</span>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Operations"
+        title="Team & invites"
+        desc="Invite teammates, approve access and keep page permissions aligned."
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Stat label="Active members" value={String(memberCount)} delta="Current team size" spark={[3, 4, 5, 5, 6, 7]} />
+        <Stat label="Pending invites" value={String(requestCount)} delta="Awaiting review" spark={[1, 2, 2, 3, 3, 4]} positive={false} />
+        <Stat label="Visible page grants" value={String(visiblePages)} delta="Across the team" spark={[2, 3, 4, 4, 5, 6]} />
+      </div>
+
+      {viewingRequester && (
+        <Panel>
+          <PanelHead
+            title="Requester profile"
+            hint="Reviewed before an invite is approved"
+            action={<Btn size="sm" onClick={() => setViewingRequester(null)}>Close</Btn>}
+          />
+          <div className="space-y-1 p-4 text-sm">
+            {[
+              ["Name", viewingRequester.display_name],
+              ["Email", viewingRequester.email],
+              ["Job title", viewingRequester.job_title],
+              ["Phone", viewingRequester.phone],
+              ["Department", viewingRequester.department],
+              ["Address", viewingRequester.address],
+            ].map(([k, v]) => (
+              <div key={k as string} className="grid grid-cols-[120px_1fr] gap-2 rounded-lg border border-border bg-surface p-2">
+                <span className="text-muted-foreground">{k as string}</span>
+                <span>{v || "—"}</span>
               </div>
-              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
-                <strong className="text-crm-muted">Email</strong>
-                <span>{viewingRequester.email}</span>
-              </div>
-              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
-                <strong className="text-crm-muted">Job title</strong>
-                <span>{viewingRequester.job_title || "—"}</span>
-              </div>
-              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
-                <strong className="text-crm-muted">Phone</strong>
-                <span>{viewingRequester.phone || "—"}</span>
-              </div>
-              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
-                <strong className="text-crm-muted">Department</strong>
-                <span>{viewingRequester.department || "—"}</span>
-              </div>
-              <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
-                <strong className="text-crm-muted">Address</strong>
-                <span>{viewingRequester.address || "—"}</span>
-              </div>
-            </div>
+            ))}
           </div>
-        ) : null}
+        </Panel>
+      )}
 
-        {inviteRequests.length > 0 && (
-          <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-            <h2 className="m-0 text-[15px]">Pending requests ({inviteRequests.length})</h2>
-            <div className="grid gap-2">
-              {inviteRequests.map((req) => {
-                const r = req as InviteRequest & { requester?: Partial<Profile> };
-                return (
-                  <div key={req.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] max-md:grid-cols-1 gap-[10px] items-center border border-crm-line rounded-[7px] p-[9px_10px] text-[12px]">
-                    <div>
-                      <strong className="text-[13px] block">{r.requester?.display_name || "New member"}</strong>
-                      <span className="text-crm-muted">{r.requester?.email || "—"}</span>
-                      {(r.requester?.job_title) && <span className="text-crm-muted"> &middot; {r.requester?.job_title}</span>}
-                    </div>
-                    <button
-                      onClick={() => viewRequesterProfile(req.user_id)}
-                      className="text-[12px] min-h-auto py-1 px-2"
-                    >
-                      View profile
-                    </button>
-                    <div className="flex gap-[6px]">
-                      <button
-                        onClick={() => approveRequest(req)}
-                        className="text-[12px] min-h-auto py-1 px-2 bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent rounded-[6px]"
-                      >
-                        Invite
-                      </button>
-                      <button
-                        onClick={() => rejectRequest(req)}
-                        className="text-[12px] min-h-auto py-1 px-2"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <h2 className="m-0 text-[15px]">Teammates ({teamProfiles.length})</h2>
-            <button onClick={() => setInviteFormOpen(!inviteFormOpen)}
-              className="min-h-[34px] rounded-[6px] px-3">{inviteFormOpen ? "Cancel" : "Invite user"}</button>
-          </div>
-
-          {inviteFormOpen && (
-            <form onSubmit={inviteUser} className="grid gap-3 p-4 bg-crm-panel border border-crm-line rounded-[var(--radius,8px)]">
-              <div className="grid grid-cols-[1fr_auto] gap-[10px]">
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Email address
-                  <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="teammate@example.com" required />
-                </label>
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Role
-                  <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
-                    {ROLES.map((r) => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-                  </select>
-                </label>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button type="submit" disabled={inviting}
-                  className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3 disabled:bg-crm-panel-strong disabled:text-crm-muted disabled:border-crm-line disabled:cursor-not-allowed">
-                  {inviting ? "Sending..." : "Send invite"}
-                </button>
-              </div>
-            </form>
-          )}
-
-          <div className="team-table grid gap-2">
-            <div className="grid grid-cols-[minmax(0,1fr)_120px_100px_170px] max-md:grid-cols-1 gap-[10px] items-center border border-crm-line rounded-[7px] p-[9px_10px] text-[12px] bg-crm-panel-strong text-crm-muted font-bold">
-              <span>Email</span><span>Role</span><span>Status</span><span></span>
-            </div>
-            {teamProfiles.map((p) => {
-              const isSelf = p.user_id === myId;
-              const viewsOpen = viewsOpenId === p.user_id;
-              const restricted = Array.isArray(p.allowed_views) && p.allowed_views.length > 0;
+      {inviteRequests.length > 0 && (
+        <Panel>
+          <PanelHead title={`Pending requests (${inviteRequests.length})`} hint="Approve or decline new teammates" />
+          <div className="divide-y divide-border">
+            {inviteRequests.map((req) => {
+              const r = req as InviteRequest & { requester?: Partial<Profile> };
               return (
-                <div key={p.user_id}>
-                  <div className="grid grid-cols-[minmax(0,1fr)_120px_100px_170px] max-md:grid-cols-1 gap-[10px] items-center border border-crm-line rounded-[7px] p-[9px_10px] text-[12px]">
-                    <div>
-                      <strong className="text-[13px] block">{p.display_name || p.email || "Teammate"}</strong>
-                      <span className="text-crm-muted">{p.email}</span>
-                      {(p.job_title || p.department) && <span className="text-crm-muted"> &middot; {[p.job_title, p.department].filter(Boolean).join(" &middot; ")}</span>}
-                    </div>
-                    <select value={p.role} onChange={(e) => updateRole(p.user_id, e.target.value)} disabled={isSelf} className="h-[32px]">
-                      {ROLES.map((r) => <option key={r} value={r}>{label(r)}</option>)}
-                    </select>
-                    <span>{label(p.status || "active")}</span>
-                    <div className="flex gap-[6px] flex-wrap justify-end">
-                      {!isSelf && (
-                        <button onClick={() => { setMessageThreadWith(p.user_id); setMessageThreadEmail(p.email || ""); }}
-                          className="text-[12px] min-h-auto py-1 px-2">Message</button>
-                      )}
-                      <button onClick={() => setViewsOpenId(viewsOpen ? null : p.user_id)}
-                        className="text-[12px] min-h-auto py-1 px-2">{restricted ? "Views*" : "Views"}</button>
-                      <button onClick={() => updateStatus(p.user_id, p.status || "active")} disabled={isSelf}
-                        className="text-[12px] min-h-auto py-1 px-2">
-                        {p.status === "suspended" ? "Reinstate" : "Suspend"}
-                      </button>
-                    </div>
+                <div key={req.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">{r.requester?.display_name || "New member"}</p>
+                    <p className="text-xs text-muted-foreground">{r.requester?.email || "—"}{r.requester?.job_title ? ` · ${r.requester.job_title}` : ""}</p>
                   </div>
-                  {viewsOpen && (
-                    <div className="border border-crm-line rounded-[7px] p-3 mt-[-2px] bg-crm-panel-strong grid gap-[10px]">
-                      <div>
-                        <strong className="text-[13px] block">Visible pages for {p.display_name || p.email || "this teammate"}</strong>
-                        <span className="text-crm-muted text-[12px]">
-                          {isSelf ? "You can't restrict your own access." : restricted ? "Restricted to the checked pages below." : "Unrestricted — sees every page their role allows."}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
-                        {NAV_VIEWS.map((entry) => (
-                          <label key={entry.id} className="flex items-center gap-[6px] text-[12px] font-medium text-crm-text">
-                            <input
-                              type="checkbox"
-                              checked={!restricted || (p.allowed_views || []).includes(entry.id)}
-                              disabled={isSelf}
-                              onChange={() => {
-                                const current = new Set(p.allowed_views || NAV_VIEWS.map((v) => v.id));
-                                if (current.has(entry.id)) current.delete(entry.id); else current.add(entry.id);
-                                updateViews(p.user_id, Array.from(current));
-                              }}
-                              className="w-[15px] h-[15px]"
-                            />
-                            {entry.label}
-                          </label>
-                        ))}
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => updateViews(p.user_id, [])} disabled={isSelf}
-                          className="text-[12px] min-h-auto py-1 px-2">Reset to unrestricted</button>
-                      </div>
-                    </div>
-                  )}
+                  <Btn size="sm" onClick={() => viewRequesterProfile(req.user_id)}>View profile</Btn>
+                  <div className="flex gap-1">
+                    <Btn size="sm" variant="danger" onClick={() => rejectRequest(req)}>Reject</Btn>
+                    <Btn size="sm" variant="primary" onClick={() => approveRequest(req)}>Invite</Btn>
+                  </div>
                 </div>
               );
             })}
           </div>
+        </Panel>
+      )}
+
+      <Panel>
+        <PanelHead
+          title={`Teammates (${teamProfiles.length})`}
+          action={<Btn size="sm" onClick={() => setInviteFormOpen(!inviteFormOpen)}>{inviteFormOpen ? "Cancel" : "Invite user"}</Btn>}
+        />
+
+        {inviteFormOpen && (
+          <form onSubmit={inviteUser} className="border-b border-border p-4 space-y-3 bg-surface">
+            <div className="grid grid-cols-[1fr_auto] gap-3">
+              <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="teammate@example.com" required />
+              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="h-10 rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60">
+                {ROLES.map((r) => <option key={r} value={r}>{label(r)}</option>)}
+              </select>
+            </div>
+            <div className="flex justify-end">
+              <Btn type="submit" variant="primary" disabled={inviting}>{inviting ? "Sending..." : "Send invite"}</Btn>
+            </div>
+          </form>
+        )}
+
+        <div className="divide-y divide-border">
+          <div className="grid grid-cols-[1fr_120px_100px_170px] gap-2 px-4 py-2 text-xs font-bold text-muted-foreground max-md:hidden">
+            <span>Email</span><span>Role</span><span>Status</span><span></span>
+          </div>
+          {teamProfiles.map((p) => {
+            const isSelf = p.user_id === myId;
+            const viewsOpen = viewsOpenId === p.user_id;
+            const restricted = Array.isArray(p.allowed_views) && p.allowed_views.length > 0;
+            return (
+              <div key={p.user_id}>
+                <div className="grid grid-cols-[1fr_120px_100px_170px] max-md:grid-cols-1 gap-2 items-center px-4 py-3 text-sm">
+                  <div>
+                    <p className="font-medium text-foreground">{p.display_name || p.email || "Teammate"}</p>
+                    <p className="text-xs text-muted-foreground">{p.email}{p.job_title ? ` · ${p.job_title}` : ""}</p>
+                  </div>
+                  <select value={p.role} onChange={(e) => updateRole(p.user_id, e.target.value)} disabled={isSelf} className="h-8 rounded-md border border-border bg-input px-2 text-xs text-foreground outline-none focus:border-primary/60">
+                    {ROLES.map((r) => <option key={r} value={r}>{label(r)}</option>)}
+                  </select>
+                  <span className="text-xs">{label(p.status || "active")}</span>
+                  <div className="flex gap-1 flex-wrap justify-end">
+                    {!isSelf && (
+                      <Btn size="sm" onClick={() => { setMessageThreadWith(p.user_id); setMessageThreadEmail(p.email || ""); }}>Message</Btn>
+                    )}
+                    <Btn size="sm" onClick={() => setViewsOpenId(viewsOpen ? null : p.user_id)}>
+                      {restricted ? "Views*" : "Views"}
+                    </Btn>
+                    <Btn size="sm" onClick={() => updateStatus(p.user_id, p.status || "active")} disabled={isSelf}>
+                      {p.status === "suspended" ? "Reinstate" : "Suspend"}
+                    </Btn>
+                  </div>
+                </div>
+                {viewsOpen && (
+                  <div className="border-t border-border bg-surface px-4 py-3 space-y-2">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Visible pages for {p.display_name || p.email || "this teammate"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {isSelf ? "You can't restrict your own access." : restricted ? "Restricted to the checked pages below." : "Unrestricted — sees every page their role allows."}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
+                      {NAV_VIEWS.map((entry) => (
+                        <label key={entry.id} className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!restricted || (p.allowed_views || []).includes(entry.id)}
+                            disabled={isSelf}
+                            onChange={() => {
+                              const current = new Set(p.allowed_views || NAV_VIEWS.map((v) => v.id));
+                              if (current.has(entry.id)) current.delete(entry.id); else current.add(entry.id);
+                              updateViews(p.user_id, Array.from(current));
+                            }}
+                            className="h-4 w-4"
+                          />
+                          {entry.label}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex justify-end">
+                      <Btn size="sm" onClick={() => updateViews(p.user_id, [])} disabled={isSelf}>Reset to unrestricted</Btn>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-      </section>
+      </Panel>
     </div>
   );
 }

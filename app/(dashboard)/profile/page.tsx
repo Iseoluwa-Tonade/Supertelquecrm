@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { label } from "@/lib/utils";
 import { COMPANY_TYPES, FEATURE_LABELS, NAV_VIEWS } from "@/lib/types";
 import type { Organisation } from "@/lib/types";
+import { Panel, PanelHead, PageHeader, Tag, Btn, Input, Field } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -20,7 +21,6 @@ export default function ProfilePage() {
 
   const isAdmin = profile?.role === "admin";
 
-  // Org settings state (admin only)
   const [orgForm, setOrgForm] = useState({
     name: "",
     email: "",
@@ -31,7 +31,6 @@ export default function ProfilePage() {
   });
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
 
-  // HR form state (non-admin)
   const [form, setForm] = useState({
     display_name: "",
     phone: "",
@@ -170,235 +169,173 @@ export default function ProfilePage() {
   const selectedType = COMPANY_TYPES.find((t) => t.id === orgForm.company_type);
 
   return (
-    <div className="board-scroll overflow-auto min-h-0">
-      <section className="overview p-[16px_18px] overflow-auto grid gap-[14px] content-start animate-[fadeInUp_0.3s_ease_both]">
-        {inviteStatus === "pending" && (
-          <div className="border border-[#fde68a] bg-[#fffbeb] text-crm-amber rounded-[var(--radius,8px)] p-[10px_12px] text-[13px] flex items-center gap-2">
-            <span>&#9203;</span>
-            <span>
-              Your request to join <strong>{organisation?.name || "your organisation"}</strong> is pending approval from the admin.
-              You'll get access once they approve your invite.
-            </span>
-          </div>
-        )}
-        {inviteStatus === "approved" && (
-          <div className="border border-[#bbf7d0] bg-[#f0fdf4] text-crm-green rounded-[var(--radius,8px)] p-[10px_12px] text-[13px] flex items-center gap-2">
-            <span>&#10003;</span>
-            <span>
-              You're now a member of <strong>{organisation?.name || "your organisation"}</strong>.
-            </span>
-          </div>
-        )}
-        {!inviteStatus && !profile?.organisation_id && (
-          <div className="border border-[#d9e0e8] bg-crm-panel-strong rounded-[var(--radius,8px)] p-[10px_12px] text-[13px] flex items-center gap-2 flex-wrap">
-            <span>&#9432;</span>
-            <span className="flex-1">
-              You haven't joined an organisation yet.
-            </span>
-            <button
-              onClick={() => router.push("/onboarding/setup")}
-              className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[32px] rounded-[6px] px-3 text-[12px] whitespace-nowrap hover:brightness-105"
-            >
-              Set up your company
-            </button>
-            <button
-              onClick={() => router.push("/organisations")}
-              className="min-h-[32px] rounded-[6px] px-3 text-[12px] whitespace-nowrap"
-            >
-              Browse organisations
-            </button>
-          </div>
-        )}
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Account"
+        title="My profile"
+        desc={isAdmin ? "Manage your organisation and personal settings." : "View and edit your personal details."}
+      />
 
-        <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-          <h2 className="m-0 text-[15px]">Account</h2>
-          <div className="grid gap-[7px] text-[12px]">
-            <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
-              <strong className="text-crm-muted text-[12px]">Email</strong>
-              <span>{profile?.email || ""}</span>
-            </div>
-            <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
-              <strong className="text-crm-muted text-[12px]">Organisation</strong>
-              <span>{organisation?.name || "—"}</span>
-            </div>
-            <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
-              <strong className="text-crm-muted text-[12px]">Role</strong>
-              <span className="inline-flex items-center h-[20px] rounded-[10px] px-2 text-[11px] font-bold uppercase tracking-[.02em] bg-[rgba(15,118,110,.12)] text-crm-accent-strong w-fit">
-                {label(displayRole)}
-              </span>
-            </div>
-            <div className="grid grid-cols-[minmax(80px,130px)_minmax(0,1fr)] gap-[10px] border border-crm-line rounded-[7px] p-[8px_10px] items-center">
-              <strong className="text-crm-muted text-[12px]">Status</strong>
-              <span>{label(displayStatus)}</span>
-            </div>
-          </div>
+      {inviteStatus === "pending" && (
+        <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning flex items-center gap-2">
+          <span>&#9203;</span>
+          <span>Your request to join <strong>{organisation?.name || "your organisation"}</strong> is pending approval from the admin.</span>
         </div>
+      )}
+      {inviteStatus === "approved" && (
+        <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success flex items-center gap-2">
+          <span>&#10003;</span>
+          <span>You're now a member of <strong>{organisation?.name || "your organisation"}</strong>.</span>
+        </div>
+      )}
+      {!inviteStatus && !profile?.organisation_id && (
+        <div className="rounded-lg border border-border bg-surface p-3 text-sm flex items-center gap-2 flex-wrap">
+          <span>&#9432;</span>
+          <span className="flex-1">You haven't joined an organisation yet.</span>
+          <Btn size="sm" variant="primary" onClick={() => router.push("/onboarding/setup")}>Set up your company</Btn>
+          <Btn size="sm" onClick={() => router.push("/organisations")}>Browse organisations</Btn>
+        </div>
+      )}
 
-        {isAdmin ? (
-          <>
-            <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-              <h2 className="m-0 text-[15px]">Organisation settings</h2>
-              <form onSubmit={saveOrgSettings} className="grid gap-[10px]">
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Company name
-                  <input value={orgForm.name} onChange={(e) => setOrgForm((f) => ({ ...f, name: e.target.value }))} required />
-                </label>
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Company email
-                  <input type="email" value={orgForm.email} onChange={(e) => setOrgForm((f) => ({ ...f, email: e.target.value }))} />
-                </label>
-                <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
-                  <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                    Phone
-                    <input value={orgForm.phone} onChange={(e) => setOrgForm((f) => ({ ...f, phone: e.target.value }))} />
-                  </label>
-                  <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                    Website
-                    <input value={orgForm.website} onChange={(e) => setOrgForm((f) => ({ ...f, website: e.target.value }))} />
-                  </label>
-                </div>
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Address
-                  <input value={orgForm.address} onChange={(e) => setOrgForm((f) => ({ ...f, address: e.target.value }))} />
-                </label>
+      <Panel>
+        <PanelHead title="Account" />
+        <div className="space-y-1 p-4 text-sm">
+          {[
+            ["Email", profile?.email],
+            ["Organisation", organisation?.name || "—"],
+            ["Role", <Tag key="role" tone="primary">{label(displayRole)}</Tag>],
+            ["Status", label(displayStatus)],
+          ].map(([k, v]) => (
+            <div key={k as string} className="grid grid-cols-[120px_1fr] gap-2 rounded-lg border border-border bg-surface p-2 items-center">
+              <span className="text-muted-foreground">{k as string}</span>
+              <span>{v}</span>
+            </div>
+          ))}
+        </div>
+      </Panel>
 
-                <div className="border-t border-crm-line my-2" />
+      {isAdmin ? (
+        <>
+          <Panel>
+            <PanelHead title="Organisation settings" />
+            <form onSubmit={saveOrgSettings} className="space-y-3 p-4">
+              <Field label="Company name">
+                <Input value={orgForm.name} onChange={(e) => setOrgForm((f) => ({ ...f, name: e.target.value }))} required />
+              </Field>
+              <Field label="Company email">
+                <Input type="email" value={orgForm.email} onChange={(e) => setOrgForm((f) => ({ ...f, email: e.target.value }))} />
+              </Field>
+              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-3">
+                <Field label="Phone">
+                  <Input value={orgForm.phone} onChange={(e) => setOrgForm((f) => ({ ...f, phone: e.target.value }))} />
+                </Field>
+                <Field label="Website">
+                  <Input value={orgForm.website} onChange={(e) => setOrgForm((f) => ({ ...f, website: e.target.value }))} />
+                </Field>
+              </div>
+              <Field label="Address">
+                <Input value={orgForm.address} onChange={(e) => setOrgForm((f) => ({ ...f, address: e.target.value }))} />
+              </Field>
 
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Company type
-                  <select value={orgForm.company_type} onChange={(e) => setOrgForm((f) => ({ ...f, company_type: e.target.value }))} className="h-[36px]">
-                    {COMPANY_TYPES.map((ct) => (
-                      <option key={ct.id} value={ct.id}>{ct.label}</option>
-                    ))}
-                  </select>
-                  {selectedType && (
-                    <span className="text-crm-muted text-[11px]">{selectedType.description}</span>
-                  )}
-                </label>
+              <hr className="border-border" />
 
-                <div className="border-t border-crm-line my-2" />
-
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Enabled CRM features
-                  <span className="text-crm-muted text-[11px] font-normal">
-                    Toggle pages your company needs. Disabled features are hidden from the sidebar.
-                  </span>
-                </label>
-                <div className="grid grid-cols-2 max-md:grid-cols-1 gap-2">
-                  {NAV_VIEWS.filter((v) => v.id !== "profile").map((view) => (
-                    <label
-                      key={view.id}
-                      className={`flex items-center gap-[8px] p-[10px_12px] rounded-[7px] border cursor-pointer transition-all text-[13px] ${
-                        enabledFeatures.includes(view.id)
-                          ? "border-crm-accent bg-crm-accent/5"
-                          : "border-crm-line bg-crm-panel-strong"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={enabledFeatures.includes(view.id)}
-                        onChange={() => toggleFeature(view.id)}
-                        className="w-[16px] h-[16px] shrink-0"
-                      />
-                      <span>{FEATURE_LABELS[view.id] || view.label}</span>
-                    </label>
+              <Field label="Company type">
+                <select value={orgForm.company_type} onChange={(e) => setOrgForm((f) => ({ ...f, company_type: e.target.value }))} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
+                  {COMPANY_TYPES.map((ct) => (
+                    <option key={ct.id} value={ct.id}>{ct.label}</option>
                   ))}
-                </div>
-                <p className="text-crm-muted text-[11px]">My Profile is always available.</p>
+                </select>
+                {selectedType && <span className="block mt-1 text-xs text-muted-foreground">{selectedType.description}</span>}
+              </Field>
 
-                <div className="flex justify-end gap-2">
-                  <button type="submit"
-                    className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
-                    Save organisation settings
-                  </button>
-                </div>
-              </form>
-            </div>
+              <hr className="border-border" />
 
-            <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-              <h2 className="m-0 text-[15px]">Your profile</h2>
-              <form onSubmit={saveProfile} className="grid gap-3">
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Display name
-                  <input name="display_name" value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} />
-                </label>
-                <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
-                  <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                    Phone
-                    <input name="phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+              <Field label="Enabled CRM features">
+                <span className="block text-xs text-muted-foreground font-normal">Toggle pages your company needs. Disabled features are hidden from the sidebar.</span>
+              </Field>
+              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-2">
+                {NAV_VIEWS.filter((v) => v.id !== "profile").map((view) => (
+                  <label key={view.id} className={`flex items-center gap-2 rounded-lg border p-2.5 text-sm cursor-pointer transition-colors ${
+                    enabledFeatures.includes(view.id) ? "border-primary bg-primary/5" : "border-border bg-surface"
+                  }`}>
+                    <input type="checkbox" checked={enabledFeatures.includes(view.id)} onChange={() => toggleFeature(view.id)} className="h-4 w-4 shrink-0" />
+                    <span>{FEATURE_LABELS[view.id] || view.label}</span>
                   </label>
-                  <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                    Job title
-                    <input name="job_title" value={form.job_title} onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))} />
-                  </label>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <button type="submit"
-                    className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
-                    Save profile
-                  </button>
-                </div>
-              </form>
-            </div>
-          </>
-        ) : (
-          <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-            <h2 className="m-0 text-[15px]">HR details</h2>
-            <form onSubmit={saveProfile} className="grid gap-3">
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Display name
-                <input name="display_name" value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} />
-              </label>
-              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Phone
-                  <input name="phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
-                </label>
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Job title
-                  <input name="job_title" value={form.job_title} onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))} />
-                </label>
+                ))}
               </div>
-              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Department
-                  <input name="department" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))} />
-                </label>
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Employee ID
-                  <input name="employee_id" value={form.employee_id} onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))} />
-                </label>
-              </div>
-              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Start date
-                  <input name="start_date" type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} />
-                </label>
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Address
-                  <input name="address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
-                </label>
-              </div>
-              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-[10px]">
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Emergency contact name
-                  <input name="emergency_contact_name" value={form.emergency_contact_name} onChange={(e) => setForm((f) => ({ ...f, emergency_contact_name: e.target.value }))} />
-                </label>
-                <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                  Emergency contact phone
-                  <input name="emergency_contact_phone" value={form.emergency_contact_phone} onChange={(e) => setForm((f) => ({ ...f, emergency_contact_phone: e.target.value }))} />
-                </label>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button type="submit"
-                  className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
-                  Save profile
-                </button>
+              <p className="text-xs text-muted-foreground">My Profile is always available.</p>
+
+              <div className="flex justify-end">
+                <Btn type="submit" variant="primary">Save organisation settings</Btn>
               </div>
             </form>
-          </div>
-        )}
-      </section>
+          </Panel>
+
+          <Panel>
+            <PanelHead title="Your profile" />
+            <form onSubmit={saveProfile} className="space-y-3 p-4">
+              <Field label="Display name">
+                <Input name="display_name" value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} />
+              </Field>
+              <div className="grid grid-cols-2 max-md:grid-cols-1 gap-3">
+                <Field label="Phone">
+                  <Input name="phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+                </Field>
+                <Field label="Job title">
+                  <Input name="job_title" value={form.job_title} onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))} />
+                </Field>
+              </div>
+              <div className="flex justify-end">
+                <Btn type="submit" variant="primary">Save profile</Btn>
+              </div>
+            </form>
+          </Panel>
+        </>
+      ) : (
+        <Panel>
+          <PanelHead title="HR details" />
+          <form onSubmit={saveProfile} className="space-y-3 p-4">
+            <Field label="Display name">
+              <Input name="display_name" value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} />
+            </Field>
+            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-3">
+              <Field label="Phone">
+                <Input name="phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+              </Field>
+              <Field label="Job title">
+                <Input name="job_title" value={form.job_title} onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))} />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-3">
+              <Field label="Department">
+                <Input name="department" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))} />
+              </Field>
+              <Field label="Employee ID">
+                <Input name="employee_id" value={form.employee_id} onChange={(e) => setForm((f) => ({ ...f, employee_id: e.target.value }))} />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-3">
+              <Field label="Start date">
+                <Input name="start_date" type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} />
+              </Field>
+              <Field label="Address">
+                <Input name="address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 max-md:grid-cols-1 gap-3">
+              <Field label="Emergency contact name">
+                <Input name="emergency_contact_name" value={form.emergency_contact_name} onChange={(e) => setForm((f) => ({ ...f, emergency_contact_name: e.target.value }))} />
+              </Field>
+              <Field label="Emergency contact phone">
+                <Input name="emergency_contact_phone" value={form.emergency_contact_phone} onChange={(e) => setForm((f) => ({ ...f, emergency_contact_phone: e.target.value }))} />
+              </Field>
+            </div>
+            <div className="flex justify-end">
+              <Btn type="submit" variant="primary">Save profile</Btn>
+            </div>
+          </form>
+        </Panel>
+      )}
     </div>
   );
 }

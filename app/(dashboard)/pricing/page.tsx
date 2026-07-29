@@ -7,6 +7,7 @@ import { useCallback, useState } from "react";
 import { label, money } from "@/lib/utils";
 import { SERVICE_UNITS } from "@/lib/types";
 import type { CrmService } from "@/lib/types";
+import { Panel, PanelHead, PageHeader, Tag, Btn, Input, Field } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -79,117 +80,108 @@ export default function PricingPage() {
 
   if (!isAdmin) {
     return (
-      <div className="board-scroll overflow-auto min-h-0">
-        <section className="overview p-[16px_18px]">
-          <div className="text-crm-muted border border-dashed border-crm-line rounded-[var(--radius,8px)] p-4">
-            Only admins can access the pricing calculator.
-          </div>
-        </section>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Revenue" title="Pricing" />
+        <Panel className="p-6 text-center">
+          <p className="text-sm text-muted-foreground">Only admins can access the pricing calculator.</p>
+        </Panel>
       </div>
     );
   }
 
   return (
-    <div className="board-scroll overflow-auto min-h-0">
-      <section className="overview p-[16px_18px] overflow-auto grid gap-[14px] content-start animate-[fadeInUp_0.3s_ease_both]">
-        <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-          <h2 className="m-0 text-[15px]">{editing ? "Edit service" : "Add a service"}</h2>
-          <form onSubmit={saveService} className="grid gap-3">
-            <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-              Service name
-              <input name="name" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Website build" required />
-            </label>
-            <div className="grid grid-cols-2 gap-[10px]">
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Unit price (USD)
-                <input name="unit_price" type="number" min="0" step="1" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} required />
-              </label>
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Billed
-                <select value={formUnit} onChange={(e) => setFormUnit(e.target.value)}>
-                  {SERVICE_UNITS.map((u) => <option key={u} value={u}>{label(u)}</option>)}
-                </select>
-              </label>
-            </div>
-            <div className="flex justify-end gap-2">
-              {editing && <button type="button" onClick={cancelEdit}>Cancel</button>}
-              <button type="submit"
-                className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">
-                {editing ? "Save changes" : "Add service"}
-              </button>
-            </div>
-          </form>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Revenue"
+        title="Pricing"
+        desc="Manage your service catalog and calculate quotes on the fly."
+      />
 
-        <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-          <h2 className="m-0 text-[15px]">Service catalog ({services.length})</h2>
-          <div className="grid gap-2">
-            <div className="grid grid-cols-[minmax(0,1fr)_100px_100px_auto] gap-[10px] items-center border border-crm-line rounded-[7px] p-[9px_10px] text-[12px] bg-crm-panel-strong text-crm-muted font-bold">
-              <span>Service</span><span>Billed</span><span>Price</span><span></span>
-            </div>
-            {services.length === 0 ? (
-              <div className="text-crm-muted border border-dashed border-crm-line rounded-[var(--radius,8px)] p-4">No services yet. Add your first service above.</div>
-            ) : services.map((svc) => (
-              <div key={svc.id} className="grid grid-cols-[minmax(0,1fr)_100px_100px_auto] gap-[10px] items-center border border-crm-line rounded-[7px] p-[9px_10px] text-[12px]">
-                <strong className="text-[13px]">{svc.name}</strong>
-                <span className="text-crm-muted">{label(svc.unit_label)}</span>
-                <span className="text-crm-muted">{money(svc.unit_price)}</span>
-                <div className="flex gap-[6px] justify-end">
-                  <button onClick={() => editService(svc)} className="text-[12px] min-h-auto py-1 px-2">Edit</button>
-                  <button onClick={() => deleteService(svc.id)} className="w-[28px] min-h-[28px] text-crm-rose">&times;</button>
-                </div>
-              </div>
-            ))}
+      <Panel>
+        <PanelHead title={editing ? "Edit service" : "Add a service"} />
+        <form onSubmit={saveService} className="space-y-3 p-4">
+          <Field label="Service name">
+            <Input name="name" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Website build" required />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Unit price (USD)">
+              <Input name="unit_price" type="number" min="0" step="1" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} required />
+            </Field>
+            <Field label="Billed">
+              <select value={formUnit} onChange={(e) => setFormUnit(e.target.value)} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
+                {SERVICE_UNITS.map((u) => <option key={u} value={u}>{label(u)}</option>)}
+              </select>
+            </Field>
           </div>
-        </div>
+          <div className="flex justify-end gap-2">
+            {editing && <Btn type="button" onClick={cancelEdit}>Cancel</Btn>}
+            <Btn type="submit" variant="primary">{editing ? "Save changes" : "Add service"}</Btn>
+          </div>
+        </form>
+      </Panel>
 
-        <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-          <h2 className="m-0 text-[15px]">Quote calculator</h2>
-          <div className="calc-grid grid gap-2">
-            {services.length === 0 ? (
-              <div className="text-crm-muted border border-dashed border-crm-line rounded-[var(--radius,8px)] p-4">
-                Add services to the catalog to start calculating a quote.
+      <Panel>
+        <PanelHead title={`Service catalog (${services.length})`} />
+        <div className="divide-y divide-border">
+          {services.length === 0 ? (
+            <div className="p-4 text-sm text-muted-foreground">No services yet. Add your first service above.</div>
+          ) : services.map((svc) => (
+            <div key={svc.id} className="flex items-center gap-3 px-4 py-3 text-sm">
+              <span className="flex-1 font-medium text-foreground">{svc.name}</span>
+              <span className="text-muted-foreground">{label(svc.unit_label)}</span>
+              <span className="num w-20 text-right text-foreground">{money(svc.unit_price)}</span>
+              <div className="flex gap-1">
+                <Btn size="sm" onClick={() => editService(svc)}>Edit</Btn>
+                <Btn size="sm" variant="danger" onClick={() => deleteService(svc.id)}>&times;</Btn>
               </div>
-            ) : services.map((svc) => (
-              <div key={svc.id} className="grid grid-cols-[minmax(0,1fr)_130px_80px_100px] max-md:grid-cols-1 gap-[10px] items-center border border-crm-line rounded-[7px] p-[8px_10px] text-[12px]">
-                <strong className="text-[13px]">{svc.name}</strong>
-                <span className="text-crm-muted">{money(svc.unit_price)} / {label(svc.unit_label)}</span>
-                <input type="number" min="0" step="1" value={calcQty[svc.id] || 0}
-                  onChange={(e) => setCalcQty((prev) => ({ ...prev, [svc.id]: Math.max(0, Number(e.target.value) || 0) }))}
-                  className="h-[32px] px-2" aria-label={"Quantity for " + svc.name} />
-                <span className="font-bold text-crm-text text-right">{money((calcQty[svc.id] || 0) * Number(svc.unit_price))}</span>
-              </div>
-            ))}
-          </div>
-          <div className="calc-summary grid gap-[10px] mt-1">
-            <div className="grid grid-cols-2 gap-[10px]">
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Discount %
-                <input type="number" min="0" max="100" step="1" value={calcDiscount} onChange={(e) => setCalcDiscount(Math.min(100, Math.max(0, Number(e.target.value) || 0)))} />
-              </label>
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Tax %
-                <input type="number" min="0" max="100" step="1" value={calcTax} onChange={(e) => setCalcTax(Math.min(100, Math.max(0, Number(e.target.value) || 0)))} />
-              </label>
             </div>
-            <div className="flex justify-between items-center text-[13px] border border-crm-line rounded-[7px] p-[8px_10px]">
-              <span>Subtotal</span><strong>{money(totals.subtotal)}</strong>
-            </div>
-            <div className="flex justify-between items-center text-[13px] border border-crm-line rounded-[7px] p-[8px_10px]">
-              <span>Discount</span><strong>-{money(totals.discountAmount)}</strong>
-            </div>
-            <div className="flex justify-between items-center text-[13px] border border-crm-line rounded-[7px] p-[8px_10px]">
-              <span>Tax</span><strong>+{money(totals.taxAmount)}</strong>
-            </div>
-            <div className="flex justify-between items-center text-[15px] font-extrabold border border-crm-line rounded-[7px] p-[8px_10px] bg-crm-panel-strong">
-              <span>Total</span><strong>{money(totals.total)}</strong>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => { setCalcQty({}); setCalcDiscount(0); setCalcTax(0); }}>Reset calculator</button>
-            </div>
-          </div>
+          ))}
         </div>
-      </section>
+      </Panel>
+
+      <Panel>
+        <PanelHead title="Quote calculator" />
+        <div className="space-y-3 p-4">
+          {services.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Add services to the catalog to start calculating a quote.</p>
+          ) : (
+            <>
+              <div className="divide-y divide-border rounded-lg border border-border">
+                {services.map((svc) => (
+                  <div key={svc.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                    <span className="flex-1 font-medium text-foreground">{svc.name}</span>
+                    <span className="text-xs text-muted-foreground">{money(svc.unit_price)} / {label(svc.unit_label)}</span>
+                    <input type="number" min="0" step="1" value={calcQty[svc.id] || 0}
+                      onChange={(e) => setCalcQty((prev) => ({ ...prev, [svc.id]: Math.max(0, Number(e.target.value) || 0) }))}
+                      className="h-8 w-20 rounded-md border border-border bg-input px-2 text-sm text-foreground outline-none focus:border-primary/60" aria-label={"Quantity for " + svc.name} />
+                    <span className="num w-24 text-right font-bold text-foreground">{money((calcQty[svc.id] || 0) * Number(svc.unit_price))}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Discount %">
+                  <Input type="number" min="0" max="100" step="1" value={calcDiscount} onChange={(e) => setCalcDiscount(Math.min(100, Math.max(0, Number(e.target.value) || 0)))} />
+                </Field>
+                <Field label="Tax %">
+                  <Input type="number" min="0" max="100" step="1" value={calcTax} onChange={(e) => setCalcTax(Math.min(100, Math.max(0, Number(e.target.value) || 0)))} />
+                </Field>
+              </div>
+
+              <div className="space-y-1 rounded-lg border border-border p-3 text-sm">
+                <div className="flex items-center justify-between"><span className="text-muted-foreground">Subtotal</span><span className="num font-medium">{money(totals.subtotal)}</span></div>
+                <div className="flex items-center justify-between"><span className="text-muted-foreground">Discount</span><span className="num font-medium text-destructive">-{money(totals.discountAmount)}</span></div>
+                <div className="flex items-center justify-between"><span className="text-muted-foreground">Tax</span><span className="num font-medium">+{money(totals.taxAmount)}</span></div>
+                <div className="flex items-center justify-between border-t border-border pt-1 text-base font-bold text-foreground"><span>Total</span><span className="num">{money(totals.total)}</span></div>
+              </div>
+
+              <div className="flex justify-end">
+                <Btn size="sm" onClick={() => { setCalcQty({}); setCalcDiscount(0); setCalcTax(0); }}>Reset calculator</Btn>
+              </div>
+            </>
+          )}
+        </div>
+      </Panel>
     </div>
   );
 }

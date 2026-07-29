@@ -1,5 +1,54 @@
 @import "tailwindcss";
 
+@theme inline {
+  --color-background: var(--color-crm-bg);
+  --color-foreground: var(--color-crm-text);
+  --color-surface: var(--color-crm-panel);
+  --color-surface-raised: var(--color-crm-panel-strong);
+  --color-card: var(--color-crm-panel);
+  --color-card-foreground: var(--color-crm-text);
+  --color-popover: var(--color-crm-panel);
+  --color-popover-foreground: var(--color-crm-text);
+  --color-primary: var(--color-crm-accent);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--color-crm-panel-strong);
+  --color-secondary-foreground: var(--color-crm-text);
+  --color-muted: var(--color-crm-panel-strong);
+  --color-muted-foreground: var(--color-crm-muted);
+  --color-accent: var(--color-crm-accent);
+  --color-accent-foreground: #ffffff;
+  --color-destructive: var(--color-crm-rose);
+  --color-destructive-foreground: #ffffff;
+  --color-success: var(--color-crm-green);
+  --color-success-foreground: #ffffff;
+  --color-warning: var(--color-crm-amber);
+  --color-warning-foreground: #111827;
+  --color-info: var(--color-crm-blue);
+  --color-info-foreground: #ffffff;
+  --color-border: var(--color-crm-line);
+  --color-border-strong: color-mix(in srgb, var(--color-crm-line) 82%, #000000);
+  --color-input: var(--color-crm-panel);
+  --color-ring: var(--color-crm-accent);
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+@utility label-tag {
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@utility grid-canvas {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-crm-line) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-crm-line) 55%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
 @utility min-h-dvh {
   min-height: 100dvh;
 }

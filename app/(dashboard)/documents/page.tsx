@@ -6,6 +6,7 @@ import { useCallback, useRef, useState } from "react";
 import { label, formatBytes, docIcon, dateLabel } from "@/lib/utils";
 import type { CrmDocument } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
+import { Panel, PanelHead, PageHeader, Tag, Btn } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -83,109 +84,117 @@ export default function DocumentsPage() {
   }, [supabase, setPreviewDoc, flash]);
 
   return (
-    <>
-      <div className="board-scroll overflow-auto min-h-0">
-        <section className="overview p-[16px_18px] overflow-auto grid gap-[14px] content-start animate-[fadeInUp_0.3s_ease_both]">
-          {!isViewer && (
-            <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-              <h2 className="m-0 text-[15px]">Upload a document</h2>
-              <div
-                className="border-2 border-dashed border-crm-line rounded-[var(--radius,8px)] p-[22px] text-center text-crm-muted text-[13px] grid gap-2 justify-items-center cursor-pointer bg-crm-panel-strong"
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("bg-[rgba(15,118,110,.06)]"); }}
-                onDragLeave={(e) => { e.currentTarget.classList.remove("bg-[rgba(15,118,110,.06)]"); }}
-                onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove("bg-[rgba(15,118,110,.06)]"); uploadDocuments(e.dataTransfer.files); }}
-              >
-                <strong className="text-crm-text">Drag & drop files here, or click to browse</strong>
-                <span>PDF, images, and office documents up to 20 MB each &mdash; select as many as you need</span>
-              </div>
-              <input ref={fileInputRef} type="file" multiple hidden onChange={(e) => uploadDocuments(e.target.files)} />
-              <label className="grid gap-[5px] text-crm-muted text-[12px] font-semibold">
-                Link to account or project
-                <select value={linkId} onChange={(e) => setLinkId(e.target.value)}>
-                  <option value="">No linked account</option>
-                  {items.map((item) => (
-                    <option key={item.id} value={item.id}>{item.company} - {item.title}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          )}
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Delivery"
+        title="Documents"
+        desc="Upload, preview and manage files linked to your deals and projects."
+      />
 
-          <div className="bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-[14px] grid gap-3 content-start">
-            <div className="flex gap-2 flex-wrap items-center">
-              <h2 className="m-0 text-[15px] flex-1">Files ({filteredDocs.length})</h2>
-              <select value={docFilterItem} onChange={(e) => setDocFilterItem(e.target.value)}
-                className="h-[32px] w-auto" aria-label="Filter by linked account">
-                <option value="all">All accounts</option>
+      {!isViewer && (
+        <Panel>
+          <PanelHead title="Upload a document" />
+          <div className="p-4 space-y-3">
+            <div
+              className="cursor-pointer rounded-lg border-2 border-dashed border-border p-6 text-center text-sm text-muted-foreground hover:bg-surface-raised"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--color-primary)"; }}
+              onDragLeave={(e) => { e.currentTarget.style.borderColor = ""; }}
+              onDrop={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = ""; uploadDocuments(e.dataTransfer.files); }}
+            >
+              <p className="font-medium text-foreground">Drag & drop files here, or click to browse</p>
+              <p className="mt-1">PDF, images, and office documents up to 20 MB each</p>
+            </div>
+            <input ref={fileInputRef} type="file" multiple hidden onChange={(e) => uploadDocuments(e.target.files)} />
+            <label className="block space-y-1.5">
+              <span className="label-tag text-muted-foreground">Link to account or project</span>
+              <select value={linkId} onChange={(e) => setLinkId(e.target.value)} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
+                <option value="">No linked account</option>
                 {items.map((item) => (
                   <option key={item.id} value={item.id}>{item.company} - {item.title}</option>
                 ))}
               </select>
-            </div>
-            <div className="doc-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3 max-md:grid-cols-1">
-              {filteredDocs.length === 0 ? (
-                <div className="text-crm-muted border border-dashed border-crm-line rounded-[var(--radius,8px)] p-4 col-span-full">
-                  No documents yet. {isViewer ? "Sign in to upload files." : "Upload the first file above."}
-                </div>
-              ) : filteredDocs.map((doc) => {
-                const item = items.find((i) => i.id === doc.board_item_id);
-                const canDelete = session && (isManager || doc.uploaded_by === session.user.id);
-                return (
-                  <div key={doc.id} className="border border-crm-line rounded-[var(--radius,8px)] p-3 bg-crm-panel grid gap-2 animate-[fadeIn_0.3s_ease_both] hover:-translate-y-[2px] hover:shadow-[0_8px_20px_rgba(15,23,42,.1)] transition-[transform,box-shadow] duration-150">
-                    <div className="w-[36px] h-[36px] rounded-[8px] bg-crm-panel-strong grid place-items-center text-[16px]">{docIcon(doc.file_type)}</div>
-                    <h3 className="m-0 text-[13px] leading-[1.3] break-words">{doc.file_name}</h3>
-                    <span className="text-crm-muted text-[11px]">{item ? item.company : "No linked account"}</span>
-                    <span className="text-crm-muted text-[11px]">{formatBytes(doc.file_size)} &middot; {dateLabel((doc.created_at || "").slice(0, 10))}</span>
-                    <div className="flex gap-2 items-center">
-                      <button type="button" onClick={() => openPreview(doc)} className="text-[12px] min-h-auto py-1 px-2">Preview</button>
-                      {canDelete && <button type="button" onClick={() => deleteDocument(doc)} className="w-[28px] min-h-[28px] text-crm-rose ml-auto">&times;</button>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            </label>
           </div>
-        </section>
-      </div>
+        </Panel>
+      )}
+
+      <Panel>
+        <PanelHead
+          title={`Files (${filteredDocs.length})`}
+          action={
+            <select value={docFilterItem} onChange={(e) => setDocFilterItem(e.target.value)} className="h-8 rounded-md border border-border bg-input px-2 text-xs text-foreground outline-none focus:border-primary/60" aria-label="Filter by linked account">
+              <option value="all">All accounts</option>
+              {items.map((item) => (
+                <option key={item.id} value={item.id}>{item.company} - {item.title}</option>
+              ))}
+            </select>
+          }
+        />
+        <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredDocs.length === 0 ? (
+            <div className="col-span-full rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              No documents yet. {isViewer ? "Sign in to upload files." : "Upload the first file above."}
+            </div>
+          ) : filteredDocs.map((doc) => {
+            const item = items.find((i) => i.id === doc.board_item_id);
+            const canDelete = session && (isManager || doc.uploaded_by === session.user.id);
+            return (
+              <div key={doc.id} className="rounded-lg border border-border bg-surface p-3 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-lg">
+                <div className="grid h-9 w-9 place-items-center rounded-lg bg-surface-raised text-base">{docIcon(doc.file_type)}</div>
+                <p className="mt-2 text-sm font-medium text-foreground break-words">{doc.file_name}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{item ? item.company : "No linked account"}</p>
+                <p className="text-xs text-muted-foreground">{formatBytes(doc.file_size)} &middot; {dateLabel((doc.created_at || "").slice(0, 10))}</p>
+                <div className="mt-3 flex items-center gap-2">
+                  <Btn size="sm" onClick={() => openPreview(doc)}>Preview</Btn>
+                  {canDelete && (
+                    <Btn size="sm" variant="danger" onClick={() => deleteDocument(doc)} className="ml-auto">
+                      &times;
+                    </Btn>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
 
       {previewDoc && previewUrl && (
-        <div className="fixed inset-0 bg-[rgba(15,23,42,.55)] grid place-items-center z-50 p-5 animate-[overlayFadeIn_0.18s_ease_both]"
-          onClick={(e) => { if (e.target === e.currentTarget) { setPreviewDoc(null); setPreviewUrl(null); } }}>
-          <div className="w-full max-w-[720px] max-h-[88vh] bg-crm-panel rounded-[10px] shadow-[0_12px_30px_rgba(15,23,42,.08)] grid grid-rows-[auto_minmax(0,1fr)] overflow-hidden animate-[modalPopIn_0.22s_cubic-bezier(.16,1,.3,1)_both]">
-            <div className="p-[14px_16px] border-b border-crm-line flex justify-between items-center gap-[10px]">
-              <h2 className="m-0 text-[15px] break-words">{previewDoc.file_name}</h2>
-              <button onClick={() => { setPreviewDoc(null); setPreviewUrl(null); }} className="w-[34px] h-[34px] grid place-items-center p-0">&times;</button>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-5" onClick={(e) => { if (e.target === e.currentTarget) { setPreviewDoc(null); setPreviewUrl(null); } }}>
+          <div className="w-full max-w-[720px] max-h-[88vh] overflow-hidden rounded-xl border border-border bg-popover shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <h2 className="truncate text-sm font-semibold text-foreground">{previewDoc.file_name}</h2>
+              <Btn size="sm" onClick={() => { setPreviewDoc(null); setPreviewUrl(null); }}>&times;</Btn>
             </div>
-            <div className="p-4 overflow-auto grid gap-3 justify-items-center">
+            <div className="grid gap-3 justify-items-center overflow-auto p-4">
               {renderPreviewBody(previewUrl, previewDoc)}
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
 function renderPreviewBody(url: string, doc: CrmDocument) {
   const fileType = doc.file_type || "";
   const extension = (doc.file_name.split(".").pop() || "").toLowerCase();
-  if (fileType.startsWith("image/")) return <img src={url} alt={doc.file_name} className="max-w-full max-h-[60vh] rounded-[6px]" />;
-  if (fileType.includes("pdf")) return <iframe src={url} title={doc.file_name} className="w-full h-[60vh] border border-crm-line rounded-[6px]" />;
-  if (fileType.startsWith("video/")) return <video controls src={url} className="max-w-full max-h-[60vh]" />;
+  if (fileType.startsWith("image/")) return <img src={url} alt={doc.file_name} className="max-h-[60vh] max-w-full rounded-md" />;
+  if (fileType.includes("pdf")) return <iframe src={url} title={doc.file_name} className="h-[60vh] w-full rounded-md border border-border" />;
+  if (fileType.startsWith("video/")) return <video controls src={url} className="max-h-[60vh] max-w-full" />;
   if (fileType.startsWith("audio/")) return <audio controls src={url} className="w-full" />;
   if (fileType.startsWith("text/") || TEXT_PREVIEW_EXTENSIONS.includes(extension)) {
-    return <span className="text-[12px] text-crm-muted">Text preview loading...</span>;
+    return <span className="text-xs text-muted-foreground">Text preview loading...</span>;
   }
   if (OFFICE_PREVIEW_TYPES.includes(fileType) || ["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(extension)) {
     const viewerUrl = "https://docs.google.com/viewer?url=" + encodeURIComponent(url) + "&embedded=true";
-    return <iframe src={viewerUrl} title={doc.file_name} className="w-full h-[60vh] border border-crm-line rounded-[6px]" />;
+    return <iframe src={viewerUrl} title={doc.file_name} className="h-[60vh] w-full rounded-md border border-border" />;
   }
   return (
-    <div className="text-center grid gap-3">
-      <div className="text-crm-muted">Preview is not available for this file type.</div>
+    <div className="grid gap-3 text-center">
+      <p className="text-sm text-muted-foreground">Preview is not available for this file type.</p>
       <a href={url} target="_blank" rel="noopener noreferrer">
-        <button className="bg-gradient-to-r from-crm-accent to-crm-accent-strong text-white font-semibold border-transparent min-h-[34px] rounded-[6px] px-3">Download {doc.file_name}</button>
+        <Btn variant="primary">Download {doc.file_name}</Btn>
       </a>
     </div>
   );

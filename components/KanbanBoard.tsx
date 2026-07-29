@@ -8,6 +8,7 @@ import { label, money, daysUntil, dueLabel, normalizeStatus } from "@/lib/utils"
 import { useToast } from "@/components/Toast";
 import { useCallback, useState, useRef } from "react";
 import DetailPanel from "@/components/DetailPanel";
+import { Btn, Tag, Avatar } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -28,187 +29,189 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
     : PIPELINE_COLUMNS;
 
   const filteredItems = items.filter((item) => {
-    const query = search.trim().toLowerCase();
-    const typeOk = type === "all" || item.type === type;
-    const ownerOk = owner === "all" || item.owner === owner;
-    const priorityOk = priority === "all" || item.priority === priority;
-    const viewOk = view !== "focus" || item.priority === "high" || daysUntil(item.due) <= 7;
-    const text = [item.title, item.company, item.owner, item.notes, item.type].join(" ").toLowerCase();
-    return typeOk && ownerOk && priorityOk && viewOk && (!query || text.includes(query));
+    if (view === "pipeline" && item.type !== "deal") return false;
+    if (view === "projects" && item.type !== "project") return false;
+    if (search && !item.title.toLowerCase().includes(search.toLowerCase()) && !item.company.toLowerCase().includes(search.toLowerCase())) return false;
+    if (type && item.type !== type) return false;
+    if (owner && item.owner !== owner) return false;
+    if (priority && item.priority !== priority) return false;
+    return true;
   });
 
-  function itemColumn(item: BoardItem): string {
+  const columnFilter = (item: BoardItem, colId: string) => {
+    const normalized = normalizeStatus(item.status);
     if (view === "focus") {
       const days = daysUntil(item.due);
-      if (days < 0) return "overdue";
-      if (days <= 7) return "soon";
-      return "later";
+      if (colId === "overdue") return days < 0;
+      if (colId === "due_soon") return days >= 0 && days <= 3;
+      if (colId === "this_week") return days > 3 && days <= 7;
+      if (colId === "on_track") return days > 7;
+      return true;
     }
-    const available = activeColumns.map((c) => c.id);
-    if (available.includes(item.status)) return item.status;
-    if (view === "projects") return item.type === "project" ? "project_build" : "project_brief";
-    return item.type === "deal" ? "meeting_booked" : "responded_email";
-  }
+    return normalized === colId;
+  };
 
-  const moveItem = useCallback(async (id: string, status: string) => {
-    const item = items.find((i) => i.id === id);
-    if (!item) return;
-    if (view === "focus") { flash("Cannot move items in Focus view"); return; }
+  const handleDrop = useCallback(async (e: React.DragEvent, colId: string) => {
+    e.preventDefault();
+    const itemId = dragItem.current;
+    if (!itemId) return;
+    dragItem.current = null;
+    const item = filteredItems.find((i) => i.id === itemId);
+    if (!item || isViewer) return;
 
-    if (!isManager) {
-      flash("Changes sent for approval (manager-only direct move)");
-      return;
+    if (isManager) {
+      const { error } = await supabase
+        .from("crm_board_items")
+        .update({ status: colId })
+        .eq("id", itemId);
+      if (error) { flash(error.message); return; }
+      await loadRemoteItems();
+    } else {
+      const payload: Record<string, unknown> = { status: colId };
+      const pending = changeRequests.filter((r) => r.board_item_id === itemId && r.status === "pending");
+      if (pending.length > 0) { flash("There's already a pending change request for this item"); return; }
+      const { error } = await supabase.from("crm_change_requests").insert({
+        board_item_id: itemId,
+        action: "update",
+        before_payload: { status: item.status },
+        payload,
+      });
+      if (error) { flash(error.message); return; }
+      flash("Change request submitted for review");
     }
+  }, [filteredItems, isViewer, isManager, supabase, loadRemoteItems, flash, changeRequests]);
 
-    const { error } = await supabase.from("crm_board_items").update({ status }).eq("id", id);
-    if (error) { flash(error.message); return; }
-    await loadRemoteItems();
-    flash("Moved");
-  }, [items, isManager, view, loadRemoteItems, flash]);
-
-  const addItem = useCallback(async () => {
-    if (!session) { flash("Sign in first"); return; }
+  const createItem = useCallback(async (colId: string) => {
+    if (!session) { flash("Sign in to create items"); return; }
     if (isViewer) { flash("Viewers have read-only access"); return; }
-
-    const status = view === "projects" ? "project_brief" : "responded_email";
-    const newItem = {
-      user_id: session.user.id,
-      assigned_to: session.user.id,
-      visibility: "personal",
-      type: type === "all" ? "deal" : type,
-      title: "New opportunity",
-      company: "New account",
-      owner: session.user.email?.split("@")[0] || "User",
-      priority: "medium" as const,
-      value: 0,
-      due: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-      status,
-      notes: "",
-      document_url: "",
-    };
-
-    if (!isManager) {
-      flash("Sent for approval");
-      return;
+    const owner = profile?.display_name || session.user.email || "User";
+    if (isManager) {
+      const { error } = await supabase.from("crm_board_items").insert({
+        title: "New " + view.slice(0, -1),
+        type: view === "pipeline" ? "deal" : "project",
+        company: "New account",
+        status: colId,
+        owner,
+      });
+      if (error) { flash(error.message); return; }
+      await loadRemoteItems();
+    } else {
+      const payload = {
+        title: "New " + view.slice(0, -1),
+        type: view === "pipeline" ? "deal" : "project",
+        company: "New account",
+        status: colId,
+        owner,
+      };
+      const pending = changeRequests.filter((r) => r.status === "pending");
+      if (pending.length > 0) { flash("You already have a pending change request"); return; }
+      const { error } = await supabase.from("crm_change_requests").insert({
+        action: "create",
+        payload,
+      });
+      if (error) { flash(error.message); return; }
+      flash("Create request submitted for review");
     }
-
-    const { data, error } = await supabase.from("crm_board_items").insert(newItem).select().single();
-    if (error) { flash(error.message); return; }
-    await loadRemoteItems();
-    if (data) setSelectedId(data.id);
-    flash("Created");
-  }, [session, isViewer, isManager, view, type, loadRemoteItems, setSelectedId, flash]);
-
-  const owners = Array.from(new Set(items.map((item) => item.owner))).sort();
+  }, [session, isViewer, isManager, view, profile, supabase, loadRemoteItems, flash, changeRequests]);
 
   return (
-    <div className="board-scroll overflow-auto min-h-0 flex flex-col">
-      <section className="toolbar bg-crm-panel border-b border-crm-line p-[10px_18px] flex items-center justify-between gap-3 max-md:flex-col max-md:items-stretch">
-        <div className="segmented inline-grid grid-flow-col border border-crm-line rounded-[7px] overflow-hidden bg-crm-panel-strong" role="tablist">
-          {["all", "deal", "project", "task"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setType(t)}
-              className={`border-0 rounded-none min-h-[32px] px-3 bg-transparent ${type === t ? "bg-crm-panel text-crm-text shadow-[inset_0_-2px_0_var(--color-crm-accent)]" : "text-crm-muted"}`}
-            >
-              {t === "all" ? "All" : `${t.charAt(0).toUpperCase()}${t.slice(1)}s`}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <section className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2.5 max-md:flex-col max-md:items-stretch">
+        <div className="inline-grid grid-flow-col overflow-hidden rounded-lg border border-border" role="tablist">
+          {["all", ...new Set(items.map((i) => i.type))].map((t) => (
+            <button key={t} onClick={() => setType(t === "all" ? "" : t)}
+              className={`rounded-none border-0 px-3 py-1.5 text-xs font-medium transition-colors ${
+                (type === t) || (t === "all" && !type)
+                  ? "bg-surface-raised text-foreground shadow-[inset_0_-2px_0_var(--color-primary)]"
+                  : "bg-transparent text-muted-foreground hover:text-foreground"
+              }`}>
+              {label(t)}
             </button>
           ))}
         </div>
-        <div className="filters flex items-center gap-2 max-md:w-full max-md:flex-wrap">
-          <select
-            value={owner}
-            onChange={(e) => setOwner(e.target.value)}
-            className="h-[32px]"
-            aria-label="Owner filter"
-          >
-            <option value="all">All owners</option>
-            {owners.map((o) => <option key={o} value={o}>{o}</option>)}
+        <div className="flex items-center gap-2">
+          <select value={owner} onChange={(e) => setOwner(e.target.value)} className="h-8 rounded-md border border-border bg-input px-2 text-xs text-foreground outline-none focus:border-primary/60" aria-label="Filter by owner">
+            <option value="">All owners</option>
+            {[...new Set(items.map((i) => i.owner))].map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
-          <select value={priority} onChange={(e) => setPriority(e.target.value)} className="h-[32px]" aria-label="Priority filter">
-            <option value="all">All priorities</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
+          <select value={priority} onChange={(e) => setPriority(e.target.value)} className="h-8 rounded-md border border-border bg-input px-2 text-xs text-foreground outline-none focus:border-primary/60" aria-label="Filter by priority">
+            <option value="">All priorities</option>
+            {["high", "medium", "low"].map((p) => <option key={p} value={p}>{label(p)}</option>)}
           </select>
         </div>
       </section>
 
-      <section className="flex-1 p-[16px_18px] grid grid-flow-col auto-cols-[minmax(250px,1fr)] gap-[14px] items-start shrink-0 max-md:auto-cols-[minmax(248px,86vw)] max-md:p-3">
-        {activeColumns.map((column) => {
-          const columnItems = filteredItems.filter((item) => itemColumn(item) === column.id);
+      <div className="flex flex-1 gap-4 overflow-x-auto p-4">
+        {activeColumns.map((col) => {
+          const colItems = filteredItems.filter((item) => columnFilter(item, col.id));
           return (
-            <article key={column.id} className="bg-crm-panel-strong border border-crm-line rounded-[var(--radius,8px)] min-h-[300px] grid grid-rows-[auto_minmax(120px,1fr)] animate-[fadeInUp_0.3s_ease_both]">
-              <div className="p-3 flex justify-between items-center border-b border-crm-line">
-                <h2 className="m-0 text-[14px] flex items-center gap-[7px]">
-                  <span className="w-[9px] h-[9px] rounded-full shrink-0" style={{ background: column.color }} />
-                  {column.title}
-                </h2>
-                <span className="text-crm-muted bg-crm-panel border border-crm-line min-w-[28px] h-6 rounded-[12px] grid place-items-center text-[12px]">
-                  {columnItems.length}
-                </span>
+            <article key={col.id} className="flex min-w-[260px] max-w-[320px] flex-1 flex-col rounded-xl border border-border bg-surface/70">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full" style={{ background: col.color || "var(--color-muted-foreground)" }} />
+                  <span className="text-sm font-medium text-foreground">{col.title}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-surface-raised px-1.5 text-xs text-muted-foreground">{colItems.length}</span>
+                  {!isViewer && <button onClick={() => createItem(col.id)} className="grid h-6 w-6 place-items-center rounded text-xs text-muted-foreground hover:bg-surface-raised hover:text-foreground">+</button>}
+                </div>
               </div>
               <div
-                className="p-[10px] grid gap-[10px] content-start min-h-[260px] transition-colors duration-150"
-                onDragOver={(e) => { if (view !== "focus") { e.preventDefault(); (e.currentTarget as HTMLElement).classList.add("bg-[rgba(15,118,110,.04)]"); } }}
-                onDragLeave={(e) => (e.currentTarget as HTMLElement).classList.remove("bg-[rgba(15,118,110,.04)]")}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  (e.currentTarget as HTMLElement).classList.remove("bg-[rgba(15,118,110,.04)]");
-                  const id = dragItem.current;
-                  if (id) moveItem(id, column.id);
-                  dragItem.current = null;
-                }}
+                className="flex flex-col gap-2 overflow-y-auto p-3"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => handleDrop(e, col.id)}
               >
-                {columnItems.map((item) => (
-                  <article
-                    key={item.id}
-                    draggable={view !== "focus"}
-                    onClick={() => setSelectedId(item.id === selectedId ? null : item.id)}
-                    onDragStart={() => { dragItem.current = item.id; }}
-                    className={`bg-crm-panel border border-crm-line rounded-[var(--radius,8px)] p-3 shadow-[0_1px_0_rgba(15,23,42,.03)] cursor-grab min-w-0 animate-[fadeIn_0.3s_ease_both] transition-[transform,box-shadow,border-color] duration-150
-                      hover:-translate-y-[2px] hover:shadow-[0_8px_20px_rgba(15,23,42,.1)] hover:border-[#a7b4c3]
-                      active:cursor-grabbing active:translate-y-0 active:scale-[.98]
-                      ${item.id === selectedId ? "border-crm-accent shadow-[0_0_0_2px_rgba(15,118,110,.16)]" : ""}
-                    `}
-                  >
-                    <h3 className="m-0 text-[14px] leading-[1.25]">{item.title}</h3>
-                    <div className="mt-[5px] text-crm-muted text-[12px] whitespace-nowrap overflow-hidden text-ellipsis">
-                      {item.company} &middot; {item.owner}
-                    </div>
-                    <div className="flex justify-between gap-[10px] mt-[11px] items-center">
-                      <span className={`inline-flex items-center gap-[5px] h-[23px] rounded-[12px] px-2 text-[12px] whitespace-nowrap
-                        ${item.priority === "high" ? "bg-[#fff1f2] text-crm-rose dark:bg-[rgba(251,113,133,.14)]" :
-                          item.priority === "medium" ? "bg-[#fffbeb] text-crm-amber dark:bg-[rgba(251,191,36,.14)]" :
-                          "bg-[#ecfdf5] text-crm-green dark:bg-[rgba(74,222,128,.14)]"}`}>
-                        {label(item.priority)}
-                      </span>
-                      <span className="font-bold text-[13px]">
-                        {role === "admin" && item.value ? money(item.value) : dueLabel(item.due)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between gap-[10px] mt-[11px] items-center">
-                      <span className="inline-flex items-center gap-[5px] h-[23px] rounded-[12px] px-2 text-[12px] bg-[#eef2f7] text-[#405266] dark:bg-[#1f2937] dark:text-[#cbd5e1] whitespace-nowrap">
-                        {label(item.type)}
-                      </span>
-                      <span className="inline-flex items-center gap-[5px] h-[23px] rounded-[12px] px-2 text-[12px] bg-[#eef2f7] text-[#405266] dark:bg-[#1f2937] dark:text-[#cbd5e1] whitespace-nowrap">
-                        {dueLabel(item.due)}
-                      </span>
-                    </div>
-                    {changeRequests.filter((r) => r.board_item_id === item.id && r.status === "pending").length > 0 && (
-                      <div className="flex justify-between gap-[10px] mt-[11px] items-center">
-                        <span className="inline-flex items-center gap-[5px] h-[23px] rounded-[12px] px-2 text-[12px] bg-[#fffbeb] text-crm-amber dark:bg-[rgba(251,191,36,.14)] whitespace-nowrap">
-                          {changeRequests.filter((r) => r.board_item_id === item.id && r.status === "pending").length} pending approval
-                        </span>
+                {colItems.map((item) => {
+                  const pending = changeRequests.filter((r) => r.board_item_id === item.id && r.status === "pending").length;
+                  return (
+                    <div
+                      key={item.id}
+                      draggable={!isViewer}
+                      onDragStart={() => { dragItem.current = item.id; }}
+                      onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
+                      className={`cursor-pointer rounded-lg border bg-surface p-3 shadow-sm transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-0.5 hover:shadow-md ${
+                        item.id === selectedId ? "border-primary shadow-[0_0_0_2px_var(--color-primary)/.16]" : "border-border"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          {view !== "focus" && <p className="text-xs text-muted-foreground">{item.company}</p>}
+                          <p className="text-sm font-medium text-foreground">{item.title}</p>
+                        </div>
+                        <Avatar initials={(item.owner || "U").slice(0, 2).toUpperCase()} size="sm" />
                       </div>
-                    )}
-                  </article>
-                ))}
+
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <Tag tone={item.priority === "high" ? "danger" : item.priority === "medium" ? "warning" : "success"}>
+                          {item.priority}
+                        </Tag>
+                        {isManager ? (
+                          <span className="num text-sm text-foreground">{money(item.value)}</span>
+                        ) : (
+                          <span className="num text-xs text-muted-foreground">{dueLabel(item.due)}</span>
+                        )}
+                      </div>
+
+                      <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{item.owner}</span>
+                        <span className="num">{dueLabel(item.due)}</span>
+                      </div>
+
+                      {pending > 0 && (
+                        <div className="mt-1.5 rounded bg-warning/10 px-2 py-1 text-[10px] text-warning">
+                          {pending} pending change{pending > 1 ? "s" : ""}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </article>
           );
         })}
-      </section>
+      </div>
+
+      {selectedId && <DetailPanel />}
     </div>
   );
 }
