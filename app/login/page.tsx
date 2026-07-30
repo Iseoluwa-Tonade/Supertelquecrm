@@ -53,7 +53,7 @@ export default function LoginPage() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from("profiles")
         .select("organisation_id, registration_complete")
         .eq("user_id", user.id)
@@ -115,13 +115,6 @@ export default function LoginPage() {
       setError("An account with this email already exists. Sign in instead.");
       return;
     }
-    await supabase.from("profiles").upsert({
-      user_id: data.user.id,
-      email: data.user.email || "",
-      role: "viewer",
-      status: "active",
-      registration_complete: false,
-    });
 
     sessionStorage.setItem("signup_choice", signupChoice);
     sessionStorage.setItem("signup_email", email);
@@ -192,6 +185,9 @@ export default function LoginPage() {
   }
 
   async function handleGoogleOAuth() {
+    if (signupChoice) {
+      sessionStorage.setItem("signup_choice", signupChoice);
+    }
     setOauthLoading(true);
     setError("");
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;

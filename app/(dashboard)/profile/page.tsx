@@ -21,7 +21,8 @@ export default function ProfilePage() {
 
   const isAdmin = profile?.role === "admin";
   const signupChoice = typeof window !== "undefined" ? sessionStorage.getItem("signup_choice") : null;
-  const [profileSaved, setProfileSaved] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+  const hasSaved = justSaved || !!profile?.phone;
 
   const [orgForm, setOrgForm] = useState({
     name: "",
@@ -58,7 +59,7 @@ export default function ProfilePage() {
         emergency_contact_name: profile.emergency_contact_name || "",
         emergency_contact_phone: profile.emergency_contact_phone || "",
       });
-      setProfileSaved(!!profile.display_name);
+      setJustSaved(!!profile.phone);
 
       if (profile.organisation_id) {
         supabase
@@ -170,7 +171,7 @@ export default function ProfilePage() {
     const { error } = await supabase.from("profiles").update(patch).eq("user_id", session.user.id);
     if (error) { console.error(error); flash("Failed to save profile"); return; }
 
-    setProfileSaved(true);
+    setJustSaved(true);
     await refreshData();
 
     if (inviteStatus === null && profile?.organisation_id && !isAdmin) {
@@ -197,6 +198,11 @@ export default function ProfilePage() {
         desc={isAdmin ? "Manage your organisation and personal settings." : "View and edit your personal details."}
       />
 
+      {justSaved && (
+        <div className="flex justify-end">
+          <Btn variant="ghost" size="sm" onClick={() => setJustSaved(false)}>Edit profile</Btn>
+        </div>
+      )}
       {inviteStatus === "pending" && (
         <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning flex items-center gap-2">
           <span>&#9203;</span>
@@ -214,16 +220,16 @@ export default function ProfilePage() {
           <span>&#9432;</span>
           <span className="flex-1">You haven't joined an organisation yet.</span>
           {signupChoice === "org" ? (
-            <Btn size="sm" variant="primary" disabled={!profileSaved} onClick={() => router.push("/onboarding/setup")}>Set up your company</Btn>
+            <Btn size="sm" variant="primary" disabled={!hasSaved} onClick={() => router.push("/onboarding/setup")}>Set up your company</Btn>
           ) : signupChoice === "team" ? (
-            <Btn size="sm" variant="primary" disabled={!profileSaved} onClick={() => router.push("/organisations")}>Browse organisations</Btn>
+            <Btn size="sm" variant="primary" disabled={!hasSaved} onClick={() => router.push("/organisations")}>Browse organisations</Btn>
           ) : (
             <>
-              <Btn size="sm" variant="primary" disabled={!profileSaved} onClick={() => router.push("/onboarding/setup")}>Set up your company</Btn>
-              <Btn size="sm" variant="primary" disabled={!profileSaved} onClick={() => router.push("/organisations")}>Browse organisations</Btn>
+              <Btn size="sm" variant="primary" disabled={!hasSaved} onClick={() => router.push("/onboarding/setup")}>Set up your company</Btn>
+              <Btn size="sm" variant="primary" disabled={!hasSaved} onClick={() => router.push("/organisations")}>Browse organisations</Btn>
             </>
           )}
-          {!profileSaved && (
+          {!hasSaved && (
             <span className="w-full text-xs text-muted-foreground">Fill in your details above and click Save profile to continue.</span>
           )}
         </div>
@@ -318,7 +324,7 @@ export default function ProfilePage() {
                 </Field>
               </div>
               <div className="flex justify-end">
-                <Btn type="submit" variant="primary">Save profile</Btn>
+                <Btn type="submit" variant="primary" disabled={justSaved}>{justSaved ? "Saved ✓" : "Save profile"}</Btn>
               </div>
             </form>
           </Panel>
@@ -363,7 +369,7 @@ export default function ProfilePage() {
               </Field>
             </div>
             <div className="flex justify-end">
-              <Btn type="submit" variant="primary">Save profile</Btn>
+              <Btn type="submit" variant="primary" disabled={justSaved}>{justSaved ? "Saved ✓" : "Save profile"}</Btn>
             </div>
           </form>
         </Panel>
