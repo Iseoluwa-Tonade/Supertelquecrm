@@ -133,22 +133,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadProfile = useCallback(async (session: Session | null) => {
-    if (!session) return null;
+    if (!session) {
+      console.log("[AUTH] loadProfile: no session, returning null");
+      return null;
+    }
 
-    const { data } = await supabase
+    console.log("[AUTH] loadProfile: fetching profile for", { userId: session.user.id, email: session.user.email });
+    const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", session.user.id)
       .single();
 
     if (!data) {
+      console.log("[AUTH] loadProfile: no profile found", { error: error?.message, code: error?.code });
       await supabase.auth.signOut();
       return null;
     }
     if (data.status === "suspended") {
+      console.log("[AUTH] loadProfile: account suspended, signing out");
       await supabase.auth.signOut();
       return null;
     }
+    console.log("[AUTH] loadProfile: profile loaded", { role: data.role, orgId: data.organisation_id, regComplete: data.registration_complete });
     return data as Profile;
   }, []);
 
@@ -256,10 +263,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.profile?.role]);
 
   const refreshData = useCallback(async () => {
+    console.log("[AUTH] refreshData: starting");
     setState((s) => ({ ...s, loading: true }));
     const {
       data: { session },
     } = await supabase.auth.getSession();
+    console.log("[AUTH] refreshData: getSession result", { hasSession: !!session, userId: session?.user?.id });
     if (!session) {
       setState((s) => ({ ...s, loading: false, session: null }));
       return;
@@ -267,8 +276,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const profile = await loadProfile(session);
     setState((s) => ({ ...s, session, profile }));
     if (profile?.organisation_id) {
+      console.log("[AUTH] refreshData: loading organisation", { orgId: profile.organisation_id });
       await loadOrganisation(profile.organisation_id);
     }
+    console.log("[AUTH] refreshData: loading all data sources");
     await Promise.all([
       loadRemoteItems(),
       loadRemoteActivities(),
@@ -280,6 +291,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loadServices(),
     ]);
     setState((s) => ({ ...s, loading: false }));
+    console.log("[AUTH] refreshData: complete");
   }, [
     loadProfile,
     loadOrganisation,
@@ -294,12 +306,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   ]);
 
   useEffect(() => {
+    console.log("[AUTH] AppContext: mounting, running initial refreshData");
     refreshData();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[AUTH] onAuthStateChange", { event, userId: session?.user?.id, email: session?.user?.email });
       if (event === "SIGNED_OUT") {
+        console.log("[AUTH] onAuthStateChange: SIGNED_OUT, clearing state");
         setState((s) => ({
           ...s,
           session: null,
@@ -316,6 +331,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }));
       }
       if (session) {
+        console.log("[AUTH] onAuthStateChange: session present, loading profile");
         const profile = await loadProfile(session);
         setState((s) => ({ ...s, session, profile }));
         if (profile?.organisation_id) {

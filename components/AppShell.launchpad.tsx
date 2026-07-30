@@ -100,6 +100,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
   const [accountOpen, setAccountOpen] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
+  const regComplete = profile?.registration_complete ?? true;
   const CURRENT_ORG = organisation || { name: "Workspace", company_type: "workspace" };
   const CURRENT_USER = profile || { display_name: "You", job_title: "" };
   const initials =
@@ -110,6 +111,10 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
       .join("")
       .slice(0, 2)
       .toUpperCase() || "U";
+
+  const navItems: { group: string; items: NavItem[] }[] = regComplete
+    ? NAV
+    : [{ group: "Getting started", items: [{ to: "/profile", label: "My profile", icon: Users }] }];
 
   return (
     <div className="relative flex h-screen w-full overflow-hidden bg-background text-foreground">
@@ -135,7 +140,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
-          {NAV.map((section) => (
+          {navItems.map((section) => (
             <div key={section.group}>
               {railOpen ? (
                 <p className="label-tag mb-2 px-2 text-crm-sidebar-muted/80">{section.group}</p>
@@ -222,7 +227,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
               </div>
 
               <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
-                {NAV.map((section) => (
+                {navItems.map((section) => (
                   <div key={section.group}>
                     <p className="label-tag mb-2 px-2 text-crm-sidebar-muted/80">{section.group}</p>
                     <ul className="space-y-0.5">
