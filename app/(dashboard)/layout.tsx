@@ -50,8 +50,8 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-dvh grid place-items-center bg-background text-muted-foreground">
-        Loading the CRM database...
+      <div className="h-dvh grid items-start bg-background text-muted-foreground p-6 overflow-y-auto">
+        <span className="my-auto">Loading the CRM database...</span>
       </div>
     );
   }
