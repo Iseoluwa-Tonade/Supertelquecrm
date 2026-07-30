@@ -37,6 +37,13 @@ create table if not exists public.invite_requests (
   created_at timestamptz not null default now()
 );
 
+-- Ensure one pending request per user per organisation
+alter table public.invite_requests
+  drop constraint if exists invite_requests_user_id_organisation_id_key;
+
+alter table public.invite_requests
+  add constraint invite_requests_user_id_organisation_id_key unique (user_id, organisation_id);
+
 alter table public.invite_requests enable row level security;
 
 -- 4. Add organisation_id to all data tables ----------------------------------

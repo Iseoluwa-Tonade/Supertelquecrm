@@ -32,12 +32,6 @@ export default function OrganisationsPage() {
 
   async function requestJoin(orgId: string) {
     setRequesting(orgId);
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({ organisation_id: orgId, registration_complete: true })
-      .eq("user_id", session!.user.id);
-
-    if (profileError) { flash(profileError.message); setRequesting(null); return; }
 
     const { error: inviteError } = await supabase.from("invite_requests").upsert({
       user_id: session!.user.id,
@@ -45,9 +39,26 @@ export default function OrganisationsPage() {
       status: "pending",
     }, { onConflict: "user_id,organisation_id" });
 
-    setRequesting(null);
-    if (inviteError) { flash(inviteError.message); return; }
+    if (inviteError) {
+      console.error(inviteError.message);
+      flash("Failed to send invite request.");
+      setRequesting(null);
+      return;
+    }
 
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ organisation_id: orgId, registration_complete: true })
+      .eq("user_id", session!.user.id);
+
+    if (profileError) {
+      console.error(profileError.message);
+      flash("Failed to update profile.");
+      setRequesting(null);
+      return;
+    }
+
+    setRequesting(null);
     flash("Invite request sent! Waiting for admin approval.");
     router.push("/profile");
   }
