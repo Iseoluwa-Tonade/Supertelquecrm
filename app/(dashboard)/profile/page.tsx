@@ -20,6 +20,8 @@ export default function ProfilePage() {
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
 
   const isAdmin = profile?.role === "admin";
+  const signupChoice = typeof window !== "undefined" ? sessionStorage.getItem("signup_choice") : null;
+  const [profileSaved, setProfileSaved] = useState(!!profile?.display_name);
 
   const [orgForm, setOrgForm] = useState({
     name: "",
@@ -152,6 +154,8 @@ export default function ProfilePage() {
     const { error } = await supabase.from("profiles").update(patch).eq("user_id", session.user.id);
     if (error) { flash(error.message); return; }
 
+    setProfileSaved(true);
+
     if (inviteStatus === null && profile?.organisation_id && !isAdmin) {
       const { error: inviteError } = await supabase.from("invite_requests").upsert({
         user_id: session.user.id,
@@ -192,8 +196,16 @@ export default function ProfilePage() {
         <div className="rounded-lg border border-border bg-surface p-3 text-sm flex items-center gap-2 flex-wrap">
           <span>&#9432;</span>
           <span className="flex-1">You haven't joined an organisation yet.</span>
-          <Btn size="sm" variant="primary" onClick={() => router.push("/onboarding/setup")}>Set up your company</Btn>
-          <Btn size="sm" onClick={() => router.push("/organisations")}>Browse organisations</Btn>
+          {signupChoice === "org" ? (
+            <Btn size="sm" variant="primary" disabled={!profileSaved} onClick={() => router.push("/onboarding/setup")}>Set up your company</Btn>
+          ) : signupChoice === "team" ? (
+            <Btn size="sm" variant="primary" disabled={!profileSaved} onClick={() => router.push("/organisations")}>Browse organisations</Btn>
+          ) : (
+            <>
+              <Btn size="sm" variant="primary" disabled={!profileSaved} onClick={() => router.push("/onboarding/setup")}>Set up your company</Btn>
+              <Btn size="sm" variant="primary" disabled={!profileSaved} onClick={() => router.push("/organisations")}>Browse organisations</Btn>
+            </>
+          )}
         </div>
       )}
 
