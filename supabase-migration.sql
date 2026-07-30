@@ -15,6 +15,13 @@ create table if not exists public.organisations (
   updated_at timestamptz not null default now()
 );
 
+-- Ensure unique (name, email) to prevent duplicate organisations
+alter table public.organisations
+  drop constraint if exists organisations_name_email_key;
+
+alter table public.organisations
+  add constraint organisations_name_email_key unique (name, email);
+
 alter table public.organisations enable row level security;
 
 -- 2. Add organisation columns to profiles -----------------------------------

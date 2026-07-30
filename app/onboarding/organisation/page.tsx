@@ -48,6 +48,30 @@ export default function OnboardOrganisationPage() {
       return;
     }
 
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("organisation_id")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (existingProfile?.organisation_id) {
+      router.push("/overview");
+      return;
+    }
+
+    const { data: existingOrg } = await supabase
+      .from("organisations")
+      .select("id")
+      .eq("name", orgName.trim())
+      .eq("email", orgEmail.trim() || session.user.email)
+      .maybeSingle();
+
+    if (existingOrg) {
+      setError("An organisation with this name and email already exists.");
+      setLoading(false);
+      return;
+    }
+
     const { data: org, error: orgError } = await supabase
       .from("organisations")
       .insert({
