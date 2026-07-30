@@ -46,7 +46,7 @@ export default function InvoicingPage() {
   if (isViewer) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Finance" title="Invoicing" />
+        <PageHeader variant="finance" eyebrow="Finance" title="Invoicing" />
         <EmptyLock what="invoices" />
       </div>
     );
@@ -54,7 +54,7 @@ export default function InvoicingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="finance"
         eyebrow="Finance"
         title="Invoicing"
         desc="Track invoices, payments and outstanding balances."

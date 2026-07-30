@@ -39,7 +39,7 @@ export default function AccountingPage() {
   if (!isAdmin) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Finance" title="Accounting" />
+        <PageHeader variant="finance" eyebrow="Finance" title="Accounting" />
         <EmptyLock what="accounting and ledger data" />
       </div>
     );
@@ -47,7 +47,7 @@ export default function AccountingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="finance"
         eyebrow="Finance"
         title="Accounting"
         desc="General ledger, expenses and financial overview."

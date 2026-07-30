@@ -188,6 +188,16 @@ create policy "profiles_manager_update_all"
 -- (including via a raw API call). SECURITY DEFINER is required so the
 -- inner lookup of the acting user's *current* role isn't itself blocked by
 -- RLS; EXECUTE is revoked below so it can't be called directly as an RPC.
+-- NOTE: The exception for registration_complete going false->true allows
+-- the initial setup flow to set role='admin' without being blocked.
+
+drop policy if exists "profiles_update_own_name" on public.profiles;
+create policy "profiles_update_own_name"
+  on public.profiles for update
+  to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+
 create or replace function public.prevent_self_role_escalation()
 returns trigger
 language plpgsql
@@ -198,6 +208,9 @@ declare
   acting_role text;
 begin
   if new.user_id = auth.uid() then
+    if old.registration_complete = false and new.registration_complete = true then
+      return new;
+    end if;
     select role into acting_role from public.profiles where user_id = auth.uid();
     if acting_role is distinct from 'admin' then
       new.role := old.role;

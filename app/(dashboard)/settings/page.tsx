@@ -15,7 +15,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="operations"
         eyebrow="Operations"
         title="Settings"
         desc="Workspace and account preferences."

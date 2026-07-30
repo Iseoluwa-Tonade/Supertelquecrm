@@ -31,7 +31,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="overview"
         eyebrow="Overview"
         title="Notifications"
         desc={`${notifications.length} unread items`}

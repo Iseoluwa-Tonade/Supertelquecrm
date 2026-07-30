@@ -54,7 +54,7 @@ export default function OrganisationsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="account"
         eyebrow="Account"
         title="Organisations"
         desc="Browse companies registered on SuperTelque CRM and request to join."

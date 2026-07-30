@@ -5,7 +5,7 @@ import { money, label, dateLabel, daysUntil, dueLabel, statusTitle, statusColor,
 import { Panel, PanelHead, PageHeader, Tag, Avatar, Btn } from "@/components/kit.launchpad";
 import { ArrowUpRight, Plus, Sparkles, TrendingUp, Clock, CheckCircle2, Calendar, Activity, Filter } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 const priorityColor: Record<string, string> = {
   high: "var(--color-crm-rose)",
@@ -17,6 +17,7 @@ export default function OverviewPage() {
   const { items, activities, documents, messages, changeRequests, profile } = useApp();
   const role = profile?.role || "viewer";
   const isManager = role === "manager" || role === "admin";
+  const [pipelineView, setPipelineView] = useState<"bar" | "pie">("bar");
 
   const doneStatuses = ["project_done", "project_delivered", "project_closed"];
   const activeItems = items.filter((item) => !doneStatuses.includes(item.status));
@@ -56,10 +57,31 @@ export default function OverviewPage() {
   }, [activeItems]);
 
   const maxStageCount = Math.max(...pipelineStages.map((s) => s.count), 1);
+  const totalStageCount = pipelineStages.reduce((sum, stage) => sum + stage.count, 0);
+  const pieSegments = useMemo(() => {
+    if (totalStageCount === 0) return [];
+
+    let cursor = 0;
+    return pipelineStages.map((stage) => {
+      const percent = (stage.count / totalStageCount) * 100;
+      const start = cursor;
+      cursor += percent;
+      return {
+        ...stage,
+        percent,
+        start,
+        end: cursor,
+      };
+    });
+  }, [pipelineStages, totalStageCount]);
+
+  const pieGradient = pieSegments
+    .map((segment) => `${segment.color} ${segment.start}% ${segment.end}%`)
+    .join(", ");
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="overview"
         eyebrow="SuperTelque CRM"
         title="Operations dashboard"
         actions={
@@ -97,15 +119,41 @@ export default function OverviewPage() {
             title="Pipeline overview"
             hint={`${activeItems.length} active · ${pipelineStages.length} stages`}
             action={
-              <Link href="/pipeline" className="text-xs text-primary hover:underline">
-                Full pipeline <ArrowUpRight className="ml-0.5 inline h-3 w-3" />
-              </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex rounded-xl border border-border bg-surface-raised p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPipelineView("bar")}
+                    className={`rounded-lg px-3 py-1.5 transition-colors ${
+                      pipelineView === "bar"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Bar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPipelineView("pie")}
+                    className={`rounded-lg px-3 py-1.5 transition-colors ${
+                      pipelineView === "pie"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Pie
+                  </button>
+                </div>
+                <Link href="/pipeline" className="text-xs text-primary hover:underline">
+                  Full pipeline <ArrowUpRight className="ml-0.5 inline h-3 w-3" />
+                </Link>
+              </div>
             }
           />
           <div className="p-4">
             {pipelineStages.length === 0 ? (
               <p className="text-sm text-muted-foreground">No active deals in the pipeline.</p>
-            ) : (
+            ) : pipelineView === "bar" ? (
               <div className="space-y-3">
                 {pipelineStages.map((stage) => (
                   <div key={stage.status}>
@@ -126,6 +174,41 @@ export default function OverviewPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            ) : (
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)] lg:items-center">
+                <div className="flex justify-center">
+                  <div className="relative h-56 w-56">
+                    <div
+                      className="h-full w-full rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55),0_18px_38px_-24px_rgba(15,23,42,0.45)]"
+                      style={{ background: `conic-gradient(${pieGradient})` }}
+                    />
+                    <div className="absolute inset-[22%] rounded-full border border-border bg-background shadow-inner">
+                      <div className="flex h-full w-full flex-col items-center justify-center text-center">
+                        <span className="label-tag text-muted-foreground">Active deals</span>
+                        <span className="num mt-1 text-3xl font-semibold text-foreground">{totalStageCount}</span>
+                        <span className="mt-1 text-xs text-muted-foreground">{pipelineStages.length} stages</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  {pieSegments.map((stage) => (
+                    <div key={stage.status} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3 py-2.5">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: stage.color }} />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{stage.title}</p>
+                          <p className="text-xs text-muted-foreground">{money(stage.value)} total</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="num text-sm font-semibold text-foreground">{stage.count}</p>
+                        <p className="text-[10px] text-muted-foreground">{Math.round(stage.percent)}%</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

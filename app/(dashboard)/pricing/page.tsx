@@ -81,7 +81,7 @@ export default function PricingPage() {
   if (!isAdmin) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Revenue" title="Pricing" />
+        <PageHeader variant="revenue" eyebrow="Revenue" title="Pricing" />
         <Panel className="p-6 text-center">
           <p className="text-sm text-muted-foreground">Only admins can access the pricing calculator.</p>
         </Panel>
@@ -91,7 +91,7 @@ export default function PricingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="revenue"
         eyebrow="Revenue"
         title="Pricing"
         desc="Manage your service catalog and calculate quotes on the fly."

@@ -170,7 +170,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="account"
         eyebrow="Account"
         title="My profile"
         desc={isAdmin ? "Manage your organisation and personal settings." : "View and edit your personal details."}

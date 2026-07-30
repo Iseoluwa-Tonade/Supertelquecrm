@@ -56,7 +56,7 @@ export default function MyTasksPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="delivery"
         eyebrow="Delivery"
         title="My tasks"
         desc="Your assigned work and deliverables."

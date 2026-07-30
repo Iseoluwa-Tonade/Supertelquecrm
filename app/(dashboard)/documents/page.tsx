@@ -85,7 +85,7 @@ export default function DocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="delivery"
         eyebrow="Delivery"
         title="Documents"
         desc="Upload, preview and manage files linked to your deals and projects."

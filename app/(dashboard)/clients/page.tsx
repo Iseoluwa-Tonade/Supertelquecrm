@@ -29,7 +29,7 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="revenue"
         eyebrow="Revenue"
         title="Clients"
         desc="Accounts and companies you work with."

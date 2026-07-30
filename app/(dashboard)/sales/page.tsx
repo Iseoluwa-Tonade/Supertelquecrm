@@ -40,7 +40,7 @@ export default function SalesPage() {
   if (isViewer) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Revenue" title="Sales" />
+        <PageHeader variant="revenue" eyebrow="Revenue" title="Sales" />
         <EmptyLock what="sales figures" />
       </div>
     );
@@ -48,7 +48,7 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="revenue"
         eyebrow="Revenue"
         title="Sales"
         desc="Track orders, quota attainment and won revenue."

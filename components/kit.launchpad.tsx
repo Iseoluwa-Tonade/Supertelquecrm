@@ -172,19 +172,30 @@ export function Textarea({
   );
 }
 
+const PAGE_HEADER_VARIANTS: Record<string, string> = {
+  overview: "border-emerald-200/70 bg-gradient-to-r from-emerald-50/80 to-teal-50/80",
+  revenue: "border-amber-200/70 bg-gradient-to-r from-amber-50/80 to-yellow-50/80",
+  delivery: "border-blue-200/70 bg-gradient-to-r from-blue-50/80 to-indigo-50/80",
+  finance: "border-rose-200/70 bg-gradient-to-r from-rose-50/80 to-pink-50/80",
+  operations: "border-slate-200/70 bg-gradient-to-r from-slate-50/80 to-gray-100/80",
+  account: "border-violet-200/70 bg-gradient-to-r from-violet-50/80 to-purple-50/80",
+};
+
 export function PageHeader({
   eyebrow,
   title,
   desc,
   actions,
+  variant,
 }: {
   eyebrow: string;
   title: string;
   desc?: string;
   actions?: React.ReactNode;
+  variant?: keyof typeof PAGE_HEADER_VARIANTS;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface/75 px-5 py-5 shadow-[0_16px_38px_-28px_rgba(15,23,42,0.36)] backdrop-blur-sm sm:px-6">
+    <div className={`rounded-2xl border px-5 py-5 shadow-[0_16px_38px_-28px_rgba(15,23,42,0.36)] backdrop-blur-sm sm:px-6 ${PAGE_HEADER_VARIANTS[variant ?? "overview"] ?? "bg-surface/75 border-border"}`}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="label-tag text-primary">{eyebrow}</p>

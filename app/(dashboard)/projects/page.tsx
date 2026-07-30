@@ -23,7 +23,7 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="delivery"
         eyebrow="Delivery"
         title="Projects"
         desc="A higher-signal project view that matches the newer Launchpad style while still showing your current CRM records."

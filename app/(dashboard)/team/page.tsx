@@ -104,7 +104,7 @@ export default function TeamPage() {
   if (!isManager) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Operations" title="Team & invites" />
+        <PageHeader variant="operations" eyebrow="Operations" title="Team & invites" />
         <Panel className="p-6 text-center">
           <p className="text-sm text-muted-foreground">Only managers and admins can manage the team.</p>
         </Panel>
@@ -114,7 +114,7 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="operations"
         eyebrow="Operations"
         title="Team & invites"
         desc="Invite teammates, approve access and keep page permissions aligned."

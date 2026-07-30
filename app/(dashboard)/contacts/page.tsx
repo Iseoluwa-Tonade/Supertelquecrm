@@ -50,7 +50,7 @@ export default function ContactsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="revenue"
         eyebrow="Revenue"
         title="Contacts & leads"
         desc="Your team directory and inbound opportunities."

@@ -22,7 +22,7 @@ export default function PipelinePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="revenue"
         eyebrow="Revenue"
         title="Deal pipeline"
         desc="The journey view is now presented with a cleaner Launchpad-style layout, while your current CRM data still drives the content."

@@ -57,7 +57,7 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="delivery"
         eyebrow="Delivery"
         title="Task scheduling"
         desc="Assign tasks to team members and track delivery."

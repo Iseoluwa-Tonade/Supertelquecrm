@@ -51,7 +51,7 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="delivery"
         eyebrow="Delivery"
         title="Inventory"
         desc="Stock levels, movements and reorder tracking."

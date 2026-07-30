@@ -55,7 +55,7 @@ export default function ApprovalsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="operations"
         eyebrow="Operations"
         title="Approvals"
         desc={isManager ? "Review and approve pending change requests from the team." : "Track your pending change requests."}

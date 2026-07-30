@@ -15,7 +15,7 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader variant="operations"
         eyebrow="Operations"
         title="Reports"
         desc="Submitted reports and generated documents."
