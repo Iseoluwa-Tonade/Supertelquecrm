@@ -29,7 +29,6 @@ export default function LoginPage() {
 
   async function handleSignIn(e: FormEvent) {
     e.preventDefault();
-    console.log("[AUTH] handleSignIn: starting", { email: email.replace(/.(?=.*@)/g, "*") });
     if (!email || !password) {
       setError("Enter email and password");
       return;
@@ -44,7 +43,6 @@ export default function LoginPage() {
     });
     if (authError) {
       setLoading(false);
-      console.log("[AUTH] handleSignIn: authError", { message: authError.message, status: authError.status });
       if (authError.message?.toLowerCase().includes("email not confirmed") || authError.message?.toLowerCase().includes("email not verified")) {
         setUnverifiedEmail(email);
         return;
@@ -53,9 +51,7 @@ export default function LoginPage() {
       return;
     }
 
-    console.log("[AUTH] handleSignIn: signInWithPassword succeeded");
     const { data: { user } } = await supabase.auth.getUser();
-    console.log("[AUTH] handleSignIn: getUser result", { userId: user?.id, email: user?.email });
     if (user) {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -63,10 +59,7 @@ export default function LoginPage() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      console.log("[AUTH] handleSignIn: profile lookup", { profile: profile ? { orgId: profile.organisation_id, regComplete: profile.registration_complete } : null, profileError: profileError?.message });
-
       if (!profile) {
-        console.log("[AUTH] handleSignIn: no profile found, upserting new profile");
         await supabase.from("profiles").upsert({
           user_id: user.id,
           email: user.email || "",
@@ -76,11 +69,9 @@ export default function LoginPage() {
         });
         router.push("/profile");
       } else if (profile.registration_complete) {
-        console.log("[AUTH] handleSignIn: registration complete, redirecting to /overview");
         router.push("/overview");
       } else {
         const savedChoice = sessionStorage.getItem("signup_choice");
-        console.log("[AUTH] handleSignIn: registration incomplete", { savedChoice });
         if (savedChoice === "org") {
           router.push("/onboarding/setup");
         } else {
@@ -88,7 +79,6 @@ export default function LoginPage() {
         }
       }
     } else {
-      console.log("[AUTH] handleSignIn: no user object from getUser, pushing /profile");
       router.push("/profile");
     }
     setLoading(false);
@@ -96,7 +86,6 @@ export default function LoginPage() {
 
   async function handleSignUp(e: FormEvent) {
     e.preventDefault();
-    console.log("[AUTH] handleSignUp: starting", { choice: signupChoice, email: email.replace(/.(?=.*@)/g, "*") });
     if (!email || !password || !signupChoice) {
       setError("Fill in all fields and choose an option");
       return;
@@ -115,7 +104,6 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (signUpError) {
-      console.log("[AUTH] handleSignUp: signUpError", { message: signUpError.message, status: signUpError.status });
       if (signUpError.message?.toLowerCase().includes("already registered") || signUpError.message?.toLowerCase().includes("already exists")) {
         setError("An account with this email already exists. Sign in instead.");
         return;
@@ -123,12 +111,10 @@ export default function LoginPage() {
       setError(signUpError.message);
       return;
     }
-    console.log("[AUTH] handleSignUp: signUp result", { userId: data?.user?.id, email: data?.user?.email, identities: data?.user?.identities?.length, emailConfirmed: data?.user?.email_confirmed_at });
     if (!data?.user || data?.user?.identities?.length === 0) {
       setError("An account with this email already exists. Sign in instead.");
       return;
     }
-    console.log("[AUTH] handleSignUp: upserting profile");
     await supabase.from("profiles").upsert({
       user_id: data.user.id,
       email: data.user.email || "",
@@ -141,11 +127,9 @@ export default function LoginPage() {
     sessionStorage.setItem("signup_email", email);
 
     if (!data?.user?.email_confirmed_at) {
-      console.log("[AUTH] handleSignUp: email not confirmed, showing verification prompt");
       setUnverifiedEmail(email);
       return;
     }
-    console.log("[AUTH] handleSignUp: email confirmed, redirecting", { choice: signupChoice });
     if (signupChoice === "org") {
       router.push("/onboarding/setup");
     } else {
@@ -156,7 +140,6 @@ export default function LoginPage() {
   async function handleForgotPassword(e: FormEvent) {
     e.preventDefault();
     const target = forgotEmail || email;
-    console.log("[AUTH] handleForgotPassword: starting", { target: target?.replace(/.(?=.*@)/g, "*") });
     if (!target) {
       setError("Enter your email address");
       return;
@@ -170,11 +153,9 @@ export default function LoginPage() {
     });
     setResetLoading(false);
     if (resetError) {
-      console.log("[AUTH] handleForgotPassword: error", { message: resetError.message });
       setError(resetError.message);
       return;
     }
-    console.log("[AUTH] handleForgotPassword: reset email sent");
     setResetSent(true);
   }
 
@@ -192,7 +173,6 @@ export default function LoginPage() {
 
   async function handleResendVerification() {
     const target = unverifiedEmail || email;
-    console.log("[AUTH] handleResendVerification: starting", { target: target?.replace(/.(?=.*@)/g, "*") });
     if (!target || resendCooldown > 0) return;
     setResending(true);
     setResentMsg("");
@@ -204,17 +184,14 @@ export default function LoginPage() {
     });
     setResending(false);
     if (error) {
-      console.log("[AUTH] handleResendVerification: error", { message: error.message });
       setError(error.message);
       return;
     }
-    console.log("[AUTH] handleResendVerification: resent successfully");
     setResentMsg("Verification email sent! Check your inbox.");
     setResendCooldown(60);
   }
 
   async function handleGoogleOAuth() {
-    console.log("[AUTH] handleGoogleOAuth: starting");
     setOauthLoading(true);
     setError("");
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
@@ -225,7 +202,6 @@ export default function LoginPage() {
       },
     });
     if (error) {
-      console.log("[AUTH] handleGoogleOAuth: error", { message: error.message });
       setError(error.message);
       setOauthLoading(false);
     }

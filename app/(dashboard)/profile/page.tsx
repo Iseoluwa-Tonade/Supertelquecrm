@@ -21,7 +21,7 @@ export default function ProfilePage() {
 
   const isAdmin = profile?.role === "admin";
   const signupChoice = typeof window !== "undefined" ? sessionStorage.getItem("signup_choice") : null;
-  const [profileSaved, setProfileSaved] = useState(!!profile?.display_name);
+  const [profileSaved, setProfileSaved] = useState(false);
 
   const [orgForm, setOrgForm] = useState({
     name: "",
@@ -58,6 +58,7 @@ export default function ProfilePage() {
         emergency_contact_name: profile.emergency_contact_name || "",
         emergency_contact_phone: profile.emergency_contact_phone || "",
       });
+      setProfileSaved(!!profile.display_name);
 
       if (profile.organisation_id) {
         supabase
@@ -131,7 +132,7 @@ export default function ProfilePage() {
         enabled_features: enabledFeatures,
       })
       .eq("id", profile.organisation_id);
-    if (error) { flash(error.message); return; }
+    if (error) { console.error(error); flash("Failed to save organisation settings"); return; }
     await refreshData();
     flash("Organisation settings saved");
   }, [session, profile, orgForm, enabledFeatures, supabase, flash, refreshData]);
@@ -139,6 +140,21 @@ export default function ProfilePage() {
   const saveProfile = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session) return;
+
+    const required = [
+      ["Display name", form.display_name],
+      ["Phone", form.phone],
+      ["Job title", form.job_title],
+      ["Department", form.department],
+      ["Employee ID", form.employee_id],
+      ["Address", form.address],
+      ["Emergency contact name", form.emergency_contact_name],
+      ["Emergency contact phone", form.emergency_contact_phone],
+    ] as const;
+    for (const [label, val] of required) {
+      if (!val.trim()) { flash(`${label} is required`); return; }
+    }
+
     const patch = {
       display_name: form.display_name.trim(),
       phone: form.phone.trim(),
@@ -152,9 +168,10 @@ export default function ProfilePage() {
     };
 
     const { error } = await supabase.from("profiles").update(patch).eq("user_id", session.user.id);
-    if (error) { flash(error.message); return; }
+    if (error) { console.error(error); flash("Failed to save profile"); return; }
 
     setProfileSaved(true);
+    await refreshData();
 
     if (inviteStatus === null && profile?.organisation_id && !isAdmin) {
       const { error: inviteError } = await supabase.from("invite_requests").upsert({
@@ -165,8 +182,8 @@ export default function ProfilePage() {
       if (!inviteError) setInviteStatus("pending");
     }
 
-    flash(isAdmin ? "Profile saved" : "Profile saved. Your invite request has been sent to the admin.");
-  }, [session, form, inviteStatus, profile, isAdmin, supabase, flash]);
+    flash("Profile saved");
+  }, [session, form, inviteStatus, profile, isAdmin, supabase, flash, refreshData]);
 
   const displayRole = isAdmin ? (profile?.role || "admin") : (inviteStatus === "approved" ? (profile?.role || "viewer") : "user");
   const displayStatus = isAdmin ? (profile?.status || "active") : (inviteStatus === "approved" ? (profile?.status || "active") : "uninvited");
@@ -205,6 +222,9 @@ export default function ProfilePage() {
               <Btn size="sm" variant="primary" disabled={!profileSaved} onClick={() => router.push("/onboarding/setup")}>Set up your company</Btn>
               <Btn size="sm" variant="primary" disabled={!profileSaved} onClick={() => router.push("/organisations")}>Browse organisations</Btn>
             </>
+          )}
+          {!profileSaved && (
+            <span className="w-full text-xs text-muted-foreground">Fill in your details above and click Save profile to continue.</span>
           )}
         </div>
       )}
