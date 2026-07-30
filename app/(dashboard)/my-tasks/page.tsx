@@ -24,7 +24,7 @@ type MyTask = {
 
 export default function MyTasksPage() {
   const { profile } = useApp();
-  const { flash } = useToast();
+  const { flash, success } = useToast();
   const filterOptions: TaskStatus[] = ["todo", "in-progress", "submitted", "done"];
   const [activeFilter, setActiveFilter] = useState<string>("all");
 
@@ -89,31 +89,33 @@ export default function MyTasksPage() {
           <Panel className="p-6 text-center text-sm text-muted-foreground">No tasks in this view.</Panel>
         ) : filtered.map((t) => (
           <Panel key={t.id} className={t.status === "done" ? "opacity-70" : ""}>
-            <div className="flex items-start gap-3 p-4">
-              <div className="mt-0.5">
-                {t.status === "done" ? (
-                  <Check className="h-5 w-5 text-success" />
-                ) : (
-                  <CircleDot className="h-5 w-5 text-muted-foreground" />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className={`text-sm font-medium ${t.status === "done" ? "line-through text-muted-foreground" : "text-foreground"}`}>{t.title}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{t.brief}</p>
-                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <Tag tone={t.priority === "high" ? "danger" : t.priority === "medium" ? "warning" : "neutral"}>{t.priority}</Tag>
-                  <Tag tone={t.status === "done" ? "success" : t.status === "submitted" ? "info" : t.status === "in-progress" ? "primary" : "neutral"}>{t.status}</Tag>
-                  {t.requiresFile && <Tag tone="neutral"><FileUp className="mr-1 h-3 w-3" /> File required</Tag>}
-                  {t.attachment && <Tag tone="accent">Attached: {t.attachment}</Tag>}
+            <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-3">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className="mt-0.5 shrink-0">
+                  {t.status === "done" ? (
+                    <Check className="h-5 w-5 text-success" />
+                  ) : (
+                    <CircleDot className="h-5 w-5 text-muted-foreground" />
+                  )}
                 </div>
-                <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="num">{t.id}</span>
-                  <span>{t.project}</span>
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {dateLabel(t.due)}</span>
-                  <span className="flex items-center gap-1"><Avatar initials={t.assignedBy.slice(0, 2).toUpperCase()} size="sm" /> {t.assignedBy}</span>
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm font-medium truncate ${t.status === "done" ? "line-through text-muted-foreground" : "text-foreground"}`}>{t.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{t.brief}</p>
+                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                    <Tag tone={t.priority === "high" ? "danger" : t.priority === "medium" ? "warning" : "neutral"}>{t.priority}</Tag>
+                    <Tag tone={t.status === "done" ? "success" : t.status === "submitted" ? "info" : t.status === "in-progress" ? "primary" : "neutral"}>{t.status}</Tag>
+                    {t.requiresFile && <Tag tone="neutral"><FileUp className="mr-1 h-3 w-3" /> File required</Tag>}
+                    {t.attachment && <Tag tone="accent">Attached: {t.attachment}</Tag>}
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                    <span className="num">{t.id}</span>
+                    <span className="truncate max-w-[120px]">{t.project}</span>
+                    <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3" /> {dateLabel(t.due)}</span>
+                    <span className="flex items-center gap-1 whitespace-nowrap"><Avatar initials={t.assignedBy.slice(0, 2).toUpperCase()} size="sm" /> {t.assignedBy}</span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0 sm:flex-col">
                 {t.status === "todo" && (
                   <Btn size="sm" variant="primary" onClick={() => updateTask(t.id, "in-progress")}>
                     <Play className="h-3.5 w-3.5" /> Start
@@ -125,7 +127,7 @@ export default function MyTasksPage() {
                   </Btn>
                 )}
                 {t.status !== "done" && t.status !== "todo" && (
-                  <Btn size="sm" variant="primary" onClick={() => { updateTask(t.id, "done"); flash(`${t.title} completed`); }}
+                  <Btn size="sm" variant="primary" onClick={() => { updateTask(t.id, "done"); success(`${t.title} completed`); }}
                     disabled={t.requiresFile && !t.attachment}>
                     <Check className="h-3.5 w-3.5" /> Mark done
                   </Btn>
