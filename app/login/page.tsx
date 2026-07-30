@@ -99,7 +99,7 @@ export default function LoginPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/callback?flow=signup`,
+        emailRedirectTo: `${siteUrl}/auth/callback-signup`,
       },
     });
     setLoading(false);
@@ -180,7 +180,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: target,
-      options: { emailRedirectTo: `${siteUrl}/auth/callback?flow=signup` },
+      options: { emailRedirectTo: `${siteUrl}/auth/callback-signup` },
     });
     setResending(false);
     if (error) {
