@@ -118,6 +118,7 @@ export default function LoginPage() {
 
     sessionStorage.setItem("signup_choice", signupChoice);
     sessionStorage.setItem("signup_email", email);
+    document.cookie = `signup_choice=${signupChoice}; path=/; max-age=3600; SameSite=Lax`;
 
     if (!data?.user?.email_confirmed_at) {
       setUnverifiedEmail(email);

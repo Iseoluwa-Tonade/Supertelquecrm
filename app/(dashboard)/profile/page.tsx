@@ -20,7 +20,9 @@ export default function ProfilePage() {
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
 
   const isAdmin = profile?.role === "admin";
-  const signupChoice = typeof window !== "undefined" ? sessionStorage.getItem("signup_choice") : null;
+  const signupChoice = typeof window !== "undefined"
+    ? (sessionStorage.getItem("signup_choice") || document.cookie.replace(/(?:(?:^|.*;\s*)signup_choice\s*\=\s*([^;]*).*$)|^.*$/, "$1") || null)
+    : null;
   const [justSaved, setJustSaved] = useState(false);
   const hasSaved = justSaved || !!profile?.phone;
 
@@ -221,13 +223,8 @@ export default function ProfilePage() {
           <span className="flex-1">You haven't joined an organisation yet.</span>
           {signupChoice === "org" ? (
             <Btn size="sm" variant="primary" disabled={!hasSaved} onClick={() => router.push("/onboarding/setup")}>Set up your company</Btn>
-          ) : signupChoice === "team" ? (
-            <Btn size="sm" variant="primary" disabled={!hasSaved} onClick={() => router.push("/organisations")}>Browse organisations</Btn>
           ) : (
-            <>
-              <Btn size="sm" variant="primary" disabled={!hasSaved} onClick={() => router.push("/onboarding/setup")}>Set up your company</Btn>
-              <Btn size="sm" variant="primary" disabled={!hasSaved} onClick={() => router.push("/organisations")}>Browse organisations</Btn>
-            </>
+            <Btn size="sm" variant="primary" disabled={!hasSaved} onClick={() => router.push("/organisations")}>Browse organisations</Btn>
           )}
           {!hasSaved && (
             <span className="w-full text-xs text-muted-foreground">Fill in your details above and click Save profile to continue.</span>
