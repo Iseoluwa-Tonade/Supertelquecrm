@@ -112,8 +112,8 @@ export default function OnboardSetupPage() {
   const selectedType = COMPANY_TYPES.find((t) => t.id === companyType);
 
   return (
-    <div className="min-h-dvh grid place-items-center bg-crm-bg p-6 overflow-y-auto">
-      <div className="w-full max-w-[600px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both]">
+    <div className="min-h-dvh grid items-start bg-crm-bg p-6 overflow-y-auto">
+      <div className="w-full max-w-[600px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] my-auto">
         <div className="p-[46px_40px] max-md:p-[34px_26px]">
           <div className="w-full grid gap-[18px]">
             <div className="flex items-center gap-[10px]">
@@ -186,19 +186,23 @@ export default function OnboardSetupPage() {
                 {NAV_VIEWS.filter((v) => v.id !== "profile").map((view) => (
                   <label
                     key={view.id}
-                    className={`flex items-center gap-[8px] p-[10px_12px] rounded-[7px] border cursor-pointer transition-all text-[13px] ${
+                    className={`flex items-center justify-between p-[10px_12px] rounded-[7px] border cursor-pointer transition-all text-[13px] ${
                       enabledFeatures.includes(view.id)
                         ? "border-crm-accent bg-crm-accent/5"
                         : "border-crm-line bg-crm-panel-strong"
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={enabledFeatures.includes(view.id)}
-                      onChange={() => toggleFeature(view.id)}
-                      className="w-[16px] h-[16px] shrink-0"
-                    />
                     <span>{FEATURE_LABELS[view.id] || view.label}</span>
+                    <span className="relative inline-flex items-center shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={enabledFeatures.includes(view.id)}
+                        onChange={() => toggleFeature(view.id)}
+                        className="peer sr-only"
+                      />
+                      <span className="block w-[36px] h-[20px] rounded-full bg-crm-line transition-colors duration-200 peer-checked:bg-crm-accent" />
+                      <span className="absolute left-[2px] top-[2px] w-[16px] h-[16px] rounded-full bg-white shadow-xs transition-transform duration-200 peer-checked:translate-x-[16px]" />
+                    </span>
                   </label>
                 ))}
               </div>
