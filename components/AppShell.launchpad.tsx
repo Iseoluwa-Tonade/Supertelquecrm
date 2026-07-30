@@ -326,12 +326,26 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
         </header>
         <motion.main
           key={pathname}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
           className="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8"
         >
-          {children}
+          <style>{`
+            .page-stagger > * {
+              animation: fadeSlideUp 0.45s cubic-bezier(.16,1,.3,1) forwards;
+              opacity: 0;
+            }
+            .page-stagger > *:nth-child(1) { animation-delay: 0.04s; }
+            .page-stagger > *:nth-child(2) { animation-delay: 0.11s; }
+            .page-stagger > *:nth-child(3) { animation-delay: 0.18s; }
+            .page-stagger > *:nth-child(4) { animation-delay: 0.25s; }
+            .page-stagger > *:nth-child(5) { animation-delay: 0.32s; }
+            .page-stagger > *:nth-child(6) { animation-delay: 0.39s; }
+            .page-stagger > *:nth-child(7) { animation-delay: 0.46s; }
+            .page-stagger > *:nth-child(8) { animation-delay: 0.53s; }
+          `}</style>
+          <div className="page-stagger">{children}</div>
         </motion.main>
       </div>
     </div>
