@@ -218,8 +218,8 @@ export default function LoginPage() {
   const isSignUp = mode === "signup" || mode === "choose";
 
   return (
-    <div className="h-dvh grid items-start bg-crm-bg p-6 overflow-y-auto">
-      <div className="w-full max-w-[940px] grid grid-cols-[1.05fr_1fr] max-md:grid-cols-1 rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] my-auto">
+    <div className="h-dvh flex flex-col bg-crm-bg p-6 overflow-y-auto">
+      <div className="w-full max-w-[940px] grid grid-cols-[1.05fr_1fr] max-md:grid-cols-1 rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] m-auto">
         <div className="relative p-12 bg-gradient-to-br from-[#14b8a6] via-[#0f766e] to-[#0b3d3a] text-[#eafffa] overflow-hidden hidden md:flex items-center">
           <div className="absolute w-[260px] h-[260px] rounded-full bg-[#5eead4] top-[-70px] right-[-60px] opacity-55 blur-[46px] pointer-events-none" />
           <div className="absolute w-[220px] h-[220px] rounded-full bg-[#facc15] bottom-[-90px] left-[-50px] opacity-20 blur-[46px] pointer-events-none" />
