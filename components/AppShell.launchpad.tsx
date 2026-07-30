@@ -96,6 +96,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/";
   const [railOpen, setRailOpen] = React.useState(true);
   const [accountOpen, setAccountOpen] = React.useState(false);
+  const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const CURRENT_ORG = organisation || { name: "Workspace", company_type: "workspace" };
   const CURRENT_USER = profile || { display_name: "You", job_title: "" };
@@ -111,10 +112,14 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex h-screen w-full overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.12),transparent_28%),radial-gradient(circle_at_85%_10%,rgba(37,99,235,0.08),transparent_22%)]" />
+      {mobileOpen ? (
+        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />
+      ) : null}
       <aside
         className={cn(
-          "sticky top-0 z-30 hidden h-screen shrink-0 flex-col border-r border-border bg-[linear-gradient(180deg,rgba(17,26,40,.96),rgba(17,26,40,.92))] text-crm-sidebar-text shadow-[12px_0_30px_-26px_rgba(15,23,42,.6)] transition-[width] duration-200 md:flex",
+          "sticky top-0 z-50 h-screen shrink-0 flex-col border-r border-border bg-[linear-gradient(180deg,rgba(17,26,40,.96),rgba(17,26,40,.92))] text-crm-sidebar-text shadow-[12px_0_30px_-26px_rgba(15,23,42,.6)] transition-[width,transform] duration-200 md:flex",
           railOpen ? "w-60" : "w-16",
+          mobileOpen ? "flex" : "hidden md:flex",
         )}
       >
         <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-4">
@@ -145,6 +150,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
                       <Link
                         href={item.to}
                         title={item.label}
+                        onClick={() => setMobileOpen(false)}
                         className={cn(
                             "group relative flex items-center gap-2.5 rounded-xl px-2 py-2 text-sm transition-colors",
                           active
@@ -182,6 +188,13 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-background/75 px-4 backdrop-blur-xl md:px-6">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border-strong bg-surface/80 text-muted-foreground shadow-sm hover:text-foreground md:hidden"
+            title="Open menu"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
           <div className="relative hidden w-full max-w-sm items-center sm:flex">
             <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
             <input

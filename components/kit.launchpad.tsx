@@ -173,12 +173,12 @@ export function Textarea({
 }
 
 const PAGE_HEADER_VARIANTS: Record<string, string> = {
-  overview: "border-emerald-200/70 bg-gradient-to-r from-emerald-50/80 to-teal-50/80",
-  revenue: "border-amber-200/70 bg-gradient-to-r from-amber-50/80 to-yellow-50/80",
-  delivery: "border-blue-200/70 bg-gradient-to-r from-blue-50/80 to-indigo-50/80",
-  finance: "border-rose-200/70 bg-gradient-to-r from-rose-50/80 to-pink-50/80",
-  operations: "border-slate-200/70 bg-gradient-to-r from-slate-50/80 to-gray-100/80",
-  account: "border-violet-200/70 bg-gradient-to-r from-violet-50/80 to-purple-50/80",
+  overview: "border-emerald-700 bg-gradient-to-r from-emerald-600 to-teal-600 text-white [&_p]:!text-emerald-100 [&_h1]:!text-white",
+  revenue: "border-amber-700 bg-gradient-to-r from-amber-600 to-yellow-600 text-white [&_p]:!text-amber-100 [&_h1]:!text-white",
+  delivery: "border-blue-700 bg-gradient-to-r from-blue-600 to-indigo-600 text-white [&_p]:!text-blue-100 [&_h1]:!text-white",
+  finance: "border-rose-700 bg-gradient-to-r from-rose-600 to-pink-600 text-white [&_p]:!text-rose-100 [&_h1]:!text-white",
+  operations: "border-slate-700 bg-gradient-to-r from-slate-600 to-gray-600 text-white [&_p]:!text-slate-100 [&_h1]:!text-white",
+  account: "border-violet-700 bg-gradient-to-r from-violet-600 to-purple-600 text-white [&_p]:!text-violet-100 [&_h1]:!text-white",
 };
 
 export function PageHeader({

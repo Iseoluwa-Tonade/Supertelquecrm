@@ -69,7 +69,7 @@ export default function MessagesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader variant="operations"
+      <PageHeader variant="overview"
         eyebrow="Operations"
         title="Messages"
         desc="Direct messages between teammates."

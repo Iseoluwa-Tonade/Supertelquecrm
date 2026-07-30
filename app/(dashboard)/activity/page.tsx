@@ -311,7 +311,7 @@ export default function ActivityPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader variant="operations"
+      <PageHeader variant="overview"
         eyebrow="Operations"
         title="Activity log"
         desc="Track daily emails, calls, meetings and deliveries in a spreadsheet-like view."
