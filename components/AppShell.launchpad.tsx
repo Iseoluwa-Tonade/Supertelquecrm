@@ -109,15 +109,16 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
       .toUpperCase() || "U";
 
   return (
-    <div className="flex h-screen w-full bg-background">
+    <div className="relative flex h-screen w-full overflow-hidden bg-background text-foreground">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.12),transparent_28%),radial-gradient(circle_at_85%_10%,rgba(37,99,235,0.08),transparent_22%)]" />
       <aside
         className={cn(
-          "sticky top-0 z-30 hidden h-screen shrink-0 flex-col border-r border-border bg-surface/60 transition-[width] duration-200 md:flex",
+          "sticky top-0 z-30 hidden h-screen shrink-0 flex-col border-r border-border bg-[linear-gradient(180deg,rgba(17,26,40,.96),rgba(17,26,40,.92))] text-crm-sidebar-text shadow-[12px_0_30px_-26px_rgba(15,23,42,.6)] transition-[width] duration-200 md:flex",
           railOpen ? "w-60" : "w-16",
         )}
       >
-        <div className="flex h-14 items-center gap-2.5 border-b border-border px-4">
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded bg-primary text-primary-foreground">
+        <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-4">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-[0_10px_20px_-14px_rgba(45,212,191,0.8)]">
             <Command className="h-4 w-4" />
           </span>
           {railOpen ? (
@@ -132,9 +133,9 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
           {NAV.map((section) => (
             <div key={section.group}>
               {railOpen ? (
-                <p className="label-tag mb-2 px-2 text-muted-foreground/70">{section.group}</p>
+                <p className="label-tag mb-2 px-2 text-crm-sidebar-muted/80">{section.group}</p>
               ) : (
-                <div className="mx-2 mb-2 h-px bg-border" />
+                <div className="mx-2 mb-2 h-px bg-white/10" />
               )}
               <ul className="space-y-0.5">
                 {section.items.map((item) => {
@@ -145,19 +146,19 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
                         href={item.to}
                         title={item.label}
                         className={cn(
-                          "group relative flex items-center gap-2.5 rounded-md px-2 py-2 text-sm transition-colors",
+                            "group relative flex items-center gap-2.5 rounded-xl px-2 py-2 text-sm transition-colors",
                           active
-                            ? "bg-primary/12 text-primary"
-                            : "text-muted-foreground hover:bg-surface-raised hover:text-foreground",
+                              ? "bg-white/10 text-white shadow-[0_8px_20px_-18px_rgba(255,255,255,0.6)]"
+                              : "text-crm-sidebar-muted hover:bg-white/8 hover:text-white",
                         )}
                       >
                         {active ? (
-                          <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-primary" />
+                            <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-primary" />
                         ) : null}
                         <item.icon className="h-4 w-4 shrink-0" />
                         {railOpen ? <span className="truncate">{item.label}</span> : null}
                         {railOpen && item.badge ? (
-                          <span className="num ml-auto rounded bg-primary/20 px-1.5 text-[10px] text-primary">
+                            <span className="num ml-auto rounded-full bg-white/10 px-1.5 text-[10px] text-white">
                             {item.badge}
                           </span>
                         ) : null}
@@ -172,7 +173,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
 
         <button
           onClick={() => setRailOpen((open) => !open)}
-          className="flex h-11 items-center gap-2.5 border-t border-border px-4 text-xs text-muted-foreground hover:text-foreground"
+          className="flex h-11 items-center gap-2.5 border-t border-white/10 px-4 text-xs text-crm-sidebar-muted hover:text-white"
         >
           {railOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
           {railOpen ? "Collapse" : null}
@@ -180,14 +181,14 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-background/75 px-4 backdrop-blur-xl md:px-6">
           <div className="relative hidden w-full max-w-sm items-center sm:flex">
             <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
             <input
               placeholder="Search deals, clients, files…"
-              className="h-9 w-full rounded-md border border-border bg-input pl-9 pr-14 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary/50"
+              className="h-10 w-full rounded-xl border border-border bg-input pl-9 pr-14 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary/50"
             />
-            <kbd className="num absolute right-2 rounded border border-border-strong px-1.5 py-0.5 text-[10px] text-muted-foreground">⌘K</kbd>
+            <kbd className="num absolute right-2 rounded-full border border-border-strong bg-surface-raised px-1.5 py-0.5 text-[10px] text-muted-foreground">⌘K</kbd>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <Tag tone="neutral" className="hidden sm:inline-flex">
@@ -195,7 +196,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
             </Tag>
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="grid h-9 w-9 place-items-center rounded-md border border-border-strong text-muted-foreground hover:text-foreground"
+              className="grid h-10 w-10 place-items-center rounded-xl border border-border-strong bg-surface/80 text-muted-foreground shadow-sm hover:text-foreground"
               title="Toggle theme"
             >
               {theme === "dark" ? "☀️" : "🌙"}
@@ -203,7 +204,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
             <div className="relative">
               <button
                 onClick={() => setAccountOpen((open) => !open)}
-                className="flex h-9 items-center gap-2 rounded-md border border-border-strong py-1 pl-1 pr-2.5"
+                className="flex h-10 items-center gap-2 rounded-xl border border-border-strong bg-surface/80 py-1 pl-1 pr-2.5 shadow-sm"
                 title="Account menu"
               >
                 <Avatar initials={initials} size="sm" tone="primary" />
@@ -212,7 +213,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
               {accountOpen ? (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />
-                  <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-lg border border-border bg-popover shadow-xl">
+                  <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-popover shadow-[0_24px_50px_-28px_rgba(15,23,42,0.55)]">
                     <div className="border-b border-border px-3 py-2">
                       <p className="truncate text-sm font-medium">{session?.user.email || CURRENT_USER.display_name}</p>
                       <p className="label-tag text-muted-foreground">{CURRENT_USER.job_title || "Account"}</p>

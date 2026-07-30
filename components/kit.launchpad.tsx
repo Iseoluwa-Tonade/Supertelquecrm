@@ -9,7 +9,7 @@ export function Panel({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-surface/70 backdrop-blur-sm",
+        "rounded-2xl border border-border bg-surface/80 shadow-[0_12px_30px_-22px_rgba(15,23,42,0.32)] backdrop-blur-sm transition-shadow hover:shadow-[0_16px_38px_-24px_rgba(15,23,42,0.42)]",
         className,
       )}
       {...props}
@@ -61,7 +61,7 @@ export function Tag({
   return (
     <span
       className={cn(
-        "label-tag inline-flex items-center gap-1 rounded border px-1.5 py-0.5",
+        "label-tag inline-flex items-center gap-1 rounded-full border px-2 py-0.5",
         toneMap[tone] ?? toneMap.neutral,
         className,
       )}
@@ -85,7 +85,7 @@ export function Avatar({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded font-mono font-medium",
+        "inline-flex shrink-0 items-center justify-center rounded-full font-mono font-medium",
         size === "sm" && "h-6 w-6 text-[10px]",
         size === "md" && "h-8 w-8 text-xs",
         size === "lg" && "h-11 w-11 text-sm",
@@ -112,9 +112,9 @@ export function Btn({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
         size === "sm" ? "h-8 px-2.5 text-xs" : "h-9 px-3.5 text-sm",
-        variant === "primary" && "bg-primary text-primary-foreground hover:bg-primary/90",
+        variant === "primary" && "bg-primary text-primary-foreground shadow-[0_10px_20px_-12px_rgba(15,118,110,0.8)] hover:bg-primary/90",
         variant === "ghost" && "text-muted-foreground hover:bg-surface-raised hover:text-foreground",
         variant === "outline" &&
           "border border-border-strong text-foreground hover:border-primary/50 hover:bg-surface-raised",
@@ -149,7 +149,7 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
   return (
     <input
       className={cn(
-        "h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-2 focus:ring-primary/20",
+        "h-10 w-full rounded-xl border border-border bg-input px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-2 focus:ring-primary/20",
         className,
       )}
       {...props}
@@ -164,7 +164,7 @@ export function Textarea({
   return (
     <textarea
       className={cn(
-        "w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-2 focus:ring-primary/20",
+        "w-full rounded-xl border border-border bg-input px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-2 focus:ring-primary/20",
         className,
       )}
       {...props}
@@ -184,13 +184,15 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
-      <div>
-        <p className="label-tag text-primary">{eyebrow}</p>
-        <h1 className="mt-1.5 text-2xl font-semibold text-foreground">{title}</h1>
-        {desc ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{desc}</p> : null}
+    <div className="rounded-2xl border border-border bg-surface/75 px-5 py-5 shadow-[0_16px_38px_-28px_rgba(15,23,42,0.36)] backdrop-blur-sm sm:px-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="label-tag text-primary">{eyebrow}</p>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+          {desc ? <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{desc}</p> : null}
+        </div>
+        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
-      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
     </div>
   );
 }

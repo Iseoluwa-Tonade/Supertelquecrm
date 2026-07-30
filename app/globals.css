@@ -58,21 +58,21 @@
 }
 
 @theme {
-  --color-crm-bg: #f6f7f9;
+  --color-crm-bg: #eef4f2;
   --color-crm-panel: #ffffff;
-  --color-crm-panel-strong: #f1f4f8;
-  --color-crm-line: #d9e0e8;
-  --color-crm-text: #1f2933;
-  --color-crm-muted: #64748b;
+  --color-crm-panel-strong: #e9f0ee;
+  --color-crm-line: #d2dce1;
+  --color-crm-text: #13202a;
+  --color-crm-muted: #5e7284;
   --color-crm-accent: #0f766e;
   --color-crm-accent-strong: #115e59;
-  --color-crm-amber: #b45309;
-  --color-crm-rose: #be123c;
+  --color-crm-amber: #d97706;
+  --color-crm-rose: #e11d48;
   --color-crm-blue: #2563eb;
-  --color-crm-green: #15803d;
-  --color-crm-sidebar: #202a36;
-  --color-crm-sidebar-text: #e7edf4;
-  --color-crm-sidebar-muted: #aeb9c8;
+  --color-crm-green: #059669;
+  --color-crm-sidebar: #17212b;
+  --color-crm-sidebar-text: #edf3f8;
+  --color-crm-sidebar-muted: #9fb0bf;
 }
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
@@ -93,7 +93,10 @@
 
   body {
     margin: 0;
-    background: var(--color-crm-bg);
+    background:
+      radial-gradient(circle at top left, rgba(15, 118, 110, 0.16), transparent 34%),
+      radial-gradient(circle at top right, rgba(37, 99, 235, 0.1), transparent 28%),
+      linear-gradient(180deg, #f3f8f6 0%, var(--color-crm-bg) 100%);
     color: var(--color-crm-text);
     min-height: 100dvh;
     overflow: hidden;
@@ -109,7 +112,7 @@
     background: var(--color-crm-panel);
     color: var(--color-crm-text);
     min-height: 34px;
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
     transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease, filter .15s ease, background .15s ease;
   }
@@ -120,7 +123,7 @@
   input, textarea, select {
     width: 100%;
     border: 1px solid var(--color-crm-line);
-    border-radius: 6px;
+    border-radius: 10px;
     padding: 8px 9px;
     color: var(--color-crm-text);
     background: var(--color-crm-panel);
@@ -147,11 +150,11 @@
 
 [data-theme="dark"] {
   --color-crm-bg: #0b1220;
-  --color-crm-panel: #141b28;
-  --color-crm-panel-strong: #1b2432;
-  --color-crm-line: #2a3546;
-  --color-crm-text: #e6edf4;
-  --color-crm-muted: #8b98aa;
+  --color-crm-panel: #111a28;
+  --color-crm-panel-strong: #172233;
+  --color-crm-line: #233144;
+  --color-crm-text: #eaf2f7;
+  --color-crm-muted: #93a4b4;
   --color-crm-accent: #2dd4bf;
   --color-crm-accent-strong: #14b8a6;
   --color-crm-amber: #fbbf24;
