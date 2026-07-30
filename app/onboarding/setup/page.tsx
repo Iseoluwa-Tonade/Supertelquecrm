@@ -112,8 +112,9 @@ export default function OnboardSetupPage() {
   const selectedType = COMPANY_TYPES.find((t) => t.id === companyType);
 
   return (
-    <div className="h-dvh flex flex-col bg-crm-bg p-6 overflow-y-auto">
-      <div className="w-full max-w-[600px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] m-auto">
+    <div className="h-dvh flex flex-col items-center bg-crm-bg p-6 overflow-y-auto">
+      <div className="flex-1 shrink" />
+      <div className="w-full max-w-[600px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] shrink-0">
         <div className="p-[46px_40px] max-md:p-[34px_26px]">
           <div className="w-full grid gap-[18px]">
             <div className="flex items-center gap-[10px]">
@@ -239,6 +240,7 @@ export default function OnboardSetupPage() {
           </div>
         </div>
       </div>
+      <div className="flex-1 shrink" />
 
       <style jsx>{`
         @keyframes loginRise {

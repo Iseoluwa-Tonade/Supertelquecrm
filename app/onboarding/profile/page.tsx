@@ -77,8 +77,9 @@ export default function OnboardProfilePage() {
   }
 
   return (
-    <div className="h-dvh flex flex-col bg-crm-bg p-6 overflow-y-auto">
-      <div className="w-full max-w-[480px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] p-[46px_40px] max-md:p-[34px_26px] m-auto">
+    <div className="h-dvh flex flex-col items-center bg-crm-bg p-6 overflow-y-auto">
+      <div className="flex-1 shrink" />
+      <div className="w-full max-w-[480px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] p-[46px_40px] max-md:p-[34px_26px] shrink-0">
         <div className="grid gap-[18px]">
           <div className="flex items-center gap-[10px]">
             <div className="w-[42px] h-[42px] rounded-[9px] bg-[#202a36] grid place-items-center overflow-hidden shrink-0">
@@ -144,6 +145,7 @@ export default function OnboardProfilePage() {
           </form>
         </div>
       </div>
+      <div className="flex-1 shrink" />
 
       <style jsx>{`
         @keyframes loginRise {

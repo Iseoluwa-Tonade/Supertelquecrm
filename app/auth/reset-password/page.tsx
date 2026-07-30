@@ -36,8 +36,9 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="h-dvh flex flex-col bg-crm-bg p-6 overflow-y-auto">
-      <div className="w-full max-w-[420px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] p-[46px_40px] max-md:p-[34px_26px] m-auto">
+    <div className="h-dvh flex flex-col items-center bg-crm-bg p-6 overflow-y-auto">
+      <div className="flex-1 shrink" />
+      <div className="w-full max-w-[420px] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(15,23,42,.08)] bg-crm-panel animate-[loginRise_0.45s_cubic-bezier(.16,1,.3,1)_both] p-[46px_40px] max-md:p-[34px_26px] shrink-0">
         {done ? (
           <div className="grid gap-3 text-center">
             <div className="w-12 h-12 rounded-full bg-crm-green/10 grid place-items-center mx-auto text-crm-green text-2xl">&#10003;</div>
@@ -80,6 +81,7 @@ export default function ResetPasswordPage() {
           </form>
         )}
       </div>
+      <div className="flex-1 shrink" />
 
       <style jsx>{`
         @keyframes loginRise {
