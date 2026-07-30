@@ -71,6 +71,7 @@ export default function OnboardSetupPage() {
       return;
     }
 
+    console.log("[setup] 1. creating organisation...");
     const { data: org, error: orgError } = await supabase
       .from("organisations")
       .insert({
@@ -83,26 +84,46 @@ export default function OnboardSetupPage() {
       .single();
 
     if (orgError) {
+      console.log("[setup] org insert failed:", orgError.message);
       setError(orgError.message);
       setLoading(false);
       return;
     }
+    console.log("[setup] 2. organisation created:", org.id);
 
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      user_id: session.user.id,
-      email: session.user.email || "",
-      display_name: displayName.trim() || session.user.email?.split("@")[0] || "Admin",
-      role: "admin",
-      status: "active",
-      organisation_id: org.id,
-      registration_complete: true,
-    });
+    console.log("[setup] 3. reading existing profile...");
+    const { data: existingProfile, error: readError } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
+    if (readError) {
+      console.log("[setup] profile read failed:", readError.message);
+    } else {
+      console.log("[setup] existing profile:", existingProfile ? "found" : "not found");
+    }
+
+    console.log("[setup] 4. updating profile...");
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        email: session.user.email || "",
+        display_name: displayName.trim() || session.user.email?.split("@")[0] || "Admin",
+        role: "admin",
+        status: "active",
+        organisation_id: org.id,
+        registration_complete: true,
+      })
+      .eq("user_id", session.user.id);
 
     if (profileError) {
+      console.log("[setup] profile update failed:", profileError.message);
       setError(profileError.message);
       setLoading(false);
       return;
     }
+    console.log("[setup] 5. profile updated successfully");
 
     sessionStorage.removeItem("signup_choice");
     sessionStorage.removeItem("signup_email");

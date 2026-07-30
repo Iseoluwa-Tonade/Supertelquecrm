@@ -138,10 +138,7 @@ create policy "profiles_update_org"
     user_id = (select auth.uid())
     or (
       organisation_id = private.get_user_org_id()
-      and exists (
-        select 1 from public.profiles
-        where user_id = (select auth.uid()) and role in ('admin', 'manager') and status = 'active'
-      )
+      and private.is_manager_or_admin((select auth.uid()))
     )
   );
 
