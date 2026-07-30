@@ -20,11 +20,22 @@ export default function OnboardSetupPage() {
   useEffect(() => {
     const email = sessionStorage.getItem("signup_email");
     if (email) setOrgEmail(email);
-    const choice = sessionStorage.getItem("signup_choice");
-    if (choice !== "org") {
-      router.replace("/onboarding/companies");
-      return;
-    }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        router.replace("/login");
+        return;
+      }
+      supabase
+        .from("profiles")
+        .select("registration_complete")
+        .eq("user_id", session.user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.registration_complete) {
+            router.replace("/overview");
+          }
+        });
+    });
   }, []);
 
   useEffect(() => {
