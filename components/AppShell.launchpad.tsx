@@ -282,9 +282,9 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
             <kbd className="num absolute right-2 rounded-full border border-border-strong bg-surface-raised px-1.5 py-0.5 text-[10px] text-muted-foreground">⌘K</kbd>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Tag tone="neutral" className="hidden sm:inline-flex">
+            {/* <Tag tone="neutral" className="hidden sm:inline-flex">
               {theme}
-            </Tag>
+            </Tag> */}
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="grid h-10 w-10 place-items-center rounded-xl border border-border-strong bg-surface/80 text-muted-foreground shadow-sm hover:text-foreground"
@@ -333,17 +333,17 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
         >
           <style>{`
             .page-stagger > * {
-              animation: fadeSlideUp 0.45s cubic-bezier(.16,1,.3,1) forwards;
+              animation: fadeSlideUp 0.7s cubic-bezier(.16,1,.3,1) forwards;
               opacity: 0;
             }
-            .page-stagger > *:nth-child(1) { animation-delay: 0.04s; }
-            .page-stagger > *:nth-child(2) { animation-delay: 0.11s; }
-            .page-stagger > *:nth-child(3) { animation-delay: 0.18s; }
-            .page-stagger > *:nth-child(4) { animation-delay: 0.25s; }
-            .page-stagger > *:nth-child(5) { animation-delay: 0.32s; }
-            .page-stagger > *:nth-child(6) { animation-delay: 0.39s; }
-            .page-stagger > *:nth-child(7) { animation-delay: 0.46s; }
-            .page-stagger > *:nth-child(8) { animation-delay: 0.53s; }
+            .page-stagger > *:nth-child(1) { animation-delay: 0.06s; }
+            .page-stagger > *:nth-child(2) { animation-delay: 0.16s; }
+            .page-stagger > *:nth-child(3) { animation-delay: 0.26s; }
+            .page-stagger > *:nth-child(4) { animation-delay: 0.36s; }
+            .page-stagger > *:nth-child(5) { animation-delay: 0.46s; }
+            .page-stagger > *:nth-child(6) { animation-delay: 0.56s; }
+            .page-stagger > *:nth-child(7) { animation-delay: 0.66s; }
+            .page-stagger > *:nth-child(8) { animation-delay: 0.76s; }
           `}</style>
           <div className="page-stagger">{children}</div>
         </motion.main>

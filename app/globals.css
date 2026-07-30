@@ -62,6 +62,17 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes sonnerBounceIn {
+  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  45% { opacity: 1; transform: translateY(4px) scale(1.02); }
+  70% { transform: translateY(-1px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+[data-sonner-toast] {
+  animation: sonnerBounceIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
 @theme {
   --color-crm-bg: #e5edea;
   --color-crm-panel: #f4f8f6;

@@ -3,8 +3,9 @@
 import { useState, useMemo } from "react";
 import { useApp } from "@/lib/AppContext";
 import { dateLabel } from "@/lib/utils";
+import { useToast } from "@/components/Toast";
 import { PageHeader, Panel, PanelHead, Tag, Avatar, Btn } from "@/components/kit.launchpad";
-import { Check, CircleDot, Clock, FileUp, Play, Send } from "lucide-react";
+import { Check, CircleDot, Clock, FileUp, Play } from "lucide-react";
 
 type TaskStatus = "todo" | "in-progress" | "submitted" | "done";
 
@@ -23,9 +24,9 @@ type MyTask = {
 
 export default function MyTasksPage() {
   const { profile } = useApp();
+  const { flash } = useToast();
   const filterOptions: TaskStatus[] = ["todo", "in-progress", "submitted", "done"];
   const [activeFilter, setActiveFilter] = useState<string>("all");
-  const [toast, setToast] = useState("");
 
   const [tasks, setTasks] = useState<MyTask[]>([
     { id: "MT-101", title: "Follow up on Meridian proposal", brief: "Send revised quote and timeline", project: "Meridian Partners", assignedBy: "Tunde Bakare", due: "2026-08-05", priority: "high", requiresFile: false, status: "in-progress" },
@@ -42,11 +43,6 @@ export default function MyTasksPage() {
     review: tasks.filter((t) => t.status === "submitted").length,
     completed: tasks.filter((t) => t.status === "done").length,
   }), [tasks]);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 3500);
-  };
 
   const updateTask = (id: string, status: TaskStatus, attachment?: string) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status, ...(attachment ? { attachment } : {}) } : t)));
@@ -129,7 +125,7 @@ export default function MyTasksPage() {
                   </Btn>
                 )}
                 {t.status !== "done" && t.status !== "todo" && (
-                  <Btn size="sm" variant="primary" onClick={() => { updateTask(t.id, "done"); showToast(`${t.title} completed — ${t.assignedBy} notified`); }}
+                  <Btn size="sm" variant="primary" onClick={() => { updateTask(t.id, "done"); flash(`${t.title} completed`); }}
                     disabled={t.requiresFile && !t.attachment}>
                     <Check className="h-3.5 w-3.5" /> Mark done
                   </Btn>
@@ -143,11 +139,7 @@ export default function MyTasksPage() {
         ))}
       </div>
 
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg border border-border bg-popover px-4 py-3 shadow-xl text-sm animate-[fadeInUp_0.2s_ease_both]">
-          <Send className="h-4 w-4 text-success" /> {toast}
-        </div>
-      )}
+
     </div>
   );
 }
