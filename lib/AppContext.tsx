@@ -17,11 +17,13 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useCallback,
   type ReactNode,
 } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { toast } from "sonner";
 
 interface AppState {
   session: Session | null;
@@ -131,6 +133,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setState((s) => ({ ...s, theme: saved }));
     }
   }, []);
+
+  const profileRef = useRef(state.profile);
+  useEffect(() => {
+    profileRef.current = state.profile;
+  }, [state.profile]);
 
   const loadProfile = useCallback(async (session: Session | null) => {
     if (!session) return null;
@@ -242,6 +249,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setState((s) => ({ ...s, inviteRequests: enriched as unknown as InviteRequest[] }));
     }
   }, [state.profile?.role]);
+
+  const loadInviteRequestsRef = useRef(loadInviteRequests);
+  useEffect(() => {
+    loadInviteRequestsRef.current = loadInviteRequests;
+  }, [loadInviteRequests]);
 
   const loadServices = useCallback(async () => {
     if (state.profile?.role !== "admin") {
@@ -366,6 +378,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         "postgres_changes",
         { event: "*", schema: "public", table: "crm_messages" },
         () => loadMessages()
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "invite_requests" },
+        async (payload) => {
+          const req = payload.new as { user_id?: string; organisation_id?: string };
+          const me = profileRef.current;
+          if (!me || !req.organisation_id || me.organisation_id !== req.organisation_id) return;
+          await loadInviteRequestsRef.current();
+          if (me.role === "admin") {
+            const { data: requester } = await supabase
+              .from("profiles")
+              .select("display_name, email")
+              .eq("user_id", req.user_id)
+              .maybeSingle();
+            const name = requester?.display_name || requester?.email || "A team member";
+            toast.success(`${name} requested to join your organisation`);
+          }
+        }
       )
       .subscribe();
 

@@ -46,7 +46,7 @@ export default function TeamPage() {
     if (error) { flash(error.message); return; }
     await supabase
       .from("profiles")
-      .update({ role: "owner" })
+      .update({ role: "viewer" })
       .eq("user_id", req.user_id);
     await loadInviteRequests();
     await loadTeamProfiles();

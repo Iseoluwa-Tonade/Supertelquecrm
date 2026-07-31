@@ -2,13 +2,26 @@
 
 import { useApp } from "@/lib/AppContext";
 import { dateLabel } from "@/lib/utils";
+import type { InviteRequest, Profile } from "@/lib/types";
 import { PageHeader, Panel, PanelHead, Tag } from "@/components/kit.launchpad";
 
 export default function NotificationsPage() {
-  const { changeRequests, messages, profile } = useApp();
+  const { changeRequests, messages, profile, inviteRequests } = useApp();
   const myId = profile?.user_id;
 
   const notifications = [
+    ...inviteRequests
+      .filter((r) => r.status === "pending")
+      .map((r) => {
+        const requester = (r as InviteRequest & { requester?: Partial<Profile> }).requester;
+        return {
+          id: r.id,
+          title: `Invite request from ${requester?.display_name || requester?.email || "a team member"}`,
+          desc: `${requester?.email || "Unknown email"} wants to join your organisation`,
+          date: r.created_at || "",
+          type: "invite" as const,
+        };
+      }),
     ...changeRequests
       .filter((r) => r.status === "pending")
       .map((r) => ({
@@ -44,13 +57,13 @@ export default function NotificationsPage() {
             <div className="p-4 text-sm text-muted-foreground">No notifications yet.</div>
           ) : notifications.map((n) => (
             <div key={n.id} className="flex items-start gap-3 px-4 py-3">
-              <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${n.type === "approval" ? "bg-warning" : "bg-primary"}`} />
+              <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${n.type === "approval" ? "bg-warning" : n.type === "invite" ? "bg-success" : "bg-primary"}`} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-foreground">{n.title}</p>
                 <p className="text-xs text-muted-foreground">{n.desc}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Tag tone={n.type === "approval" ? "warning" : "primary"}>{n.type}</Tag>
+                <Tag tone={n.type === "approval" ? "warning" : n.type === "invite" ? "success" : "primary"}>{n.type}</Tag>
                 <span className="num text-xs text-muted-foreground">{n.date ? dateLabel(n.date.slice(0, 10)) : ""}</span>
               </div>
             </div>
