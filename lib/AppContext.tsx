@@ -219,6 +219,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase
       .from("profiles")
       .select("user_id,email,role,display_name,status,allowed_views,organisation_id,registration_complete,phone,department,job_title,start_date,employee_id,emergency_contact_name,emergency_contact_phone,address")
+      .eq("registration_complete", true)
       .order("email", { ascending: true });
     setState((s) => ({ ...s, teamProfiles: (data as Profile[]) || [] }));
   }, [state.profile?.role]);

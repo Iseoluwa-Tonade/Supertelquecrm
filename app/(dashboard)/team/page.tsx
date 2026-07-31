@@ -7,19 +7,20 @@ import { useCallback, useState, useEffect } from "react";
 import { label } from "@/lib/utils";
 import { ROLES, NAV_VIEWS } from "@/lib/types";
 import type { InviteRequest, Profile } from "@/lib/types";
-import { Avatar, PageHeader, Panel, PanelHead, Stat, Tag, Btn, Input } from "@/components/kit.launchpad";
+import { PageHeader, Panel, PanelHead, Stat, Btn, Input, Avatar } from "@/components/kit.launchpad";
+import { Drawer } from "@/components/Drawer";
 
 const supabase = createClient();
 
 export default function TeamPage() {
   const { session, profile, teamProfiles, inviteRequests, setInviteFormOpen, inviteFormOpen,
-    loadTeamProfiles, loadInviteRequests, setMessageThreadWith, setMessageThreadEmail, loadRemoteItems } = useApp();
+    loadTeamProfiles, loadInviteRequests, loadRemoteItems } = useApp();
   const { flash } = useToast();
   const [viewsOpenId, setViewsOpenId] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("owner");
   const [inviting, setInviting] = useState(false);
-  const [viewingRequester, setViewingRequester] = useState<Profile | null>(null);
+  const [viewingProfile, setViewingProfile] = useState<Profile | null>(null);
 
   const isAdmin = profile?.role === "admin";
 
@@ -64,13 +65,13 @@ export default function TeamPage() {
     flash("Request rejected");
   }, [supabase, loadInviteRequests, flash]);
 
-  const viewRequesterProfile = useCallback(async (userId: string) => {
+  const viewProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", userId)
       .single();
-    if (data) setViewingRequester(data as Profile);
+    if (data) setViewingProfile(data as Profile);
   }, []);
 
   const updateRole = useCallback(async (userId: string, role: string) => {
@@ -78,14 +79,6 @@ export default function TeamPage() {
     if (error) { flash(error.message); return; }
     await loadTeamProfiles();
     flash("Role updated");
-  }, [supabase, loadTeamProfiles, flash]);
-
-  const updateStatus = useCallback(async (userId: string, currentStatus: string) => {
-    const nextStatus = currentStatus === "suspended" ? "active" : "suspended";
-    const { error } = await supabase.from("profiles").update({ status: nextStatus }).eq("user_id", userId);
-    if (error) { flash(error.message); return; }
-    await loadTeamProfiles();
-    flash(nextStatus === "suspended" ? "Teammate suspended" : "Teammate reinstated");
   }, [supabase, loadTeamProfiles, flash]);
 
   const updateViews = useCallback(async (userId: string, views: string[]) => {
@@ -127,51 +120,72 @@ export default function TeamPage() {
         <Stat label="Visible page grants" value={String(visiblePages)} delta="Across the team" spark={[2, 3, 4, 4, 5, 6]} />
       </div>
 
-      {viewingRequester && (
-        <Panel>
-          <PanelHead
-            title="Requester profile"
-            hint="Reviewed before an invite is approved"
-            action={<Btn size="sm" onClick={() => setViewingRequester(null)}>Close</Btn>}
-          />
-          <div className="space-y-1 p-4 text-sm">
+      <Drawer open={!!viewingProfile} onClose={() => setViewingProfile(null)} title="Profile details">
+        {viewingProfile && (
+          <div className="space-y-1 text-sm">
             {[
-              ["Name", viewingRequester.display_name],
-              ["Email", viewingRequester.email],
-              ["Job title", viewingRequester.job_title],
-              ["Phone", viewingRequester.phone],
-              ["Department", viewingRequester.department],
-              ["Address", viewingRequester.address],
+              ["ID", viewingProfile.user_id],
+              ["Name", viewingProfile.display_name],
+              ["Email", viewingProfile.email],
+              ["Role", label(viewingProfile.role || "viewer")],
+              ["Status", label(viewingProfile.status || "active")],
+              ["Job title", viewingProfile.job_title],
+              ["Phone", viewingProfile.phone],
+              ["Department", viewingProfile.department],
+              ["Employee ID", viewingProfile.employee_id],
+              ["Start date", viewingProfile.start_date],
+              ["Address", viewingProfile.address],
+              ["Emergency contact", viewingProfile.emergency_contact_name],
+              ["Emergency phone", viewingProfile.emergency_contact_phone],
             ].map(([k, v]) => (
-              <div key={k as string} className="grid grid-cols-[120px_1fr] gap-2 rounded-lg border border-border bg-surface p-2">
-                <span className="text-muted-foreground">{k as string}</span>
-                <span>{v || "—"}</span>
+              <div key={k as string} className="grid grid-cols-[120px_1fr] gap-2 rounded-lg border border-white/10 bg-white/5 p-2 items-center">
+                <span className="text-crm-sidebar-muted">{k as string}</span>
+                <span className="break-all">{v || "—"}</span>
               </div>
             ))}
           </div>
-        </Panel>
-      )}
+        )}
+      </Drawer>
 
       {inviteRequests.length > 0 && (
         <Panel>
           <PanelHead title={`Pending requests (${inviteRequests.length})`} hint="Approve or decline new teammates" />
-          <div className="divide-y divide-border">
-            {inviteRequests.map((req) => {
-              const r = req as InviteRequest & { requester?: Partial<Profile> };
-              return (
-                <div key={req.id} className="flex items-center gap-3 px-4 py-3">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">{r.requester?.display_name || "New member"}</p>
-                    <p className="text-xs text-muted-foreground">{r.requester?.email || "—"}{r.requester?.job_title ? ` · ${r.requester.job_title}` : ""}</p>
-                  </div>
-                  <Btn size="sm" onClick={() => viewRequesterProfile(req.user_id)}>View profile</Btn>
-                  <div className="flex gap-1">
-                    <Btn size="sm" variant="danger" onClick={() => rejectRequest(req)}>Reject</Btn>
-                    <Btn size="sm" variant="primary" onClick={() => approveRequest(req)}>Invite</Btn>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground">
+                  <th className="px-4 py-2.5 text-left font-medium">Member</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Job title</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inviteRequests.map((req) => {
+                  const r = req as InviteRequest & { requester?: Partial<Profile> };
+                  return (
+                    <tr key={req.id} className="border-b border-border last:border-0 hover:bg-surface-raised transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar initials={(r.requester?.display_name || r.requester?.email || "?").slice(0, 2).toUpperCase()} size="sm" />
+                          <div>
+                            <p className="font-medium text-foreground">{r.requester?.display_name || "New member"}</p>
+                            <p className="text-xs text-muted-foreground">{r.requester?.email || "—"}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{r.requester?.job_title || "—"}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1 justify-end whitespace-nowrap">
+                          <Btn size="sm" onClick={() => viewProfile(req.user_id)}>View profile</Btn>
+                          <Btn size="sm" variant="danger" onClick={() => rejectRequest(req)}>Reject</Btn>
+                          <Btn size="sm" variant="primary" onClick={() => approveRequest(req)}>Invite</Btn>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </Panel>
       )}
@@ -196,73 +210,96 @@ export default function TeamPage() {
           </form>
         )}
 
-        <div className="divide-y divide-border">
-          <div className="grid grid-cols-[1fr_120px_100px_170px] gap-2 px-4 py-2 text-xs font-bold text-muted-foreground max-md:hidden">
-            <span>Email</span><span>Role</span><span>Status</span><span></span>
-          </div>
-          {teamProfiles.map((p) => {
-            const isSelf = p.user_id === myId;
-            const viewsOpen = viewsOpenId === p.user_id;
-            const restricted = Array.isArray(p.allowed_views) && p.allowed_views.length > 0;
-            return (
-              <div key={p.user_id}>
-                <div className="grid grid-cols-[1fr_120px_100px_170px] max-md:grid-cols-1 gap-2 items-center px-4 py-3 text-sm">
-                  <div>
-                    <p className="font-medium text-foreground">{p.display_name || p.email || "Teammate"}</p>
-                    <p className="text-xs text-muted-foreground">{p.email}{p.job_title ? ` · ${p.job_title}` : ""}</p>
-                  </div>
-                  <select value={p.role} onChange={(e) => updateRole(p.user_id, e.target.value)} disabled={isSelf} className="h-8 rounded-md border border-border bg-input px-2 text-xs text-foreground outline-none focus:border-primary/60">
-                    {ROLES.map((r) => <option key={r} value={r}>{label(r)}</option>)}
-                  </select>
-                  <span className="text-xs">{label(p.status || "active")}</span>
-                  <div className="flex gap-1 flex-wrap justify-end">
-                    {!isSelf && (
-                      <Btn size="sm" onClick={() => { setMessageThreadWith(p.user_id); setMessageThreadEmail(p.email || ""); }}>Message</Btn>
-                    )}
-                    <Btn size="sm" onClick={() => setViewsOpenId(viewsOpen ? null : p.user_id)}>
-                      {restricted ? "Views*" : "Views"}
-                    </Btn>
-                    <Btn size="sm" onClick={() => updateStatus(p.user_id, p.status || "active")} disabled={isSelf}>
-                      {p.status === "suspended" ? "Reinstate" : "Suspend"}
-                    </Btn>
-                  </div>
-                </div>
-                {viewsOpen && (
-                  <div className="border-t border-border bg-surface px-4 py-3 space-y-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Visible pages for {p.display_name || p.email || "this teammate"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {isSelf ? "You can't restrict your own access." : restricted ? "Restricted to the checked pages below." : "Unrestricted — sees every page their role allows."}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
-                      {NAV_VIEWS.map((entry) => (
-                        <label key={entry.id} className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={!restricted || (p.allowed_views || []).includes(entry.id)}
-                            disabled={isSelf}
-                            onChange={() => {
-                              const current = new Set(p.allowed_views || NAV_VIEWS.map((v) => v.id));
-                              if (current.has(entry.id)) current.delete(entry.id); else current.add(entry.id);
-                              updateViews(p.user_id, Array.from(current));
-                            }}
-                            className="h-4 w-4"
-                          />
-                          {entry.label}
-                        </label>
-                      ))}
-                    </div>
-                    <div className="flex justify-end">
-                      <Btn size="sm" onClick={() => updateViews(p.user_id, [])} disabled={isSelf}>Reset to unrestricted</Btn>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="border-b border-border text-xs text-muted-foreground">
+                <th className="px-4 py-2.5 text-left font-medium">Member</th>
+                <th className="px-4 py-2.5 text-left font-medium">Role</th>
+                <th className="px-4 py-2.5 text-left font-medium">Status</th>
+                <th className="px-4 py-2.5 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teamProfiles.map((p) => {
+                const isSelf = p.user_id === myId;
+                const restricted = Array.isArray(p.allowed_views) && p.allowed_views.length > 0;
+                return (
+                  <tr key={p.user_id} className="border-b border-border last:border-0 hover:bg-surface-raised transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar initials={(p.display_name || p.email || "?").slice(0, 2).toUpperCase()} size="sm" />
+                        <div>
+                          <p className="font-medium text-foreground">{p.display_name || p.email || "Teammate"}{isSelf ? " (you)" : ""}</p>
+                          <p className="text-xs text-muted-foreground">{p.email}{p.job_title ? ` · ${p.job_title}` : ""}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <select value={p.role} onChange={(e) => updateRole(p.user_id, e.target.value)} disabled={isSelf} className="h-8 rounded-md border border-border bg-input px-2 text-xs text-foreground outline-none focus:border-primary/60">
+                        {ROLES.map((r) => <option key={r} value={r}>{label(r)}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{label(p.status || "active")}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1 justify-end whitespace-nowrap">
+                        <Btn size="sm" onClick={() => viewProfile(p.user_id)}>View profile</Btn>
+                        <Btn size="sm" onClick={() => setViewsOpenId(p.user_id)}>
+                          {restricted ? "Access*" : "Access"}
+                        </Btn>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </Panel>
+
+      <Drawer
+        open={!!viewsOpenId}
+        onClose={() => setViewsOpenId(null)}
+        title={(() => {
+          const m = teamProfiles.find((p) => p.user_id === viewsOpenId);
+          return `Access for ${m?.display_name || m?.email || "this teammate"}`;
+        })()}
+      >
+        {(() => {
+          const m = teamProfiles.find((p) => p.user_id === viewsOpenId);
+          if (!m) return null;
+          const isSelf = m.user_id === myId;
+          const restricted = Array.isArray(m.allowed_views) && m.allowed_views.length > 0;
+          return (
+            <div className="space-y-3">
+              <p className="text-xs text-crm-sidebar-muted">
+                {isSelf ? "You can't restrict your own access." : restricted ? "Restricted to the checked pages below." : "Unrestricted — sees every page their role allows."}
+              </p>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
+                {NAV_VIEWS.map((entry) => (
+                  <label key={entry.id} className="flex items-center gap-1.5 text-xs text-crm-sidebar-text cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!restricted || (m.allowed_views || []).includes(entry.id)}
+                      disabled={isSelf}
+                      onChange={() => {
+                        const current = new Set(m.allowed_views || NAV_VIEWS.map((v) => v.id));
+                        if (current.has(entry.id)) current.delete(entry.id); else current.add(entry.id);
+                        updateViews(m.user_id, Array.from(current));
+                      }}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    {entry.label}
+                  </label>
+                ))}
+              </div>
+              <div className="flex justify-end">
+                <Btn size="sm" onClick={() => updateViews(m.user_id, [])} disabled={isSelf}>Reset to unrestricted</Btn>
+              </div>
+            </div>
+          );
+        })()}
+      </Drawer>
     </div>
   );
 }
