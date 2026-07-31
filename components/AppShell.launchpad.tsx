@@ -34,6 +34,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { useApp } from "@/lib/AppContext";
+import { canSeeView } from "@/lib/access";
 import { Avatar, Tag } from "./kit.launchpad";
 
 type NavItem = {
@@ -101,11 +102,10 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const regComplete = profile?.registration_complete ?? true;
-  const isAdmin = profile?.role === "admin";
   const navItems: { group: string; items: NavItem[] }[] = regComplete
     ? NAV.map((group) => ({
         ...group,
-        items: group.items.filter((item) => isAdmin || item.to !== "/team"),
+        items: group.items.filter((item) => canSeeView(profile, organisation, item.to.slice(1))),
       })).filter((group) => group.items.length > 0)
     : [{ group: "Getting started", items: [{ to: "/profile", label: "My profile", icon: Users }] }];
   const CURRENT_ORG = organisation || { name: "Workspace", company_type: "workspace" };

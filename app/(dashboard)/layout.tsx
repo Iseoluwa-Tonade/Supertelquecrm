@@ -7,12 +7,13 @@ import { AppProvider, useApp } from "@/lib/AppContext";
 import { ToastProvider } from "@/components/Toast";
 import DetailPanel from "@/components/DetailPanel";
 import { AppShellLaunchpad } from "@/components/AppShell.launchpad";
+import { canSeeView } from "@/lib/access";
 import { createClient } from "@/lib/supabase/client";
 
 const supabase = createClient();
 
 function DashboardInner({ children }: { children: React.ReactNode }) {
-  const { session, loading, profile, selectedId } = useApp();
+  const { session, loading, profile, organisation, selectedId } = useApp();
   const router = useRouter();
   const pathname = usePathname();
   const currentView = pathname.split("/").filter(Boolean)[0] || "overview";
@@ -53,6 +54,15 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
       router.push("/profile");
     }
   }, [inviteStatus, currentView, router]);
+
+  useEffect(() => {
+    if (!session || !profile) return;
+    if (!profile.registration_complete) return;
+
+    if (currentView !== "overview" && !canSeeView(profile, organisation, currentView)) {
+      router.replace("/overview");
+    }
+  }, [session, profile, organisation, currentView, router]);
 
   if (loading) {
     return (
