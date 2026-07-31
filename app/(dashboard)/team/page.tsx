@@ -7,8 +7,21 @@ import { useCallback, useState, useEffect } from "react";
 import { label } from "@/lib/utils";
 import { ROLES, NAV_VIEWS } from "@/lib/types";
 import type { InviteRequest, Profile } from "@/lib/types";
-import { PageHeader, Panel, PanelHead, Stat, Btn, Input, Avatar } from "@/components/kit.launchpad";
+import { PageHeader, Panel, PanelHead, Stat, Btn, Input, Avatar, Tag } from "@/components/kit.launchpad";
 import { Drawer } from "@/components/Drawer";
+import {
+  Mail,
+  Phone,
+  Building2,
+  Briefcase,
+  ShieldCheck,
+  Calendar,
+  MapPin,
+  User,
+  BadgeCheck,
+  Copy,
+  Check,
+} from "lucide-react";
 
 const supabase = createClient();
 
@@ -120,31 +133,8 @@ export default function TeamPage() {
         <Stat label="Visible page grants" value={String(visiblePages)} delta="Across the team" spark={[2, 3, 4, 4, 5, 6]} />
       </div>
 
-      <Drawer open={!!viewingProfile} onClose={() => setViewingProfile(null)} title="Profile details">
-        {viewingProfile && (
-          <div className="space-y-1 text-sm">
-            {[
-              ["ID", viewingProfile.user_id],
-              ["Name", viewingProfile.display_name],
-              ["Email", viewingProfile.email],
-              ["Role", label(viewingProfile.role || "viewer")],
-              ["Status", label(viewingProfile.status || "active")],
-              ["Job title", viewingProfile.job_title],
-              ["Phone", viewingProfile.phone],
-              ["Department", viewingProfile.department],
-              ["Employee ID", viewingProfile.employee_id],
-              ["Start date", viewingProfile.start_date],
-              ["Address", viewingProfile.address],
-              ["Emergency contact", viewingProfile.emergency_contact_name],
-              ["Emergency phone", viewingProfile.emergency_contact_phone],
-            ].map(([k, v]) => (
-              <div key={k as string} className="grid grid-cols-[120px_1fr] gap-2 rounded-lg border border-white/10 bg-white/5 p-2 items-center">
-                <span className="text-crm-sidebar-muted">{k as string}</span>
-                <span className="break-all">{v || "—"}</span>
-              </div>
-            ))}
-          </div>
-        )}
+      <Drawer open={!!viewingProfile} onClose={() => setViewingProfile(null)} title="Member Profile">
+        {viewingProfile && <ProfileViewCard profile={viewingProfile} flash={flash} />}
       </Drawer>
 
       {inviteRequests.length > 0 && (
@@ -193,22 +183,26 @@ export default function TeamPage() {
       <Panel>
         <PanelHead
           title={`Teammates (${teamProfiles.length})`}
-          action={<Btn size="sm" onClick={() => setInviteFormOpen(!inviteFormOpen)}>{inviteFormOpen ? "Cancel" : "Invite user"}</Btn>}
+          action={<Btn size="sm" onClick={() => setInviteFormOpen(true)}>Invite user</Btn>}
         />
 
-        {inviteFormOpen && (
-          <form onSubmit={inviteUser} className="border-b border-border p-4 space-y-3 bg-surface">
-            <div className="grid grid-cols-[1fr_auto] gap-3">
+        <Drawer open={inviteFormOpen} onClose={() => setInviteFormOpen(false)} title="Invite a teammate">
+          <form onSubmit={inviteUser} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs text-crm-sidebar-muted font-medium">Email address</label>
               <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="teammate@example.com" required />
-              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="h-10 rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60">
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-crm-sidebar-muted font-medium">Role</label>
+              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="w-full h-10 rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60">
                 {ROLES.map((r) => <option key={r} value={r}>{label(r)}</option>)}
               </select>
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-2">
               <Btn type="submit" variant="primary" disabled={inviting}>{inviting ? "Sending..." : "Send invite"}</Btn>
             </div>
           </form>
-        )}
+        </Drawer>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
@@ -300,6 +294,166 @@ export default function TeamPage() {
           );
         })()}
       </Drawer>
+    </div>
+  );
+}
+
+function ProfileViewCard({ profile, flash }: { profile: Profile; flash: (msg: string) => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const initials = (profile.display_name || profile.email || "?")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const handleCopyEmail = () => {
+    if (profile.email) {
+      navigator.clipboard.writeText(profile.email);
+      setCopied(true);
+      flash("Email copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const roleTone = profile.role === "admin" ? "primary" : profile.role === "manager" ? "accent" : "neutral";
+  const statusTone = profile.status === "suspended" ? "warning" : "success";
+
+  return (
+    <div className="space-y-4 text-sm">
+      {/* Hero Header Card */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-surface-raised/80 p-5 shadow-sm">
+        <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-primary via-accent to-primary/40" />
+
+        <div className="flex items-start gap-4">
+          <div className="relative shrink-0">
+            <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 font-mono text-xl font-bold text-primary ring-1 ring-primary/30 shadow-inner">
+              {initials}
+            </span>
+            <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-background p-0.5">
+              <span className={`h-3 w-3 rounded-full ${profile.status === "suspended" ? "bg-warning" : "bg-success"}`} />
+            </span>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-lg font-bold text-foreground">{profile.display_name || "Unnamed Member"}</h3>
+            <p className="truncate text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+              <Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+              <span className="truncate">{profile.email}</span>
+            </p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <Tag tone={roleTone} className="capitalize text-[11px] font-semibold">
+                <ShieldCheck className="h-3 w-3 mr-1" />
+                {label(profile.role || "viewer")}
+              </Tag>
+              <Tag tone={statusTone} className="capitalize text-[11px]">
+                <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${profile.status === "suspended" ? "bg-warning" : "bg-success"}`} />
+                {label(profile.status || "active")}
+              </Tag>
+              {profile.job_title && (
+                <Tag tone="neutral" className="text-[11px]">
+                  {profile.job_title}
+                </Tag>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Action Buttons */}
+        <div className="mt-4 pt-3.5 border-t border-border/60 flex items-center gap-2">
+          {profile.email && (
+            <a
+              href={`mailto:${profile.email}`}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-surface-raised transition-colors shadow-sm"
+            >
+              <Mail className="h-3.5 w-3.5 text-primary" />
+              Email
+            </a>
+          )}
+          {profile.phone && (
+            <a
+              href={`tel:${profile.phone}`}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-surface-raised transition-colors shadow-sm"
+            >
+              <Phone className="h-3.5 w-3.5 text-accent" />
+              Call
+            </a>
+          )}
+          <button
+            onClick={handleCopyEmail}
+            title="Copy Email"
+            className="inline-flex items-center justify-center rounded-xl border border-border bg-background p-2 text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors cursor-pointer"
+          >
+            {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Employment Details */}
+      <div className="rounded-2xl border border-border bg-surface/60 p-4 space-y-3">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+          <Briefcase className="h-3.5 w-3.5 text-primary" />
+          Employment Information
+        </h4>
+        <div className="grid grid-cols-2 gap-2.5">
+          <ProfileField label="Department" value={profile.department} icon={Building2} />
+          <ProfileField label="Job Title" value={profile.job_title} icon={Briefcase} />
+          <ProfileField label="Employee ID" value={profile.employee_id} icon={BadgeCheck} />
+          <ProfileField label="Start Date" value={profile.start_date} icon={Calendar} />
+        </div>
+      </div>
+
+      {/* Contact Details */}
+      <div className="rounded-2xl border border-border bg-surface/60 p-4 space-y-3">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+          <Mail className="h-3.5 w-3.5 text-accent" />
+          Contact Information
+        </h4>
+        <div className="space-y-2.5">
+          <ProfileField label="Email" value={profile.email} icon={Mail} fullWidth />
+          <ProfileField label="Phone Number" value={profile.phone} icon={Phone} fullWidth />
+          <ProfileField label="Address" value={profile.address} icon={MapPin} fullWidth />
+        </div>
+      </div>
+
+      {/* Emergency Contact Info */}
+      {(profile.emergency_contact_name || profile.emergency_contact_phone) && (
+        <div className="rounded-2xl border border-border bg-surface/60 p-4 space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <User className="h-3.5 w-3.5 text-warning" />
+            Emergency Contact
+          </h4>
+          <div className="grid grid-cols-2 gap-2.5">
+            <ProfileField label="Contact Name" value={profile.emergency_contact_name} icon={User} />
+            <ProfileField label="Emergency Phone" value={profile.emergency_contact_phone} icon={Phone} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProfileField({
+  label,
+  value,
+  icon: Icon,
+  fullWidth = false,
+}: {
+  label: string;
+  value?: string | null;
+  icon?: React.ElementType;
+  fullWidth?: boolean;
+}) {
+  return (
+    <div className={`rounded-xl border border-white/8 bg-white/5 p-2.5 ${fullWidth ? "col-span-2" : ""}`}>
+      <p className="text-[11px] font-medium text-crm-sidebar-muted flex items-center gap-1 mb-0.5">
+        {Icon && <Icon className="h-3 w-3 text-muted-foreground/70" />}
+        {label}
+      </p>
+      <p className="text-xs font-medium text-foreground break-all">{value || "—"}</p>
     </div>
   );
 }
