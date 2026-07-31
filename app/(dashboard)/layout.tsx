@@ -48,6 +48,12 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
     }
   }, [session, profile, currentView, router]);
 
+  useEffect(() => {
+    if (inviteStatus === "pending" && currentView !== "profile") {
+      router.push("/profile");
+    }
+  }, [inviteStatus, currentView, router]);
+
   if (loading) {
     return (
       <div className="h-dvh flex flex-col items-center bg-background text-muted-foreground p-6 overflow-y-auto">
@@ -61,7 +67,6 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   if (!session) return null;
 
   if (inviteStatus === "pending" && currentView !== "profile") {
-    router.push("/profile");
     return null;
   }
 

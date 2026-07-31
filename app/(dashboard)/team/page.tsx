@@ -44,10 +44,11 @@ export default function TeamPage() {
       .update({ status: "approved" })
       .eq("id", req.id);
     if (error) { flash(error.message); return; }
-    await supabase
+    const { error: profileError } = await supabase
       .from("profiles")
-      .update({ role: "viewer" })
+      .update({ role: "viewer", registration_complete: true })
       .eq("user_id", req.user_id);
+    if (profileError) { console.error(profileError.message); }
     await loadInviteRequests();
     await loadTeamProfiles();
     flash("Invite approved");

@@ -48,7 +48,7 @@ export default function OrganisationsPage() {
 
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({ organisation_id: orgId, registration_complete: true })
+      .update({ organisation_id: orgId, registration_complete: false })
       .eq("user_id", session!.user.id);
 
     if (profileError) {

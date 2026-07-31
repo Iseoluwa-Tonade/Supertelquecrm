@@ -134,7 +134,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
           {railOpen ? (
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold leading-tight">{CURRENT_ORG.name}</p>
-              <p className="label-tag text-muted-foreground">{CURRENT_ORG.company_type || "workspace"} workspace</p>
+              <p className="label-tag text-muted-foreground">{CURRENT_ORG.company_type || "workspace"}</p>
             </div>
           ) : null}
         </div>

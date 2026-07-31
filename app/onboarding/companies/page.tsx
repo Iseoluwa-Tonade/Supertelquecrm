@@ -46,13 +46,21 @@ export default function CompaniesPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setInviting(null); router.push("/login"); return; }
 
+    const { error: inviteError } = await supabase.from("invite_requests").upsert({
+      user_id: session.user.id,
+      organisation_id: orgId,
+      status: "pending",
+    }, { onConflict: "user_id,organisation_id" });
+
+    if (inviteError) { setInviting(null); console.error(inviteError.message); return; }
+
     const { error: profileError } = await supabase.from("profiles").upsert({
       user_id: session.user.id,
       email: session.user.email || "",
       role: "viewer",
       status: "active",
       organisation_id: orgId,
-      registration_complete: true,
+      registration_complete: false,
     });
 
     if (profileError) { setInviting(null); console.error(profileError.message); return; }

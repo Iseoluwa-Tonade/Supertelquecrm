@@ -285,3 +285,18 @@ create policy "invite_requests_insert_own"
   on public.invite_requests for insert
   to authenticated
   with check (user_id = (select auth.uid()));
+
+drop policy if exists "invite_requests_update_org" on public.invite_requests;
+create policy "invite_requests_update_org"
+  on public.invite_requests for update
+  to authenticated
+  using (
+    organisation_id = (select p.organisation_id from public.profiles p where p.user_id = (select auth.uid()))
+    and private.is_manager_or_admin((select auth.uid()))
+  );
+
+drop policy if exists "invite_requests_delete_own" on public.invite_requests;
+create policy "invite_requests_delete_own"
+  on public.invite_requests for delete
+  to authenticated
+  using (user_id = (select auth.uid()));
