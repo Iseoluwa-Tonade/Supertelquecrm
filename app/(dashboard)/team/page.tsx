@@ -4,7 +4,7 @@ import { useApp } from "@/lib/AppContext";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
 import { useCallback, useState, useEffect } from "react";
-import { label } from "@/lib/utils";
+import { label, cn } from "@/lib/utils";
 import { ROLES, NAV_VIEWS } from "@/lib/types";
 import type { InviteRequest, Profile } from "@/lib/types";
 import { PageHeader, Panel, PanelHead, Stat, Btn, Input, Avatar, Tag } from "@/components/kit.launchpad";
@@ -21,6 +21,19 @@ import {
   BadgeCheck,
   Copy,
   Check,
+  LayoutDashboard,
+  KanbanSquare,
+  FolderKanban,
+  Activity,
+  Files,
+  MessageSquare,
+  CheckSquare,
+  Users,
+  Calculator,
+  Lock,
+  Unlock,
+  Sparkles,
+  RefreshCw,
 } from "lucide-react";
 
 const supabase = createClient();
@@ -256,42 +269,13 @@ export default function TeamPage() {
         onClose={() => setViewsOpenId(null)}
         title={(() => {
           const m = teamProfiles.find((p) => p.user_id === viewsOpenId);
-          return `Access for ${m?.display_name || m?.email || "this teammate"}`;
+          return `Access Permissions`;
         })()}
       >
         {(() => {
           const m = teamProfiles.find((p) => p.user_id === viewsOpenId);
           if (!m) return null;
-          const isSelf = m.user_id === myId;
-          const restricted = Array.isArray(m.allowed_views) && m.allowed_views.length > 0;
-          return (
-            <div className="space-y-3">
-              <p className="text-xs text-crm-sidebar-muted">
-                {isSelf ? "You can't restrict your own access." : restricted ? "Restricted to the checked pages below." : "Unrestricted — sees every page their role allows."}
-              </p>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
-                {NAV_VIEWS.map((entry) => (
-                  <label key={entry.id} className="flex items-center gap-1.5 text-xs text-crm-sidebar-text cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={!restricted || (m.allowed_views || []).includes(entry.id)}
-                      disabled={isSelf}
-                      onChange={() => {
-                        const current = new Set(m.allowed_views || NAV_VIEWS.map((v) => v.id));
-                        if (current.has(entry.id)) current.delete(entry.id); else current.add(entry.id);
-                        updateViews(m.user_id, Array.from(current));
-                      }}
-                      className="h-4 w-4 accent-primary"
-                    />
-                    {entry.label}
-                  </label>
-                ))}
-              </div>
-              <div className="flex justify-end">
-                <Btn size="sm" onClick={() => updateViews(m.user_id, [])} disabled={isSelf}>Reset to unrestricted</Btn>
-              </div>
-            </div>
-          );
+          return <AccessControlCard member={m} isSelf={m.user_id === myId} updateViews={updateViews} />;
         })()}
       </Drawer>
     </div>
@@ -455,5 +439,228 @@ function ProfileField({
       </p>
       <p className="text-xs font-medium text-foreground break-all">{value || "—"}</p>
     </div>
+  );
+}
+
+const viewIconMap: Record<string, React.ElementType> = {
+  overview: LayoutDashboard,
+  pipeline: KanbanSquare,
+  projects: FolderKanban,
+  activity: Activity,
+  documents: Files,
+  messages: MessageSquare,
+  approvals: ShieldCheck,
+  focus: CheckSquare,
+  team: Users,
+  pricing: Calculator,
+  profile: User,
+};
+
+function AccessControlCard({
+  member,
+  isSelf,
+  updateViews,
+}: {
+  member: Profile;
+  isSelf: boolean;
+  updateViews: (userId: string, views: string[]) => Promise<void>;
+}) {
+  const restricted = Array.isArray(member.allowed_views) && member.allowed_views.length > 0;
+  const currentAllowed = new Set(member.allowed_views || NAV_VIEWS.map((v) => v.id));
+  const activeCount = restricted ? (member.allowed_views || []).length : NAV_VIEWS.length;
+
+  const handleToggle = (viewId: string) => {
+    if (isSelf) return;
+    const next = new Set(currentAllowed);
+    if (next.has(viewId)) {
+      next.delete(viewId);
+    } else {
+      next.add(viewId);
+    }
+    updateViews(member.user_id, Array.from(next));
+  };
+
+  const handleGrantAll = () => {
+    if (isSelf) return;
+    updateViews(member.user_id, NAV_VIEWS.map((v) => v.id));
+  };
+
+  const handleResetUnrestricted = () => {
+    if (isSelf) return;
+    updateViews(member.user_id, []);
+  };
+
+  const initials = (member.display_name || member.email || "?")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <div className="space-y-4 text-sm">
+      {/* Member Header Card */}
+      <div className="rounded-2xl border border-border bg-surface-raised/80 p-4 space-y-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <Avatar initials={initials} size="md" tone="primary" />
+          <div className="min-w-0 flex-1">
+            <h4 className="truncate text-base font-bold text-foreground">{member.display_name || member.email}</h4>
+            <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+          </div>
+          <Tag tone={restricted ? "warning" : "success"} className="capitalize text-[11px] shrink-0 font-medium">
+            {restricted ? (
+              <>
+                <Lock className="h-3 w-3 mr-1" />
+                Custom Access
+              </>
+            ) : (
+              <>
+                <Unlock className="h-3 w-3 mr-1" />
+                Unrestricted
+              </>
+            )}
+          </Tag>
+        </div>
+
+        {/* Access Status Banner */}
+        <div
+          className={cn(
+            "rounded-xl border p-3 text-xs leading-relaxed transition-colors",
+            isSelf
+              ? "border-info/30 bg-info/10 text-info"
+              : restricted
+              ? "border-warning/30 bg-warning/10 text-warning"
+              : "border-success/30 bg-success/10 text-success"
+          )}
+        >
+          {isSelf ? (
+            <p className="flex items-center gap-1.5 font-medium">
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              You cannot restrict permissions for your own account.
+            </p>
+          ) : restricted ? (
+            <p className="flex items-center gap-1.5">
+              <Lock className="h-4 w-4 shrink-0 text-warning" />
+              <span><strong>Restricted Mode:</strong> Teammate can only access the {activeCount} checked page(s) below.</span>
+            </p>
+          ) : (
+            <p className="flex items-center gap-1.5">
+              <Unlock className="h-4 w-4 shrink-0 text-success" />
+              <span><strong>Unrestricted Mode:</strong> Teammate has access to all {NAV_VIEWS.length} pages allowed by their role.</span>
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Global Actions Toolbar */}
+      <div className="flex items-center justify-between gap-2 border-b border-border pb-3 px-1">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          Page Grants ({activeCount} of {NAV_VIEWS.length})
+        </span>
+
+        {!isSelf && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleGrantAll}
+              className="text-xs font-medium text-primary hover:underline cursor-pointer"
+            >
+              Select All
+            </button>
+            <span className="text-muted-foreground/40">•</span>
+            <button
+              onClick={handleResetUnrestricted}
+              className="text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Reset
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Page Permissions Toggles List */}
+      <div className="space-y-2">
+        {NAV_VIEWS.map((entry) => {
+          const Icon = viewIconMap[entry.id] || LayoutDashboard;
+          const isAllowed = !restricted || currentAllowed.has(entry.id);
+
+          return (
+            <div
+              key={entry.id}
+              onClick={() => !isSelf && handleToggle(entry.id)}
+              className={cn(
+                "flex items-center justify-between gap-3 rounded-xl border p-3 transition-all duration-200",
+                !isSelf && "cursor-pointer hover:border-primary/40",
+                isAllowed
+                  ? "border-border bg-surface/90 shadow-xs"
+                  : "border-white/5 bg-white/3 opacity-60"
+              )}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={cn(
+                    "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
+                    isAllowed ? "bg-primary/15 text-primary" : "bg-white/5 text-muted-foreground"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-foreground">{entry.label}</p>
+                  <span className="font-mono text-[10px] text-muted-foreground">/{entry.id}</span>
+                </div>
+              </div>
+
+              <ToggleSwitch
+                checked={isAllowed}
+                onChange={() => handleToggle(entry.id)}
+                disabled={isSelf}
+                ariaLabel={`Toggle access to ${entry.label}`}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ToggleSwitch({
+  checked,
+  onChange,
+  disabled = false,
+  ariaLabel,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!disabled) onChange(!checked);
+      }}
+      className={cn(
+        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-1 focus:ring-offset-background",
+        checked ? "bg-primary shadow-[0_0_12px_rgba(45,212,191,0.35)]" : "bg-white/15 hover:bg-white/20",
+        disabled && "opacity-50 cursor-not-allowed"
+      )}
+    >
+      <span
+        className={cn(
+          "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
+          checked ? "translate-x-4" : "translate-x-0"
+        )}
+      />
+    </button>
   );
 }
