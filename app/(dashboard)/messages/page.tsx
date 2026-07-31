@@ -40,7 +40,7 @@ export default function MessagesPage() {
 
   const threads = messageThreads();
   const activeThread = threads.find((t) => t.id === messageThreadWith) ||
-    (messageThreadWith ? { id: messageThreadWith, email: messageThreadEmail || "Teammate", messages: [] as CrmMessage[] } : null);
+    (messageThreadWith ? { id: messageThreadWith, email: messageThreadEmail || "Team member", messages: [] as CrmMessage[] } : null);
 
   const sendMessage = useCallback(async (recipientId: string, recipientEmail: string, body: string) => {
     if (!session) return;
@@ -72,7 +72,7 @@ export default function MessagesPage() {
       <PageHeader variant="overview"
         eyebrow="Operations"
         title="Messages"
-        desc="Direct messages between teammates."
+        desc="Direct messages between team members."
       />
 
       <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
@@ -89,9 +89,9 @@ export default function MessagesPage() {
           {composeOpen && (
             <div className="border-b border-border p-4 space-y-3">
               <select value={newRecipient} onChange={(e) => setNewRecipient(e.target.value)} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-                <option value="">Choose a teammate...</option>
+                <option value="">Choose a team member...</option>
                 {teamProfiles.filter((p) => p.user_id !== myId).map((p) => (
-                  <option key={p.user_id} value={p.user_id} data-email={p.email}>{p.display_name || p.email || "Teammate"}</option>
+                  <option key={p.user_id} value={p.user_id} data-email={p.email}>{p.display_name || p.email || "Team member"}</option>
                 ))}
               </select>
               <textarea value={newBody} onChange={(e) => setNewBody(e.target.value)} rows={2} placeholder="Write a message..." className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed" />
@@ -122,7 +122,7 @@ export default function MessagesPage() {
                   className={`w-full flex items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-raised ${messageThreadWith === thread.id ? "bg-primary/5" : ""}`}>
                   <Avatar initials={(thread.email || "T").slice(0, 2).toUpperCase()} size="sm" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">{thread.email || "Teammate"}</p>
+                    <p className="text-sm font-medium text-foreground">{thread.email || "Team member"}</p>
                     <p className="truncate text-xs text-muted-foreground">{(last?.body || "").slice(0, 60)}</p>
                   </div>
                   {unread > 0 && (
@@ -138,7 +138,7 @@ export default function MessagesPage() {
 
         {activeThread ? (
           <Panel>
-            <PanelHead title={activeThread.email || "Teammate"} />
+            <PanelHead title={activeThread.email || "Team member"} />
             <div className="max-h-[50vh] space-y-2 overflow-auto p-4">
               {activeThread.messages.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No messages yet. Say hello.</p>

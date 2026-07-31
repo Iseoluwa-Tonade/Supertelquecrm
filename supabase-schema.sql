@@ -16,7 +16,7 @@
 -- those exact pre-existing policies (by their real names) to also accept
 -- `admin`, since otherwise adding `admin` as a role would give admins LESS
 -- access than managers on every one of those tables.
-
+uoyhgfvasdfasdasdfasdfasasdfasdfasdfasfasdfasdfasdfasdfasdsadfasfasdfasdfasdfasdf
 -- 1. Documents table -----------------------------------------------------
 
 create table if not exists public.crm_documents (

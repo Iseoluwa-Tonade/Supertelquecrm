@@ -555,7 +555,7 @@ export default function LoginPage() {
 
             <p className="text-crm-muted text-[12px] text-center leading-[1.5]">
               Access is invite-only. Your CRM data is protected by Supabase Auth
-              and row-level security — only teammates invited by an admin can
+              and row-level security — only team members invited by an admin can
               sign in.
             </p>
           </div>

@@ -229,10 +229,10 @@ function renderChrome() {
     projects: ["Project Delivery", "Move client work from backlog through shipped outcomes."],
     activity: ["Daily Activities", "Track calls, emails, proposals, delivery work, and admin follow-ups."],
     documents: ["Documents", "Upload, organize, and preview files linked to accounts and projects."],
-    messages: ["Messages", "Direct messages between you and your manager or teammates."],
+    messages: ["Messages", "Direct messages between you and your manager or team members."],
     approvals: ["Approval Queue", "Review team changes before they become approved CRM records."],
     focus: ["Focus Queue", "High-priority and near-due work across the whole book."],
-    team: ["Team", "Manage teammate roles and access."],
+    team: ["Team", "Manage team member roles and access."],
     pricing: ["Pricing Calculator", "Manage the service catalog and quote a client."],
     profile: ["My Profile", "Your account, contact, and HR details."]
   };
@@ -930,7 +930,7 @@ function renderMessagesView() {
   const threads = messageThreads();
   let activeThread = threads.find(thread => thread.id === state.messageThreadWith) || null;
   if (!activeThread && state.messageThreadWith) {
-    activeThread = { id: state.messageThreadWith, email: state.messageThreadEmail || "Teammate", messages: [] };
+    activeThread = { id: state.messageThreadWith, email: state.messageThreadEmail || "Team member", messages: [] };
   }
   const canStartNew = isManager();
 
@@ -962,7 +962,7 @@ function renderThreadListItem(thread) {
   const active = state.messageThreadWith === thread.id;
   return `
     <button type="button" class="message-thread-item ${active ? "active" : ""}" data-thread-id="${escapeAttr(thread.id)}" data-thread-email="${escapeAttr(thread.email || "")}">
-      <strong>${escapeHtml(thread.email || "Teammate")}</strong>
+      <strong>${escapeHtml(thread.email || "Team member")}</strong>
       <span>${escapeHtml((last?.body || "").slice(0, 60))}</span>
       ${unread ? `<span class="thread-unread">${unread}</span>` : ""}
     </button>
@@ -973,7 +973,7 @@ function renderMessageThread(thread) {
   const myId = state.session?.user?.id;
   return `
     <div class="activity-panel message-thread">
-      <h2 style="margin:0;">${escapeHtml(thread.email || "Teammate")}</h2>
+      <h2 style="margin:0;">${escapeHtml(thread.email || "Team member")}</h2>
       <div class="message-list" id="messageList">
         ${thread.messages.map(msg => `
           <div class="message-bubble ${msg.sender_id === myId ? "mine" : ""}">
@@ -996,8 +996,8 @@ function renderNewMessageComposer() {
   return `
     <form id="newMessageForm" class="message-composer message-composer-new">
       <select id="newMessageRecipient" required>
-        <option value="">Choose a teammate...</option>
-        ${recipients.map(profile => `<option value="${escapeAttr(profile.user_id)}" data-email="${escapeAttr(profile.email || "")}">${escapeHtml(profile.display_name || profile.email || "Teammate")}</option>`).join("")}
+        <option value="">Choose a team member...</option>
+        ${recipients.map(profile => `<option value="${escapeAttr(profile.user_id)}" data-email="${escapeAttr(profile.email || "")}">${escapeHtml(profile.display_name || profile.email || "Team member")}</option>`).join("")}
       </select>
       <textarea id="newMessageBody" rows="2" placeholder="Write a message..." required></textarea>
       <div class="form-actions">
@@ -1105,13 +1105,13 @@ function renderTeamView() {
     <section class="overview" aria-label="Team management">
       <div class="activity-panel">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-          <h2 style="margin:0;">Teammates (${state.teamProfiles.length})</h2>
+          <h2 style="margin:0;">Team members (${state.teamProfiles.length})</h2>
           <button type="button" class="btn" id="inviteToggleBtn">${state.inviteFormOpen ? "Cancel" : "Invite user"}</button>
         </div>
         ${state.inviteFormOpen ? `
           <form class="form" id="inviteForm" style="margin-top:16px;padding:16px;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;">
             <div class="form-grid" style="grid-template-columns:1fr auto;">
-              <label>Email address<input type="email" name="email" placeholder="teammate@example.com" required></label>
+              <label>Email address<input type="email" name="email" placeholder="teammember@example.com" required></label>
               <label>Role<select name="role">${ROLES.map(r => `<option value="${r}" ${r === "owner" ? "selected" : ""}>${r.charAt(0).toUpperCase() + r.slice(1)}</option>`).join("")}</select></label>
             </div>
             <div class="form-actions" style="margin-top:12px;">
@@ -1121,7 +1121,7 @@ function renderTeamView() {
         ` : ""}
         <div class="team-table" style="display:grid;gap:8px;">
           <div class="team-row header"><span>Email</span><span>Role</span><span>Status</span><span></span></div>
-          ${state.teamProfiles.map(renderTeamRow).join("") || `<div class="empty">No teammates found yet.</div>`}
+          ${state.teamProfiles.map(renderTeamRow).join("") || `<div class="empty">No team members found yet.</div>`}
         </div>
       </div>
     </section>
@@ -1136,7 +1136,7 @@ function renderTeamRow(profile) {
   return `
     <div class="team-row" data-user-id="${profile.user_id}">
       <div>
-        <strong>${escapeHtml(profile.display_name || profile.email || "Teammate")}</strong>
+        <strong>${escapeHtml(profile.display_name || profile.email || "Team member")}</strong>
         <span>${escapeHtml(profile.email || "")}</span>
         ${profile.job_title || profile.department ? `<span>${[profile.job_title, profile.department].filter(Boolean).map(escapeHtml).join(" &middot; ")}</span>` : ""}
       </div>
@@ -1162,7 +1162,7 @@ function renderTeamViewsPanel(profile, isSelf) {
   return `
     <div class="team-views-panel" data-user-id="${profile.user_id}">
       <div class="team-views-head">
-        <strong>Visible pages for ${escapeHtml(profile.display_name || profile.email || "this teammate")}</strong>
+        <strong>Visible pages for ${escapeHtml(profile.display_name || profile.email || "this team member")}</strong>
         <span>${isSelf ? "You can't restrict your own access." : restricted ? "Restricted to the checked pages below." : "Unrestricted — sees every page their role allows."}</span>
       </div>
       <div class="team-views-grid">
@@ -1351,7 +1351,7 @@ async function updateTeamStatus(userId, status) {
   }
   state.teamProfiles = state.teamProfiles.map(profile => profile.user_id === userId ? { ...profile, status } : profile);
   render();
-  flash(status === "suspended" ? "Teammate suspended" : "Teammate reinstated");
+  flash(status === "suspended" ? "Team member suspended" : "Team member reinstated");
 }
 
 async function inviteUser(event) {

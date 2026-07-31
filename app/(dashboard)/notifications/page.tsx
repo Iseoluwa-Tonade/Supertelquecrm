@@ -35,7 +35,7 @@ export default function NotificationsPage() {
       .filter((m) => m.recipient_id === myId && !m.read_at)
       .map((m) => ({
         id: m.id,
-        title: `Message from ${m.sender_email || "teammate"}`,
+        title: `Message from ${m.sender_email || "team member"}`,
         desc: m.body.slice(0, 80),
         date: m.created_at || "",
         type: "message" as const,

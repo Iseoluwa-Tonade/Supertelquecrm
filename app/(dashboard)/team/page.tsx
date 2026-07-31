@@ -137,7 +137,7 @@ export default function TeamPage() {
       <PageHeader variant="operations"
         eyebrow="Operations"
         title="Team & invites"
-        desc="Invite teammates, approve access and keep page permissions aligned."
+        desc="Invite team members, approve access and keep page permissions aligned."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -152,7 +152,7 @@ export default function TeamPage() {
 
       {inviteRequests.length > 0 && (
         <Panel>
-          <PanelHead title={`Pending requests (${inviteRequests.length})`} hint="Approve or decline new teammates" />
+          <PanelHead title={`Pending requests (${inviteRequests.length})`} hint="Approve or decline new team members" />
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
@@ -195,15 +195,15 @@ export default function TeamPage() {
 
       <Panel>
         <PanelHead
-          title={`Teammates (${teamProfiles.length})`}
+          title={`Team members (${teamProfiles.length})`}
           action={<Btn size="sm" onClick={() => setInviteFormOpen(true)}>Invite user</Btn>}
         />
 
-        <Drawer open={inviteFormOpen} onClose={() => setInviteFormOpen(false)} title="Invite a teammate">
+        <Drawer open={inviteFormOpen} onClose={() => setInviteFormOpen(false)} title="Invite a team member">
           <form onSubmit={inviteUser} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs text-crm-sidebar-muted font-medium">Email address</label>
-              <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="teammate@example.com" required />
+              <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="teammember@example.com" required />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-crm-sidebar-muted font-medium">Role</label>
@@ -237,7 +237,7 @@ export default function TeamPage() {
                       <div className="flex items-center gap-2.5">
                         <Avatar initials={(p.display_name || p.email || "?").slice(0, 2).toUpperCase()} size="sm" />
                         <div>
-                          <p className="font-medium text-foreground">{p.display_name || p.email || "Teammate"}{isSelf ? " (you)" : ""}</p>
+                          <p className="font-medium text-foreground">{p.display_name || p.email || "Team member"}{isSelf ? " (you)" : ""}</p>
                           <p className="text-xs text-muted-foreground">{p.email}{p.job_title ? ` · ${p.job_title}` : ""}</p>
                         </div>
                       </div>
@@ -308,7 +308,7 @@ function ProfileViewCard({ profile, flash }: { profile: Profile; flash: (msg: st
   return (
     <div className="space-y-4 text-sm">
       {/* Hero Header Card */}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-surface-raised/80 p-5 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-white dark:bg-surface p-5 shadow-sm">
         <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-primary via-accent to-primary/40" />
 
         <div className="flex items-start gap-4">
@@ -377,7 +377,7 @@ function ProfileViewCard({ profile, flash }: { profile: Profile; flash: (msg: st
       </div>
 
       {/* Employment Details */}
-      <div className="rounded-2xl border border-border bg-surface/60 p-4 space-y-3">
+      <div className="rounded-2xl border border-border bg-white dark:bg-surface p-4 space-y-3">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
           <Briefcase className="h-3.5 w-3.5 text-primary" />
           Employment Information
@@ -391,7 +391,7 @@ function ProfileViewCard({ profile, flash }: { profile: Profile; flash: (msg: st
       </div>
 
       {/* Contact Details */}
-      <div className="rounded-2xl border border-border bg-surface/60 p-4 space-y-3">
+      <div className="rounded-2xl border border-border bg-white dark:bg-surface p-4 space-y-3">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
           <Mail className="h-3.5 w-3.5 text-accent" />
           Contact Information
@@ -405,7 +405,7 @@ function ProfileViewCard({ profile, flash }: { profile: Profile; flash: (msg: st
 
       {/* Emergency Contact Info */}
       {(profile.emergency_contact_name || profile.emergency_contact_phone) && (
-        <div className="rounded-2xl border border-border bg-surface/60 p-4 space-y-3">
+        <div className="rounded-2xl border border-border bg-white dark:bg-surface p-4 space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <User className="h-3.5 w-3.5 text-warning" />
             Emergency Contact
@@ -432,8 +432,8 @@ function ProfileField({
   fullWidth?: boolean;
 }) {
   return (
-    <div className={`rounded-xl border border-white/8 bg-white/5 p-2.5 ${fullWidth ? "col-span-2" : ""}`}>
-      <p className="text-[11px] font-medium text-crm-sidebar-muted flex items-center gap-1 mb-0.5">
+    <div className={`rounded-xl border border-white/8 bg-surface-raised dark:bg-white/10 p-2.5 ${fullWidth ? "col-span-2" : ""}`}>
+      <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 mb-0.5">
         {Icon && <Icon className="h-3 w-3 text-muted-foreground/70" />}
         {label}
       </p>
@@ -501,7 +501,7 @@ function AccessControlCard({
   return (
     <div className="space-y-4 text-sm">
       {/* Member Header Card */}
-      <div className="rounded-2xl border border-border bg-surface-raised/80 p-4 space-y-3 shadow-xs">
+      <div className="rounded-2xl border border-border bg-white dark:bg-surface p-4 space-y-3 shadow-xs">
         <div className="flex items-center gap-3">
           <Avatar initials={initials} size="md" tone="primary" />
           <div className="min-w-0 flex-1">
@@ -511,12 +511,10 @@ function AccessControlCard({
           <Tag tone={restricted ? "warning" : "success"} className="capitalize text-[11px] shrink-0 font-medium">
             {restricted ? (
               <>
-                <Lock className="h-3 w-3 mr-1" />
                 Custom Access
               </>
             ) : (
               <>
-                <Unlock className="h-3 w-3 mr-1" />
                 Unrestricted
               </>
             )}
@@ -530,24 +528,24 @@ function AccessControlCard({
             isSelf
               ? "border-info/30 bg-info/10 text-info"
               : restricted
-              ? "border-warning/30 bg-warning/10 text-warning"
-              : "border-success/30 bg-success/10 text-success"
+                ? "border-warning/30 bg-warning/10 text-warning"
+                : "border-success/30 bg-success/10 text-success"
           )}
         >
           {isSelf ? (
             <p className="flex items-center gap-1.5 font-medium">
               <ShieldCheck className="h-4 w-4 shrink-0" />
-              You cannot restrict permissions for your own account.
+              You have full permission and access.
             </p>
           ) : restricted ? (
             <p className="flex items-center gap-1.5">
               <Lock className="h-4 w-4 shrink-0 text-warning" />
-              <span><strong>Restricted Mode:</strong> Teammate can only access the {activeCount} checked page(s) below.</span>
+              <span><strong>Restricted Mode:</strong> Team member can only access the {activeCount} checked page(s) below.</span>
             </p>
           ) : (
             <p className="flex items-center gap-1.5">
               <Unlock className="h-4 w-4 shrink-0 text-success" />
-              <span><strong>Unrestricted Mode:</strong> Teammate has access to all {NAV_VIEWS.length} pages allowed by their role.</span>
+              <span><strong>Unrestricted Mode:</strong> Team member has access to all {NAV_VIEWS.length} pages allowed by their role.</span>
             </p>
           )}
         </div>
@@ -563,17 +561,19 @@ function AccessControlCard({
         {!isSelf && (
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={handleGrantAll}
-              className="text-xs font-medium text-primary hover:underline cursor-pointer"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/15 px-2.5 text-xs font-semibold text-primary transition-colors hover:border-primary/60 hover:bg-primary/25 cursor-pointer select-none"
             >
+              <CheckSquare className="h-3.5 w-3.5" />
               Select All
             </button>
-            <span className="text-muted-foreground/40">•</span>
             <button
+              type="button"
               onClick={handleResetUnrestricted}
-              className="text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-2.5 text-xs font-medium text-crm-sidebar-text transition-colors hover:bg-white/10 hover:text-white cursor-pointer select-none"
             >
-              <RefreshCw className="h-3 w-3" />
+              <RefreshCw className="h-3.5 w-3.5" />
               Reset
             </button>
           </div>
@@ -595,21 +595,21 @@ function AccessControlCard({
                 !isSelf && "cursor-pointer hover:border-primary/40",
                 isAllowed
                   ? "border-border bg-surface/90 shadow-xs"
-                  : "border-white/5 bg-white/3 opacity-60"
+                  : "border-white/10 bg-white/[0.06]"
               )}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div
                   className={cn(
                     "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
-                    isAllowed ? "bg-primary/15 text-primary" : "bg-white/5 text-muted-foreground"
+                    isAllowed ? "bg-primary/15 text-primary" : "bg-white/10 text-white"
                   )}
                 >
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-foreground">{entry.label}</p>
-                  <span className="font-mono text-[10px] text-muted-foreground">/{entry.id}</span>
+                  <p className={cn("truncate text-xs font-semibold", isAllowed ? "text-foreground" : "text-white")}>{entry.label}</p>
+                  <span className={cn("font-mono text-[10px]", isAllowed ? "text-muted-foreground" : "text-white/60")}>/{entry.id}</span>
                 </div>
               </div>
 
@@ -639,28 +639,45 @@ function ToggleSwitch({
   ariaLabel?: string;
 }) {
   return (
-    <button
-      type="button"
+    <span
       role="switch"
+      tabIndex={disabled ? -1 : 0}
       aria-checked={checked}
       aria-label={ariaLabel}
-      disabled={disabled}
       onClick={(e) => {
         e.stopPropagation();
         if (!disabled) onChange(!checked);
       }}
+      onKeyDown={(e) => {
+        if (e.key === " " || e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!disabled) onChange(!checked);
+        }
+      }}
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-1 focus:ring-offset-background",
-        checked ? "bg-primary shadow-[0_0_12px_rgba(45,212,191,0.35)]" : "bg-white/15 hover:bg-white/20",
-        disabled && "opacity-50 cursor-not-allowed"
+        "relative inline-flex items-center shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+        checked ? "bg-primary" : "bg-white/20",
+        disabled && "opacity-40 cursor-not-allowed"
       )}
+      style={{ width: 40, height: 22, minHeight: 0, border: "none", background: undefined }}
     >
+      {/* Track */}
       <span
         className={cn(
-          "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
-          checked ? "translate-x-4" : "translate-x-0"
+          "absolute inset-0 rounded-full transition-colors duration-200",
+          checked ? "bg-primary" : "bg-white/20"
         )}
       />
-    </button>
+      {/* Thumb */}
+      <span
+        className={cn(
+          "relative inline-block rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out",
+          checked ? "translate-x-[20px]" : "translate-x-[2px]"
+        )}
+        style={{ width: 18, height: 18, marginTop: 2, marginBottom: 2 }}
+      />
+    </span>
   );
 }
+

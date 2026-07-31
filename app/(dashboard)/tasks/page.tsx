@@ -73,7 +73,7 @@ export default function TasksPage() {
               </Field>
               <Field label="Assignee">
                 <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-                  <option value="">Select teammate...</option>
+                  <option value="">Select team member...</option>
                   {teamProfiles.map((p) => (
                     <option key={p.user_id} value={p.display_name || p.email}>{p.display_name || p.email}</option>
                   ))}
@@ -113,7 +113,7 @@ export default function TasksPage() {
           </div>
           {notified && (
             <div className="border-t border-border px-4 py-2 flex items-center gap-2 text-sm text-success">
-              <Send className="h-4 w-4" /> Task assigned and teammate notified.
+              <Send className="h-4 w-4" /> Task assigned and team member notified.
             </div>
           )}
         </Panel>

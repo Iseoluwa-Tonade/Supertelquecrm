@@ -20,7 +20,7 @@ export default function ContactsPage() {
 
   const contacts = useMemo(() => {
     return teamProfiles.map((p) => ({
-      name: p.display_name || p.email || "Teammate",
+      name: p.display_name || p.email || "Team member",
       email: p.email || "",
       title: p.job_title || "—",
       department: p.department || "—",
