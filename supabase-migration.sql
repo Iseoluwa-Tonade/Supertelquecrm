@@ -300,3 +300,6 @@ create policy "invite_requests_delete_own"
   on public.invite_requests for delete
   to authenticated
   using (user_id = (select auth.uid()));
+
+-- Enable realtime for invite_requests so admins get live notifications
+alter publication supabase_realtime add table public.invite_requests;

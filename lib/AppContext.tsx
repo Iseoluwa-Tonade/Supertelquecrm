@@ -212,8 +212,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadTeamProfiles = useCallback(async () => {
-    const role = state.profile?.role;
-    if (role !== "admin" && role !== "manager") {
+    if (!profileRef.current?.organisation_id) {
       setState((s) => ({ ...s, teamProfiles: [] }));
       return;
     }
@@ -225,8 +224,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.profile?.role]);
 
   const loadInviteRequests = useCallback(async () => {
-    const role = state.profile?.role;
-    if (role !== "admin" && role !== "manager") {
+    if (profileRef.current?.role !== "admin") {
       setState((s) => ({ ...s, inviteRequests: [] }));
       return;
     }
@@ -277,6 +275,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     const profile = await loadProfile(session);
+    profileRef.current = profile;
     setState((s) => ({ ...s, session, profile }));
     if (profile?.organisation_id) {
       await loadOrganisation(profile.organisation_id);
@@ -329,6 +328,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       if (session) {
         const profile = await loadProfile(session);
+        profileRef.current = profile;
         setState((s) => ({ ...s, session, profile }));
         if (profile?.organisation_id) {
           await loadOrganisation(profile.organisation_id);

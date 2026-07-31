@@ -21,7 +21,7 @@ export default function TeamPage() {
   const [inviting, setInviting] = useState(false);
   const [viewingRequester, setViewingRequester] = useState<Profile | null>(null);
 
-  const isManager = profile?.role === "manager" || profile?.role === "admin";
+  const isAdmin = profile?.role === "admin";
 
   const inviteUser = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,12 +102,12 @@ export default function TeamPage() {
   const memberCount = teamProfiles.length;
   const visiblePages = Array.from(new Set(teamProfiles.flatMap((member) => member.allowed_views || []))).length;
 
-  if (!isManager) {
+  if (!isAdmin) {
     return (
       <div className="space-y-6">
         <PageHeader variant="operations" eyebrow="Operations" title="Team & invites" />
         <Panel className="p-6 text-center">
-          <p className="text-sm text-muted-foreground">Only managers and admins can manage the team.</p>
+          <p className="text-sm text-muted-foreground">Only admins can manage the team.</p>
         </Panel>
       </div>
     );

@@ -95,7 +95,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (!organisation?.enabled_features?.includes(viewId)) return false;
     if (viewId === "pricing" && !isAdmin) return false;
     if (viewId === "pipeline" && !isAdmin) return false;
-    if (viewId === "team" && !isManager) return false;
+    if (viewId === "team" && !isAdmin) return false;
     const allowed = profile?.allowed_views;
     if (allowed && allowed.length > 0 && !allowed.includes(viewId)) return false;
     return true;
