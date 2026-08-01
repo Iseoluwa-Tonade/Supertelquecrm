@@ -102,6 +102,34 @@ create policy "organisations_insert_own"
   to authenticated
   with check (true);
 
+-- Update: only the org's own admins. Without this policy, client UPDATEs were
+-- silently filtered (0 rows affected, no error) and "Save organisation settings"
+-- appeared to succeed while enabled_features changes were never persisted.
+drop policy if exists "organisations_update_org_admin" on public.organisations;
+create policy "organisations_update_org_admin"
+  on public.organisations for update
+  to authenticated
+  using (
+    id = (select p.organisation_id from public.profiles p where p.user_id = (select auth.uid()))
+    and exists (
+      select 1 from public.profiles p
+      where p.user_id = (select auth.uid())
+        and p.organisation_id = id
+        and p.role = 'admin'
+        and p.status = 'active'
+    )
+  )
+  with check (
+    id = (select p.organisation_id from public.profiles p where p.user_id = (select auth.uid()))
+    and exists (
+      select 1 from public.profiles p
+      where p.user_id = (select auth.uid())
+        and p.organisation_id = id
+        and p.role = 'admin'
+        and p.status = 'active'
+    )
+  );
+
 -- 7. RLS policies – data tables scoped to organisation -----------------------
 -- Profiles: users see their own row, plus others in the same organisation
 

@@ -123,7 +123,7 @@ export default function ProfilePage() {
       flash("Select at least one feature");
       return;
     }
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("organisations")
       .update({
         name: orgForm.name.trim(),
@@ -134,8 +134,17 @@ export default function ProfilePage() {
         company_type: orgForm.company_type,
         enabled_features: enabledFeatures,
       })
-      .eq("id", profile.organisation_id);
-    if (error) { console.error(error); flash("Failed to save organisation settings"); return; }
+      .eq("id", profile.organisation_id)
+      .select()
+      .maybeSingle();
+    if (error || !updated) {
+      const errMsg = error
+        ? (error.message || error.details || JSON.stringify(error))
+        : "Organisation update returned no rows (RLS policy missing or write denied)";
+      console.error("Organisation update error:", errMsg);
+      flash(`Failed to save organisation settings: ${errMsg}`);
+      return;
+    }
     await refreshData();
     flash("Organisation settings saved");
   }, [session, profile, orgForm, enabledFeatures, supabase, flash, refreshData]);
