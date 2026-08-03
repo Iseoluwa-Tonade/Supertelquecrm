@@ -17,8 +17,12 @@ export function canSeeView(
   if (viewId === "profile") return true;
 
   if (FEATURE_IDS.has(viewId as (typeof NAV_VIEWS)[number]["id"])) {
-    const enabled = organisation?.enabled_features;
-    if (enabled && enabled.length > 0 && !enabled.includes(viewId)) return false;
+    // tasks (Task scheduling) is always available as a feature; admins
+    // fine-tune who sees it per member via allowed_views below.
+    if (viewId !== "tasks") {
+      const enabled = organisation?.enabled_features;
+      if (enabled && enabled.length > 0 && !enabled.includes(viewId)) return false;
+    }
   }
 
   if (["team", "pricing", "accounting"].includes(viewId) && profile.role !== "admin") return false;
@@ -27,7 +31,10 @@ export function canSeeView(
 
   if (FEATURE_IDS.has(viewId as (typeof NAV_VIEWS)[number]["id"])) {
     const allowed = profile.allowed_views;
-    if (allowed && allowed.length > 0 && !allowed.includes(viewId)) return false;
+    if (allowed && allowed.length > 0 && !allowed.includes(viewId)) {
+      const privileged = profile.role === "admin" || profile.role === "manager";
+      if (!(privileged && viewId === "tasks")) return false;
+    }
   }
 
   return true;

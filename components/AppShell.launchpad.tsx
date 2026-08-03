@@ -35,7 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useApp } from "@/lib/AppContext";
 import { canSeeView } from "@/lib/access";
-import { Avatar, Tag } from "./kit.launchpad";
+import { Avatar, Tag, DropdownPanel } from "./kit.launchpad";
 
 type NavItem = {
   to: string;
@@ -312,8 +312,8 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
               {accountOpen ? (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />
-                  <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-popover shadow-[0_24px_50px_-28px_rgba(15,23,42,0.55)]">
-                    <div className="border-b border-border px-3 py-2">
+                  <DropdownPanel className="absolute right-0 z-50 mt-2 w-64">
+                    <div className="border-b border-white/10 px-3 py-2.5">
                       <p className="truncate text-sm font-medium">{session?.user.email || CURRENT_USER.display_name}</p>
                       <p className="label-tag text-muted-foreground">{CURRENT_USER.job_title || "Account"}</p>
                     </div>
@@ -322,11 +322,11 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
                         setAccountOpen(false);
                         await signOut();
                       }}
-                      className="w-full rounded-none border-0 px-3 py-2 text-left text-sm hover:bg-surface-raised"
+                      className="w-full rounded-none border-0 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5"
                     >
                       Sign out
                     </button>
-                  </div>
+                  </DropdownPanel>
                 </>
               ) : null}
             </div>

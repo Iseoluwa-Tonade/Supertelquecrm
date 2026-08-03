@@ -34,6 +34,7 @@ import {
   Unlock,
   Sparkles,
   RefreshCw,
+  CalendarClock,
 } from "lucide-react";
 
 const supabase = createClient();
@@ -450,6 +451,7 @@ const viewIconMap: Record<string, React.ElementType> = {
   documents: Files,
   messages: MessageSquare,
   approvals: ShieldCheck,
+  tasks: CalendarClock,
   focus: CheckSquare,
   team: Users,
   pricing: Calculator,

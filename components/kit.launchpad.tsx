@@ -19,6 +19,24 @@ export function Panel({
   );
 }
 
+export function DropdownPanel({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(23,33,43,.98),rgba(17,26,40,.94))] shadow-[0_28px_60px_-30px_rgba(15,23,42,0.75)] ring-1 ring-white/5 backdrop-blur-xl",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function PanelHead({
   title,
   hint,
