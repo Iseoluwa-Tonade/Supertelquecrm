@@ -1,5 +1,7 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { Check, ChevronDown } from "lucide-react";
 
 export function Panel({
   className,
@@ -34,6 +36,130 @@ export function DropdownPanel({
     >
       {children}
     </div>
+  );
+}
+
+export type DropdownOption = {
+  value: string;
+  label: string;
+};
+
+export function DropdownSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  ariaLabel,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: DropdownOption[];
+  placeholder: string;
+  ariaLabel: string;
+  className?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  const [position, setPosition] = React.useState<{ top: number; left: number; width: number } | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const updatePosition = React.useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.min(Math.max(rect.width, 240), window.innerWidth - 24);
+    const left = Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - width - 12));
+
+    setPosition({ top: rect.bottom + 8, left, width });
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    updatePosition();
+
+    const onResize = () => updatePosition();
+    const onScroll = () => updatePosition();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    window.addEventListener("resize", onResize);
+    document.addEventListener("scroll", onScroll, true);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("scroll", onScroll, true);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, updatePosition]);
+
+  const selected = options.find((option) => option.value === value);
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className={cn(
+          "flex h-10 w-full items-center justify-between gap-3 rounded-xl border border-border bg-input px-3 text-left text-sm text-foreground outline-none transition-colors hover:border-primary/50 focus:border-primary/60 focus:ring-2 focus:ring-primary/20",
+          open && "border-primary/60 ring-2 ring-primary/20",
+          className,
+        )}
+      >
+        <span className={cn("min-w-0 flex-1 truncate", selected ? "text-foreground" : "text-muted-foreground")}>
+          {selected?.label || placeholder}
+        </span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform duration-200", open && "rotate-180")} />
+      </button>
+
+      {mounted && open && position && createPortal(
+        <>
+          <div className="fixed inset-0 z-110 bg-transparent" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-120 max-h-80 overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(180deg,rgba(24,34,45,.99),rgba(17,26,40,.96))] shadow-[0_28px_60px_-30px_rgba(15,23,42,0.75)] ring-1 ring-white/5 backdrop-blur-xl"
+            style={{ top: position.top, left: position.left, width: position.width }}
+          >
+            <div className="border-b border-white/10 px-3 py-2">
+              <p className="label-tag text-crm-sidebar-muted/80">Select an option</p>
+            </div>
+            <div className="max-h-64 overflow-y-auto p-2">
+              {options.map((option) => {
+                const active = option.value === value;
+                return (
+                  <button
+                    key={option.value || option.label}
+                    type="button"
+                    onClick={() => {
+                      onChange(option.value);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
+                      active ? "bg-primary/15 text-primary" : "text-foreground hover:bg-white/5",
+                    )}
+                  >
+                    <span className="truncate">{option.label}</span>
+                    {active ? <Check className="h-4 w-4 shrink-0" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
   );
 }
 

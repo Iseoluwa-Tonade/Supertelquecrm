@@ -7,6 +7,7 @@ import type {
   DailyActivity,
   CrmDocument,
   CrmMessage,
+  CrmNotification,
   ChangeRequest,
   CrmService,
   MessageThread,
@@ -35,6 +36,7 @@ interface AppState {
   activities: DailyActivity[];
   documents: CrmDocument[];
   messages: CrmMessage[];
+  notifications: CrmNotification[];
   changeRequests: ChangeRequest[];
   teamProfiles: Profile[];
   inviteRequests: InviteRequest[];
@@ -78,6 +80,8 @@ interface AppActions {
   refreshData: () => Promise<void>;
   loadDocuments: () => Promise<void>;
   loadMessages: () => Promise<void>;
+  loadNotifications: () => Promise<void>;
+  markNotificationsRead: () => Promise<void>;
   loadTeamProfiles: () => Promise<void>;
   loadInviteRequests: () => Promise<void>;
   loadServices: () => Promise<void>;
@@ -104,6 +108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     activities: [],
     documents: [],
     messages: [],
+    notifications: [],
     changeRequests: [],
     teamProfiles: [],
     inviteRequests: [],
@@ -203,6 +208,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, messages: (data as CrmMessage[]) || [] }));
   }, []);
 
+  const loadNotifications = useCallback(async () => {
+    if (!profileRef.current) {
+      setState((s) => ({ ...s, notifications: [] }));
+      return;
+    }
+    const { data } = await supabase
+      .from("crm_notifications")
+      .select("*")
+      .eq("user_id", profileRef.current.user_id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setState((s) => ({ ...s, notifications: (data as CrmNotification[]) || [] }));
+  }, []);
+
+  const markNotificationsRead = useCallback(async () => {
+    if (!profileRef.current) return;
+    await supabase
+      .from("crm_notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", profileRef.current.user_id)
+      .is("read_at", null);
+    await loadNotifications();
+  }, [loadNotifications]);
+
   const loadChangeRequests = useCallback(async () => {
     const { data } = await supabase
       .from("crm_change_requests")
@@ -286,6 +315,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loadRemoteActivities(),
       loadDocuments(),
       loadMessages(),
+      loadNotifications(),
       loadChangeRequests(),
       loadTeamProfiles(),
       loadInviteRequests(),
@@ -299,6 +329,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadRemoteActivities,
     loadDocuments,
     loadMessages,
+    loadNotifications,
     loadChangeRequests,
     loadTeamProfiles,
     loadInviteRequests,
@@ -321,6 +352,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           activities: [],
           documents: [],
           messages: [],
+          notifications: [],
           changeRequests: [],
           teamProfiles: [],
           inviteRequests: [],
@@ -339,6 +371,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           loadRemoteActivities(),
           loadDocuments(),
           loadMessages(),
+          loadNotifications(),
           loadChangeRequests(),
           loadTeamProfiles(),
           loadInviteRequests(),
@@ -379,6 +412,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         "postgres_changes",
         { event: "*", schema: "public", table: "crm_messages" },
         () => loadMessages()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "crm_notifications" },
+        () => loadNotifications()
       )
       .on(
         "postgres_changes",
@@ -443,6 +481,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refreshData,
     loadDocuments,
     loadMessages,
+    loadNotifications,
+    markNotificationsRead,
     loadTeamProfiles,
     loadInviteRequests,
     loadServices,

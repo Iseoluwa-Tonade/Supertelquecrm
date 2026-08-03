@@ -97,6 +97,18 @@ export interface CrmMessage {
   read_at: string | null;
 }
 
+export interface CrmNotification {
+  id: string;
+  user_id: string;
+  actor_id: string | null;
+  type: "project_created" | "task_assigned";
+  title: string;
+  body: string;
+  item_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
 export interface ChangeRequest {
   id: string;
   organisation_id: string | null;

@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useApp } from "@/lib/AppContext";
 import { dateLabel } from "@/lib/utils";
-import { PageHeader, Panel, PanelHead, Tag, Avatar, Btn, Field, Input, Textarea } from "@/components/kit.launchpad";
+import { PageHeader, Panel, PanelHead, Tag, Avatar, Btn, Field, Input, Textarea, DropdownSelect } from "@/components/kit.launchpad";
 import { CalendarClock, Paperclip, Send } from "lucide-react";
 
 type TaskItem = {
@@ -72,12 +72,16 @@ export default function TasksPage() {
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Follow up with Meridian" />
               </Field>
               <Field label="Assignee">
-                <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-                  <option value="">Select team member...</option>
-                  {teamProfiles.map((p) => (
-                    <option key={p.user_id} value={p.display_name || p.email}>{p.display_name || p.email}</option>
-                  ))}
-                </select>
+                <DropdownSelect
+                  value={assignee}
+                  onChange={setAssignee}
+                  ariaLabel="Assignee"
+                  placeholder="Select team member..."
+                  options={[
+                    { value: "", label: "Select team member..." },
+                    ...teamProfiles.map((p) => ({ value: p.display_name || p.email, label: p.display_name || p.email })),
+                  ]}
+                />
               </Field>
             </div>
             <Field label="Brief">
@@ -85,20 +89,28 @@ export default function TasksPage() {
             </Field>
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Project">
-                <select value={project} onChange={(e) => setProject(e.target.value)} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-                  <option value="">General</option>
-                  {["Meridian Partners", "Halcyon Logistics", "Perch Retail", "Aura Ventures", "Zeniq Works"].map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
+                <DropdownSelect
+                  value={project}
+                  onChange={setProject}
+                  ariaLabel="Project"
+                  placeholder="General"
+                  options={[
+                    { value: "", label: "General" },
+                    ...["Meridian Partners", "Halcyon Logistics", "Perch Retail", "Aura Ventures", "Zeniq Works"].map((p) => ({ value: p, label: p })),
+                  ]}
+                />
               </Field>
               <Field label="Due date">
                 <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
               </Field>
               <Field label="Priority">
-                <select value={priority} onChange={(e) => setPriority(e.target.value)} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-                  {["high", "medium", "low"].map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-                </select>
+                <DropdownSelect
+                  value={priority}
+                  onChange={setPriority}
+                  ariaLabel="Priority"
+                  placeholder="Choose priority"
+                  options={["high", "medium", "low"].map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))}
+                />
               </Field>
             </div>
             <label className="flex items-center gap-2 text-sm">
@@ -123,7 +135,7 @@ export default function TasksPage() {
         <Panel className="lg:col-span-2">
           <PanelHead title="Scheduled tasks" hint={`${tasks.length} total`} />
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px] text-sm">
+            <table className="w-full min-w-125 text-sm">
               <thead>
                 <tr className="border-b border-border text-xs text-muted-foreground">
                   <th className="px-4 py-2.5 text-left font-medium">Task</th>

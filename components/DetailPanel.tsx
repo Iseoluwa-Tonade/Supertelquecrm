@@ -7,7 +7,7 @@ import { label, money, money as statusTitle, isSafeUrl, formatBytes, docIcon } f
 import { useToast } from "@/components/Toast";
 import { useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { Btn, Tag, Avatar, Input, Field } from "@/components/kit.launchpad";
+import { Btn, Tag, Avatar, Input, Field, DropdownSelect } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -129,21 +129,38 @@ export default function DetailPanel() {
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Type">
-              <select name="type" defaultValue={item.type} disabled={isViewer} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-                <option value="deal">Deal</option>
-                <option value="project">Project</option>
-              </select>
+              <DropdownSelect
+                value={item.type}
+                onChange={() => {}}
+                ariaLabel="Type"
+                placeholder="Select type"
+                options={[
+                  { value: "deal", label: "Deal" },
+                  { value: "project", label: "Project" },
+                ]}
+                className="pointer-events-none"
+              />
             </Field>
             <Field label="Priority">
-              <select name="priority" defaultValue={item.priority} disabled={isViewer} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-                {["high", "medium", "low"].map((p) => <option key={p} value={p}>{label(p)}</option>)}
-              </select>
+              <DropdownSelect
+                value={item.priority}
+                onChange={() => {}}
+                ariaLabel="Priority"
+                placeholder="Select priority"
+                options={["high", "medium", "low"].map((p) => ({ value: p, label: label(p) }))}
+                className="pointer-events-none"
+              />
             </Field>
           </div>
           <Field label="Status">
-            <select name="status" defaultValue={item.status} disabled={isViewer} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-              {activeColumns.map((col) => <option key={col.id} value={col.id}>{col.title}</option>)}
-            </select>
+            <DropdownSelect
+              value={item.status}
+              onChange={() => {}}
+              ariaLabel="Status"
+              placeholder="Select status"
+              options={activeColumns.map((col) => ({ value: col.id, label: col.title }))}
+              className="pointer-events-none"
+            />
           </Field>
           <Field label={isAdmin ? "Value (USD)" : "Value"}>
             <Input name="value" type="number" min="0" defaultValue={item.value || 0} disabled={isViewer} />

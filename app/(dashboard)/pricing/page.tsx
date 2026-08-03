@@ -7,7 +7,7 @@ import { useCallback, useState } from "react";
 import { label, money } from "@/lib/utils";
 import { SERVICE_UNITS } from "@/lib/types";
 import type { CrmService } from "@/lib/types";
-import { Panel, PanelHead, PageHeader, Tag, Btn, Input, Field } from "@/components/kit.launchpad";
+import { Panel, PanelHead, PageHeader, Tag, Btn, Input, Field, DropdownSelect } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -108,9 +108,13 @@ export default function PricingPage() {
               <Input name="unit_price" type="number" min="0" step="1" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} required />
             </Field>
             <Field label="Billed">
-              <select value={formUnit} onChange={(e) => setFormUnit(e.target.value)} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-                {SERVICE_UNITS.map((u) => <option key={u} value={u}>{label(u)}</option>)}
-              </select>
+              <DropdownSelect
+                value={formUnit}
+                onChange={setFormUnit}
+                ariaLabel="Billed unit"
+                placeholder="Choose a unit"
+                options={SERVICE_UNITS.map((u) => ({ value: u, label: label(u) }))}
+              />
             </Field>
           </div>
           <div className="flex justify-end gap-2">

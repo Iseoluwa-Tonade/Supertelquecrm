@@ -8,10 +8,9 @@ import { label, money, daysUntil, dueLabel, normalizeStatus } from "@/lib/utils"
 import { useToast } from "@/components/Toast";
 import { useCallback, useState, useRef } from "react";
 import DetailPanel from "@/components/DetailPanel";
-import { Btn, Tag, Avatar } from "@/components/kit.launchpad";
+import { Btn, Tag, Avatar, DropdownSelect } from "@/components/kit.launchpad";
 
 const supabase = createClient();
-
 export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | "focus" }) {
   const {
     items, session, profile, changeRequests, documents, search, type, owner, priority,
@@ -130,22 +129,35 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <select value={owner} onChange={(e) => setOwner(e.target.value)} className="h-8 rounded-md border border-border bg-input px-2 text-xs text-foreground outline-none focus:border-primary/60" aria-label="Filter by owner">
-            <option value="">All owners</option>
-            {[...new Set(items.map((i) => i.owner))].map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-          <select value={priority} onChange={(e) => setPriority(e.target.value)} className="h-8 rounded-md border border-border bg-input px-2 text-xs text-foreground outline-none focus:border-primary/60" aria-label="Filter by priority">
-            <option value="">All priorities</option>
-            {["high", "medium", "low"].map((p) => <option key={p} value={p}>{label(p)}</option>)}
-          </select>
+          <DropdownSelect
+            value={owner}
+            onChange={setOwner}
+            options={[
+              { value: "", label: "All owners" },
+              ...[...new Set(items.map((i) => i.owner))].map((o) => ({ value: o, label: o })),
+            ]}
+            placeholder="All owners"
+            ariaLabel="Filter by owner"
+            className="h-8 text-xs"
+          />
+          <DropdownSelect
+            value={priority}
+            onChange={setPriority}
+            options={[
+              { value: "", label: "All priorities" },
+              ...["high", "medium", "low"].map((p) => ({ value: p, label: label(p) })),
+            ]}
+            placeholder="All priorities"
+            ariaLabel="Filter by priority"
+            className="h-8 text-xs"
+          />
         </div>
       </section>
-
       <div className="flex flex-1 gap-4 overflow-x-auto p-4">
         {activeColumns.map((col) => {
           const colItems = filteredItems.filter((item) => columnFilter(item, col.id));
           return (
-            <article key={col.id} className="flex min-w-[260px] max-w-[320px] flex-1 flex-col rounded-xl border border-border bg-surface/70">
+            <article key={col.id} className="flex w-64 shrink-0 flex-col rounded-xl border border-border bg-surface/70">
               <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full" style={{ background: col.color || "var(--color-muted-foreground)" }} />

@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { label, formatBytes, docIcon, dateLabel } from "@/lib/utils";
 import type { CrmDocument } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
-import { Panel, PanelHead, PageHeader, Tag, Btn } from "@/components/kit.launchpad";
+import { Panel, PanelHead, PageHeader, Tag, Btn, DropdownSelect } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -147,12 +147,16 @@ export default function DocumentsPage() {
             <input ref={fileInputRef} type="file" multiple hidden onChange={(e) => uploadDocuments(e.target.files)} />
             <label className="block space-y-1.5">
               <span className="label-tag text-muted-foreground">Link to account or project</span>
-              <select value={linkId} onChange={(e) => setLinkId(e.target.value)} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-                <option value="">No linked account</option>
-                {items.map((item) => (
-                  <option key={item.id} value={item.id}>{item.company} - {item.title}</option>
-                ))}
-              </select>
+              <DropdownSelect
+                value={linkId}
+                onChange={setLinkId}
+                ariaLabel="Link to account or project"
+                placeholder="No linked account"
+                options={[
+                  { value: "", label: "No linked account" },
+                  ...items.map((item) => ({ value: item.id, label: `${item.company} - ${item.title}` })),
+                ]}
+              />
             </label>
           </div>
         </Panel>
@@ -162,12 +166,17 @@ export default function DocumentsPage() {
         <PanelHead
           title={`Files (${filteredDocs.length})`}
           action={
-            <select value={docFilterItem} onChange={(e) => setDocFilterItem(e.target.value)} className="h-8 rounded-md border border-border bg-input px-2 text-xs text-foreground outline-none focus:border-primary/60" aria-label="Filter by linked account">
-              <option value="all">All accounts</option>
-              {items.map((item) => (
-                <option key={item.id} value={item.id}>{item.company} - {item.title}</option>
-              ))}
-            </select>
+            <DropdownSelect
+              value={docFilterItem}
+              onChange={setDocFilterItem}
+              ariaLabel="Filter by linked account"
+              placeholder="All accounts"
+              options={[
+                { value: "all", label: "All accounts" },
+                ...items.map((item) => ({ value: item.id, label: `${item.company} - ${item.title}` })),
+              ]}
+              className="h-8 text-xs"
+            />
           }
         />
         <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

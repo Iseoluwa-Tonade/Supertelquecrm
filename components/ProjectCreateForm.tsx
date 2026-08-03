@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useApp } from "@/lib/AppContext";
 import { createClient } from "@/lib/supabase/client";
 import { Drawer } from "@/components/Drawer";
-import { Field, Input, Textarea, Btn } from "@/components/kit.launchpad";
+import { Field, Input, Textarea, Btn, DropdownSelect } from "@/components/kit.launchpad";
 import { Plus, X, Paperclip } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { PROJECT_COLUMNS } from "@/lib/types";
@@ -127,22 +127,58 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
         }
       }
 
+      const creatorName = profile?.display_name || session?.user.email || "A manager";
+      const notifications: {
+        user_id: string;
+        type: "project_created" | "task_assigned";
+        title: string;
+        body: string;
+        item_id: string | null;
+      }[] = [];
+
+      const ownerMember = teamProfiles.find((p) => (p.display_name || p.email) === owner.trim());
+      if (project?.id && ownerMember && ownerMember.user_id !== profile?.user_id) {
+        notifications.push({
+          user_id: ownerMember.user_id,
+          type: "project_created",
+          title: `New project: ${title.trim()}`,
+          body: `${creatorName} assigned you as the owner of ${company.trim()}`,
+          item_id: project.id,
+        });
+      }
+
       for (const task of tasks) {
         if (!task.title.trim()) continue;
-        const { error: taskError } = await supabase.from("crm_board_items").insert({
-          title: task.title.trim(),
-          type: "task",
-          company: company.trim(),
-          owner: task.assigneeName || "Unassigned",
-          priority: task.priority,
-          due: task.due,
-          notes: task.brief,
-          status: "open",
-          assigned_to: task.assigneeId || "",
-          visibility: "team",
-        });
+        const { data: taskRow, error: taskError } = await supabase
+          .from("crm_board_items")
+          .insert({
+            title: task.title.trim(),
+            type: "task",
+            company: company.trim(),
+            owner: task.assigneeName || "Unassigned",
+            priority: task.priority,
+            due: task.due,
+            notes: task.brief,
+            status: "open",
+            assigned_to: task.assigneeId || "",
+            visibility: "team",
+          })
+          .select("id")
+          .single();
         if (taskError) { flash(taskError.message); return; }
+        if (task.assigneeId && task.assigneeId !== profile?.user_id) {
+          notifications.push({
+            user_id: task.assigneeId,
+            type: "task_assigned",
+            title: `New task assigned: ${task.title.trim()}`,
+            body: `${creatorName} assigned you "${task.title.trim()}" on ${company.trim()}`,
+            item_id: taskRow?.id || null,
+          });
+        }
       }
+
+      const { error: notifyError } = await supabase.from("crm_notifications").insert(notifications);
+      if (notifyError) { flash("Notification delivery failed: " + notifyError.message); }
 
       flash("Project created successfully");
       onClose();
@@ -153,7 +189,7 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
     } finally {
       setLoading(false);
     }
-  }, [title, company, owner, priority, status, due, attachment, documentUrl, session, notes, tasks, isManager, profile, flash, loadRemoteItems, loadDocuments, onClose, onCreated]);
+  }, [title, company, owner, priority, status, due, attachment, documentUrl, session, teamProfiles, notes, tasks, isManager, profile, flash, loadRemoteItems, loadDocuments, onClose, onCreated]);
 
   return (
     <Drawer open={open} onClose={onClose} title="New project" size="lg">
@@ -167,28 +203,37 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
             <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Meridian Partners" required />
           </Field>
           <Field label="Delivery stage">
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputClass}>
-              {PROJECT_COLUMNS.map((col) => (
-                <option key={col.id} value={col.id}>{col.title}</option>
-              ))}
-            </select>
+            <DropdownSelect
+              value={status}
+              onChange={setStatus}
+              placeholder="Choose stage"
+              ariaLabel="Delivery stage"
+              options={PROJECT_COLUMNS.map((col) => ({ value: col.id, label: col.title }))}
+            />
           </Field>
+
           <Field label="Priority">
-            <select value={priority} onChange={(e) => setPriority(e.target.value)} className={inputClass}>
-              {["high", "medium", "low"].map((p) => (
-                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-              ))}
-            </select>
+            <DropdownSelect
+              value={priority}
+              onChange={setPriority}
+              placeholder="Choose priority"
+              ariaLabel="Priority"
+              options={["high", "medium", "low"].map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))}
+            />
           </Field>
           <Field label="Project owner">
-            <select value={owner} onChange={(e) => setOwner(e.target.value)} className={inputClass}>
-              {profile?.display_name ? <option value={profile.display_name}>Me · {profile.display_name}</option> : null}
-              {teamProfiles
-                .filter((p) => p.display_name !== profile?.display_name)
-                .map((p) => (
-                  <option key={p.user_id} value={p.display_name || p.email}>{p.display_name || p.email}</option>
-                ))}
-            </select>
+            <DropdownSelect
+              value={owner}
+              onChange={setOwner}
+              placeholder="Choose owner"
+              ariaLabel="Project owner"
+              options={[
+                ...(profile?.display_name ? [{ value: profile.display_name, label: `Me · ${profile.display_name}` }] : []),
+                ...teamProfiles
+                  .filter((p) => p.display_name !== profile?.display_name)
+                  .map((p) => ({ value: p.display_name || p.email, label: p.display_name || p.email })),
+              ]}
+            />
           </Field>
           <Field label="Deadline">
             <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
@@ -197,20 +242,20 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
             <Field label="Project document">
               <div className="mb-3 flex w-full justify-end">
                 <div className="inline-flex items-end rounded-full border border-border/80 bg-surface/80 p-1 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.22)] backdrop-blur-sm">
-                <button
-                  type="button"
-                  onClick={() => setDocMode("file")}
-                  className={toggleBase + " min-w-27 " + (docMode === "file" ? "bg-primary text-primary-foreground shadow-[0_8px_18px_-12px_rgba(15,118,110,0.8)]" : "text-muted-foreground hover:bg-white/60 hover:text-foreground")}
-                >
-                  Upload file
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDocMode("link")}
-                  className={toggleBase + " min-w-27 " + (docMode === "link" ? "bg-primary text-primary-foreground shadow-[0_8px_18px_-12px_rgba(15,118,110,0.8)]" : "text-muted-foreground hover:bg-white/60 hover:text-foreground")}
-                >
-                  Paste link
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setDocMode("file")}
+                    className={toggleBase + " min-w-27 " + (docMode === "file" ? "bg-primary text-primary-foreground shadow-[0_8px_18px_-12px_rgba(15,118,110,0.8)]" : "text-muted-foreground hover:bg-white/60 hover:text-foreground")}
+                  >
+                    Upload file
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDocMode("link")}
+                    className={toggleBase + " min-w-27 " + (docMode === "link" ? "bg-primary text-primary-foreground shadow-[0_8px_18px_-12px_rgba(15,118,110,0.8)]" : "text-muted-foreground hover:bg-white/60 hover:text-foreground")}
+                  >
+                    Paste link
+                  </button>
                 </div>
               </div>
               {docMode === "file" ? (
@@ -285,26 +330,32 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
                 </Field>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="Assignee">
-                    <select value={task.assigneeId} onChange={(e) => {
-                      const member = teamProfiles.find((p) => p.user_id === e.target.value);
-                      updateTask(task.id, "assigneeId", e.target.value);
-                      updateTask(task.id, "assigneeName", member?.display_name || member?.email || "");
-                    }} className={inputClass}>
-                      <option value="">Select team member...</option>
-                      {teamProfiles.map((p) => (
-                        <option key={p.user_id} value={p.user_id}>{p.display_name || p.email}</option>
-                      ))}
-                    </select>
+                    <DropdownSelect
+                      value={task.assigneeId}
+                      onChange={(nextValue) => {
+                        const member = teamProfiles.find((p) => p.user_id === nextValue);
+                        updateTask(task.id, "assigneeId", nextValue);
+                        updateTask(task.id, "assigneeName", member?.display_name || member?.email || "");
+                      }}
+                      placeholder="Select team member..."
+                      ariaLabel={`Assignee for task ${index + 1}`}
+                      options={[
+                        { value: "", label: "Select team member..." },
+                        ...teamProfiles.map((p) => ({ value: p.user_id, label: p.display_name || p.email })),
+                      ]}
+                    />
                   </Field>
                   <Field label="Due date">
                     <Input type="date" value={task.due} onChange={(e) => updateTask(task.id, "due", e.target.value)} />
                   </Field>
                   <Field label="Priority">
-                    <select value={task.priority} onChange={(e) => updateTask(task.id, "priority", e.target.value)} className={inputClass}>
-                      {["high", "medium", "low"].map((p) => (
-                        <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                      ))}
-                    </select>
+                    <DropdownSelect
+                      value={task.priority}
+                      onChange={(nextValue) => updateTask(task.id, "priority", nextValue)}
+                      placeholder="Choose priority"
+                      ariaLabel={`Priority for task ${index + 1}`}
+                      options={["high", "medium", "low"].map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))}
+                    />
                   </Field>
                   <Field label="Brief">
                     <Input value={task.brief} onChange={(e) => updateTask(task.id, "brief", e.target.value)} placeholder="Short description" />

@@ -53,8 +53,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: "/notifications", label: "Notifications", icon: Bell },
       { to: "/messages", label: "Messages", icon: MessageSquare },
     ],
-  },
-  {
+  },  {
     group: "Revenue",
     items: [
       { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
@@ -95,17 +94,24 @@ const NAV: { group: string; items: NavItem[] }[] = [
 ];
 
 export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
-  const { profile, organisation, session, theme, setTheme, signOut } = useApp();
+  const { profile, organisation, session, theme, setTheme, signOut, notifications } = useApp();
   const pathname = usePathname() || "/";
   const [railOpen, setRailOpen] = React.useState(true);
   const [accountOpen, setAccountOpen] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
+  const unreadNotifications = notifications.filter((n) => !n.read_at).length;
   const regComplete = profile?.registration_complete ?? true;
   const navItems: { group: string; items: NavItem[] }[] = regComplete
     ? NAV.map((group) => ({
         ...group,
-        items: group.items.filter((item) => canSeeView(profile, organisation, item.to.slice(1))),
+        items: group.items
+          .filter((item) => canSeeView(profile, organisation, item.to.slice(1)))
+          .map((item) =>
+            item.to === "/notifications" && unreadNotifications > 0
+              ? { ...item, badge: unreadNotifications }
+              : item
+          ),
       })).filter((group) => group.items.length > 0)
     : [{ group: "Getting started", items: [{ to: "/profile", label: "My profile", icon: Users }] }];
   const CURRENT_ORG = organisation || { name: "Workspace", company_type: "workspace" };

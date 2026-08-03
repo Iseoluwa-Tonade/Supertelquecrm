@@ -7,7 +7,7 @@ import { useCallback, useState, useEffect } from "react";
 import { label, cn } from "@/lib/utils";
 import { ROLES, NAV_VIEWS } from "@/lib/types";
 import type { InviteRequest, Profile } from "@/lib/types";
-import { PageHeader, Panel, PanelHead, Stat, Btn, Input, Avatar, Tag } from "@/components/kit.launchpad";
+import { PageHeader, Panel, PanelHead, Stat, Btn, Input, Avatar, Tag, DropdownSelect } from "@/components/kit.launchpad";
 import { Drawer } from "@/components/Drawer";
 import {
   Mail,
@@ -155,7 +155,7 @@ export default function TeamPage() {
         <Panel>
           <PanelHead title={`Pending requests (${inviteRequests.length})`} hint="Approve or decline new team members" />
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-160 text-sm">
               <thead>
                 <tr className="border-b border-border text-xs text-muted-foreground">
                   <th className="px-4 py-2.5 text-left font-medium">Member</th>
@@ -208,9 +208,13 @@ export default function TeamPage() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-crm-sidebar-muted font-medium">Role</label>
-              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="w-full h-10 rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60">
-                {ROLES.map((r) => <option key={r} value={r}>{label(r)}</option>)}
-              </select>
+              <DropdownSelect
+                value={inviteRole}
+                onChange={setInviteRole}
+                ariaLabel="Role"
+                placeholder="Choose role"
+                options={ROLES.map((r) => ({ value: r, label: label(r) }))}
+              />
             </div>
             <div className="flex justify-end pt-2">
               <Btn type="submit" variant="primary" disabled={inviting}>{inviting ? "Sending..." : "Send invite"}</Btn>
@@ -219,7 +223,7 @@ export default function TeamPage() {
         </Drawer>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-160 text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
                 <th className="px-4 py-2.5 text-left font-medium">Member</th>
@@ -244,9 +248,14 @@ export default function TeamPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <select value={p.role} onChange={(e) => updateRole(p.user_id, e.target.value)} disabled={isSelf} className="h-8 rounded-md border border-border bg-input px-2 text-xs text-foreground outline-none focus:border-primary/60">
-                        {ROLES.map((r) => <option key={r} value={r}>{label(r)}</option>)}
-                      </select>
+                      <DropdownSelect
+                        value={p.role}
+                        onChange={(value) => updateRole(p.user_id, value)}
+                        ariaLabel={`Role for ${p.display_name || p.email || "team member"}`}
+                        placeholder="Choose role"
+                        options={ROLES.map((r) => ({ value: r, label: label(r) }))}
+                        className="h-8 text-xs"
+                      />
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{label(p.status || "active")}</td>
                     <td className="px-4 py-3">
@@ -310,7 +319,7 @@ function ProfileViewCard({ profile, flash }: { profile: Profile; flash: (msg: st
     <div className="space-y-4 text-sm">
       {/* Hero Header Card */}
       <div className="relative overflow-hidden rounded-2xl border border-border bg-white dark:bg-surface p-5 shadow-sm">
-        <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-primary via-accent to-primary/40" />
+        <div className="absolute top-0 right-0 left-0 h-1.5 bg-linear-to-r from-primary via-accent to-primary/40" />
 
         <div className="flex items-start gap-4">
           <div className="relative shrink-0">
@@ -597,7 +606,7 @@ function AccessControlCard({
                 !isSelf && "cursor-pointer hover:border-primary/40",
                 isAllowed
                   ? "border-border bg-surface/90 shadow-xs"
-                  : "border-white/10 bg-white/[0.06]"
+                  : "border-white/10 bg-white/6"
               )}
             >
               <div className="flex items-center gap-3 min-w-0">
@@ -675,7 +684,7 @@ function ToggleSwitch({
       <span
         className={cn(
           "relative inline-block rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out",
-          checked ? "translate-x-[20px]" : "translate-x-[2px]"
+          checked ? "translate-x-5" : "translate-x-0.5"
         )}
         style={{ width: 18, height: 18, marginTop: 2, marginBottom: 2 }}
       />

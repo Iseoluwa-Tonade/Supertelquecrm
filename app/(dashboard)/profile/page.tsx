@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { label } from "@/lib/utils";
 import { COMPANY_TYPES, FEATURE_LABELS, NAV_VIEWS } from "@/lib/types";
 import type { Organisation } from "@/lib/types";
-import { Panel, PanelHead, PageHeader, Tag, Btn, Input, Field } from "@/components/kit.launchpad";
+import { Panel, PanelHead, PageHeader, Tag, Btn, Input, Field, DropdownSelect } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -284,11 +284,13 @@ export default function ProfilePage() {
               <hr className="border-border" />
 
               <Field label="Company type">
-                <select value={orgForm.company_type} onChange={(e) => setOrgForm((f) => ({ ...f, company_type: e.target.value }))} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-                  {COMPANY_TYPES.map((ct) => (
-                    <option key={ct.id} value={ct.id}>{ct.label}</option>
-                  ))}
-                </select>
+                <DropdownSelect
+                  value={orgForm.company_type}
+                  onChange={(value) => setOrgForm((f) => ({ ...f, company_type: value }))}
+                  ariaLabel="Company type"
+                  placeholder="Choose company type"
+                  options={COMPANY_TYPES.map((ct) => ({ value: ct.id, label: ct.label }))}
+                />
                 {selectedType && <span className="block mt-1 text-xs text-muted-foreground">{selectedType.description}</span>}
               </Field>
 

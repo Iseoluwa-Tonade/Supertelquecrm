@@ -6,7 +6,7 @@ import { useToast } from "@/components/Toast";
 import { useCallback, useState } from "react";
 import { label, dateLabel } from "@/lib/utils";
 import type { CrmMessage, Profile } from "@/lib/types";
-import { Panel, PanelHead, PageHeader, Tag, Btn, Avatar } from "@/components/kit.launchpad";
+import { Panel, PanelHead, PageHeader, Tag, Btn, Avatar, DropdownSelect } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -88,12 +88,16 @@ export default function MessagesPage() {
 
           {composeOpen && (
             <div className="border-b border-border p-4 space-y-3">
-              <select value={newRecipient} onChange={(e) => setNewRecipient(e.target.value)} className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20">
-                <option value="">Choose a team member...</option>
-                {teamProfiles.filter((p) => p.user_id !== myId).map((p) => (
-                  <option key={p.user_id} value={p.user_id} data-email={p.email}>{p.display_name || p.email || "Team member"}</option>
-                ))}
-              </select>
+              <DropdownSelect
+                value={newRecipient}
+                onChange={setNewRecipient}
+                ariaLabel="Choose a team member"
+                placeholder="Choose a team member..."
+                options={[
+                  { value: "", label: "Choose a team member..." },
+                  ...teamProfiles.filter((p) => p.user_id !== myId).map((p) => ({ value: p.user_id, label: p.display_name || p.email || "Team member" })),
+                ]}
+              />
               <textarea value={newBody} onChange={(e) => setNewBody(e.target.value)} rows={2} placeholder="Write a message..." className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 resize-y leading-relaxed" />
               <div className="flex justify-end gap-2">
                 <Btn size="sm" onClick={() => setComposeOpen(false)}>Cancel</Btn>
@@ -126,7 +130,7 @@ export default function MessagesPage() {
                     <p className="truncate text-xs text-muted-foreground">{(last?.body || "").slice(0, 60)}</p>
                   </div>
                   {unread > 0 && (
-                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-warning px-1.5 text-[11px] font-bold text-warning-foreground">
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-warning px-1.5 text-[11px] font-bold text-warning-foreground">
                       {unread}
                     </span>
                   )}
@@ -144,7 +148,7 @@ export default function MessagesPage() {
                 <p className="text-sm text-muted-foreground">No messages yet. Say hello.</p>
               ) : activeThread.messages.map((msg) => (
                 <div key={msg.id} className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${msg.sender_id === myId ? "ml-auto bg-primary text-primary-foreground" : "bg-surface-raised border border-border"}`}>
-                  <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.body}</p>
+                  <p className="whitespace-pre-wrap wrap-break-word leading-relaxed">{msg.body}</p>
                   <span className="mt-1 block text-[11px] opacity-70">
                     {dateLabel((msg.created_at || "").slice(0, 10))} {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
                   </span>
