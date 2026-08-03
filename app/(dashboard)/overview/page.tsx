@@ -3,8 +3,7 @@
 import { useApp } from "@/lib/AppContext";
 import { money, label, dateLabel, daysUntil, dueLabel, statusTitle, statusColor, formatCompact, todayIso } from "@/lib/utils";
 import { Panel, PanelHead, PageHeader, Tag, Avatar, Btn } from "@/components/kit.launchpad";
-import { ProjectCreateForm } from "@/components/ProjectCreateForm";
-import { ArrowUpRight, Plus, Sparkles, TrendingUp, Clock, CheckCircle2, Calendar, Activity, Filter } from "lucide-react";
+import { ArrowUpRight, Sparkles, TrendingUp, Clock, CheckCircle2, Calendar, Activity, Filter } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -19,7 +18,6 @@ export default function OverviewPage() {
   const role = profile?.role || "viewer";
   const isManager = role === "manager" || role === "admin";
   const [pipelineView, setPipelineView] = useState<"bar" | "pie">("bar");
-  const [createProjectOpen, setCreateProjectOpen] = useState(false);
 
   const doneStatuses = ["project_done", "project_delivered", "project_closed"];
   const activeItems = items.filter((item) => !doneStatuses.includes(item.status));
@@ -82,8 +80,7 @@ export default function OverviewPage() {
     .join(", ");
 
   return (
-    <>
-      <div className="space-y-6">
+    <div className="space-y-6">
       <PageHeader variant="overview"
         eyebrow="SuperTelque CRM"
         title="Operations dashboard"
@@ -92,9 +89,6 @@ actions={
             <Link href="/pipeline" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-surface-raised">
               <Sparkles className="h-4 w-4" /> Weekly digest
             </Link>
-            <Btn variant="primary" size="sm" onClick={() => setCreateProjectOpen(true)}>
-              <Plus className="h-4 w-4" /> New item
-            </Btn>
           </>
         }
       />
@@ -353,13 +347,8 @@ actions={
               </div>
             )}
           </div>
-        </Panel>
-      </div>
+</Panel>
+       </div>
     </div>
-    <ProjectCreateForm
-      open={createProjectOpen}
-      onClose={() => setCreateProjectOpen(false)}
-    />
-    </>
   );
 }

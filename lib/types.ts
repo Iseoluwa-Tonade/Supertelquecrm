@@ -167,6 +167,7 @@ export const NAV_VIEWS = [
   { id: "documents", label: "Documents" },
   { id: "messages", label: "Messages" },
   { id: "approvals", label: "Approvals" },
+  { id: "tasks", label: "Task scheduling" },
   { id: "focus", label: "Focus" },
   { id: "team", label: "Team" },
   { id: "pricing", label: "Pricing" },

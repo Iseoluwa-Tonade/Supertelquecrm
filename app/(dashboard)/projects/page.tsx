@@ -1,13 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { useApp } from "@/lib/AppContext";
 import { money, dueLabel, daysUntil, label } from "@/lib/utils";
-import { Avatar, PageHeader, Panel, PanelHead, Stat, Tag } from "@/components/kit.launchpad";
+import { ProjectCreateForm } from "@/components/ProjectCreateForm";
+import { Avatar, PageHeader, Panel, PanelHead, Stat, Tag, Btn } from "@/components/kit.launchpad";
+import { Plus } from "lucide-react";
 
 export default function ProjectsPage() {
   const { items, profile } = useApp();
+  const isManager = profile?.role === "manager" || profile?.role === "admin";
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
 
   const metrics = useMemo(() => {
     const projects = items.filter((item) => item.type === "project");
@@ -22,12 +26,22 @@ export default function ProjectsPage() {
   const visibleProjects = metrics.projects.slice(0, 6);
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       <PageHeader variant="delivery"
         eyebrow="Delivery"
         title="Projects"
         desc="A higher-signal project view that matches the newer Launchpad style while still showing your current CRM records."
-        actions={<Tag tone="neutral">{label(profile?.role || "viewer")}</Tag>}
+        actions={
+        <div className="flex items-center gap-2">
+          <Tag tone="neutral">{label(profile?.role || "viewer")}</Tag>
+          {isManager && (
+            <Btn variant="primary" size="sm" onClick={() => setCreateProjectOpen(true)}>
+              <Plus className="h-4 w-4" /> New item
+            </Btn>
+          )}
+        </div>
+      }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -85,5 +99,12 @@ export default function ProjectsPage() {
         </Panel>
       </div>
     </div>
+    {isManager && (
+      <ProjectCreateForm
+        open={createProjectOpen}
+        onClose={() => setCreateProjectOpen(false)}
+      />
+    )}
+    </>
   );
 }
