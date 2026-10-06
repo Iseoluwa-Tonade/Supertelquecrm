@@ -28,6 +28,7 @@ import {
   FileBarChart,
   Bell,
   Settings,
+  Plug,
   X,
 } from "lucide-react";
 
@@ -52,12 +53,13 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: "/notifications", label: "Notifications", icon: Bell },
       { to: "/messages", label: "Messages", icon: MessageSquare },
       { to: "/emails", label: "Zoho Email", icon: Mail },
+      { to: "/connections", label: "Connections", icon: Plug },
     ],
   },  {
     group: "Revenue",
     items: [
       { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
-      { to: "/clients", label: "Clients", icon: Building2 },
+      { to: "/clients", label: "Companies", icon: Building2 },
       { to: "/contacts", label: "Contacts", icon: Contact },
       { to: "/sales", label: "Sales", icon: TrendingUp },
       { to: "/pricing", label: "Pricing", icon: Calculator },
