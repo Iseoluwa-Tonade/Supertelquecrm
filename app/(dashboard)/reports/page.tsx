@@ -87,9 +87,9 @@ export default function ReportsPage() {
           <PanelHead title="Create report record" />
           <form onSubmit={addReport} className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
             <Field label="Title"><Input value={title} onChange={(e) => setTitle(e.target.value)} required /></Field>
-            <DropdownSelect value={reportType} onChange={setReportType} ariaLabel="Report type" options={[{ value: "report", label: "Report" }, { value: "pdf", label: "PDF" }, { value: "slides", label: "Slides" }, { value: "spreadsheet", label: "Spreadsheet" }]} />
+            <DropdownSelect value={reportType} onChange={setReportType} ariaLabel="Report type" placeholder="Choose type" options={[{ value: "report", label: "Report" }, { value: "pdf", label: "PDF" }, { value: "slides", label: "Slides" }, { value: "spreadsheet", label: "Spreadsheet" }]} />
             <Field label="Period"><Input value={periodLabel} onChange={(e) => setPeriodLabel(e.target.value)} placeholder="e.g. Oct 2026" /></Field>
-            <DropdownSelect value={status} onChange={setStatus} ariaLabel="Report status" options={[{ value: "draft", label: "Draft" }, { value: "final", label: "Final" }, { value: "archived", label: "Archived" }]} />
+            <DropdownSelect value={status} onChange={setStatus} ariaLabel="Report status" placeholder="Choose status" options={[{ value: "draft", label: "Draft" }, { value: "final", label: "Final" }, { value: "archived", label: "Archived" }]} />
             <div className="md:col-span-2 xl:col-span-4">
               <DropdownSelect value={documentId} onChange={setDocumentId} ariaLabel="Linked document" placeholder="No linked document" options={[{ value: "", label: "No linked document" }, ...documents.map((d) => ({ value: d.id, label: d.file_name }))]} />
             </div>
