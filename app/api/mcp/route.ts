@@ -92,15 +92,19 @@ export async function POST(request: NextRequest) {
 
       return rpcResult(id, result);
     } catch (error) {
-      await session.supabase.from("crm_mcp_audit").insert({
-        organisation_id: session.profile.organisation_id,
-        user_id: session.user.id,
-        direction: "inbound",
-        tool_name: toolName,
-        action: "tools/call",
-        success: false,
-        detail: { error: error instanceof Error ? error.message : "Unknown error" },
-      }).catch(() => null);
+      try {
+        await session.supabase.from("crm_mcp_audit").insert({
+          organisation_id: session.profile.organisation_id,
+          user_id: session.user.id,
+          direction: "inbound",
+          tool_name: toolName,
+          action: "tools/call",
+          success: false,
+          detail: { error: error instanceof Error ? error.message : "Unknown error" },
+        });
+      } catch {
+        // Preserve the MCP error even if audit logging fails.
+      }
       return rpcError(id, -32000, error instanceof Error ? error.message : "Tool call failed");
     }
   }
