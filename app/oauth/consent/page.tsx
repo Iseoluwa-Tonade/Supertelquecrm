@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type ConsentDetails = {
@@ -13,14 +12,18 @@ type ConsentDetails = {
 };
 
 export default function OAuthConsentPage() {
-  const searchParams = useSearchParams();
-  const authorizationId = searchParams.get("authorization_id");
+  const [authorizationId, setAuthorizationId] = useState<string | null>(null);
   const [details, setDetails] = useState<ConsentDetails | null>(null);
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
+    setAuthorizationId(new URLSearchParams(window.location.search).get("authorization_id"));
+  }, []);
+
+  useEffect(() => {
+    if (authorizationId === null) return;
     if (!authorizationId) {
       setError("Missing authorization request.");
       return;
