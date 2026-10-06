@@ -10,7 +10,7 @@ import { Panel, PanelHead, PageHeader, Tag, Btn } from "@/components/kit.launchp
 const supabase = createClient();
 
 export default function ApprovalsPage() {
-  const { session, profile, changeRequests, items, loadChangeRequests, loadRemoteItems } = useApp();
+  const { session, profile, organisation, changeRequests, items, loadChangeRequests, loadRemoteItems } = useApp();
   const { flash } = useToast();
 
   const isManager = profile?.role === "manager" || profile?.role === "admin";
@@ -21,34 +21,74 @@ export default function ApprovalsPage() {
 
   const reviewRequest = useCallback(async (id: string, decision: "approved" | "rejected") => {
     const req = changeRequests.find((r) => r.id === id);
-    if (!req) return;
+    if (!req || !myId || !organisation?.id) return;
+
     try {
       if (decision === "approved") {
         if (req.action === "create") {
-          await supabase.from("crm_board_items").insert(req.payload);
+          const payload = req.payload || {};
+          const { error } = await supabase.from("crm_board_items").insert({
+            organisation_id: organisation.id,
+            user_id: myId,
+            assigned_to: (payload.assigned_to as string) || req.requested_by || myId,
+            visibility: (payload.visibility as string) || "team",
+            type: (payload.type as string) || "task",
+            title: (payload.title as string) || "New CRM item",
+            company: (payload.company as string) || "General",
+            owner: (payload.owner as string) || profile?.display_name || profile?.email || "CRM",
+            priority: (payload.priority as string) || "medium",
+            value: Number(payload.value || 0),
+            due: (payload.due as string) || null,
+            status: (payload.status as string) || "open",
+            notes: (payload.notes as string) || "",
+            document_url: (payload.document_url as string) || "",
+          });
+          if (error) throw error;
         } else if (req.action === "update") {
-          await supabase.from("crm_board_items").update(req.payload).eq("id", req.board_item_id);
+          const { error } = await supabase
+            .from("crm_board_items")
+            .update(req.payload)
+            .eq("id", req.board_item_id)
+            .eq("organisation_id", organisation.id);
+          if (error) throw error;
         } else if (req.action === "delete") {
-          await supabase.from("crm_board_items").delete().eq("id", req.board_item_id);
+          const { error } = await supabase
+            .from("crm_board_items")
+            .delete()
+            .eq("id", req.board_item_id)
+            .eq("organisation_id", organisation.id);
+          if (error) throw error;
         }
       }
-      await supabase.from("crm_change_requests").update({
-        status: decision,
-        reviewed_by: myId,
-        reviewed_at: new Date().toISOString(),
-      }).eq("id", id);
-      await loadChangeRequests();
-      await loadRemoteItems();
-      flash(decision === "approved" ? "Approved" : "Rejected");
+
+      const { error: reviewError } = await supabase
+        .from("crm_change_requests")
+        .update({
+          status: decision,
+          reviewed_by: myId,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("organisation_id", organisation.id);
+
+      if (reviewError) throw reviewError;
+
+      await Promise.all([loadChangeRequests(), loadRemoteItems()]);
+      flash(decision === "approved" ? "Approved and applied" : "Rejected");
     } catch (err: unknown) {
-      flash(err instanceof Error ? err.message : "Error");
+      flash(err instanceof Error ? err.message : "Could not review request");
     }
-  }, [changeRequests, myId, loadChangeRequests, loadRemoteItems, flash]);
+  }, [changeRequests, myId, organisation?.id, profile?.display_name, profile?.email, loadChangeRequests, loadRemoteItems, flash]);
 
   const cancelRequest = useCallback(async (id: string) => {
     const req = changeRequests.find((r) => r.id === id);
     if (!req || req.requested_by !== myId) return;
-    await supabase.from("crm_change_requests").update({ status: "cancelled" }).eq("id", id);
+    const { error } = await supabase
+      .from("crm_change_requests")
+      .update({ status: "cancelled" })
+      .eq("id", id)
+      .eq("requested_by", myId);
+    if (error) { flash(error.message); return; }
     await loadChangeRequests();
     flash("Request withdrawn");
   }, [changeRequests, myId, loadChangeRequests, flash]);

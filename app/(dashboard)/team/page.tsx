@@ -73,9 +73,10 @@ export default function TeamPage() {
       return;
     }
     setInviteFormOpen(false);
+    const invitedEmail = inviteEmail.trim();
     setInviteEmail("");
     await loadTeamProfiles();
-    flash("Invite sent to " + inviteEmail);
+    flash("Invite sent to " + invitedEmail);
   }, [inviteEmail, inviteRole, supabase, loadTeamProfiles, flash, setInviteFormOpen]);
 
   const approveRequest = useCallback(async (req: InviteRequest) => {

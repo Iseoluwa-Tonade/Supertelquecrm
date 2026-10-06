@@ -56,7 +56,7 @@ function saveFieldData(data: Record<string, Record<string, string>>) {
 }
 
 export default function ActivityPage() {
-  const { activities, profile, session, loadRemoteActivities } = useApp();
+  const { activities, profile, session, organisation, loadRemoteActivities } = useApp();
   const { flash } = useToast();
   const isViewer = profile?.role === "viewer";
   const canEdit = Boolean(session) && !isViewer;
@@ -183,6 +183,9 @@ export default function ActivityPage() {
   const addActivity = useCallback(async () => {
     if (!canEdit || !newTitle.trim()) { flash("Enter an activity title"); return; }
     const { error } = await supabase.from("crm_daily_activities").insert({
+      organisation_id: organisation?.id || null,
+      user_id: session?.user.id,
+      visibility: "team",
       title: newTitle.trim(),
       channel: newChannel,
       activity_date: todayIso(),
@@ -194,7 +197,7 @@ export default function ActivityPage() {
     setNewChannel("general");
     setAdding(false);
     flash("Activity added");
-  }, [canEdit, newTitle, newChannel, supabase, loadRemoteActivities, flash]);
+  }, [canEdit, newTitle, newChannel, organisation?.id, session?.user.id, supabase, loadRemoteActivities, flash]);
 
   const deleteActivity = useCallback(async (id: string) => {
     if (!canEdit) return;

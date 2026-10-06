@@ -25,7 +25,7 @@ const inputClass = "h-10 w-full rounded-lg border border-border bg-input px-3 te
 const toggleBase = "inline-flex h-9 items-center justify-center rounded-full px-4 text-xs font-semibold transition-all duration-200";
 
 export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated?: () => void }) {
-  const { session, profile, teamProfiles, loadRemoteItems, loadDocuments } = useApp();
+  const { session, profile, organisation, teamProfiles, loadRemoteItems, loadDocuments } = useApp();
   const { flash } = useToast();
   const isManager = profile?.role === "manager" || profile?.role === "admin";
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,12 +90,14 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
       const { data: project, error: projectError } = await supabase
         .from("crm_board_items")
         .insert({
+          organisation_id: organisation?.id || null,
+          user_id: session?.user.id,
           title: title.trim(),
           type: "project",
           company: company.trim(),
           owner: owner.trim() || profile?.display_name || "User",
           priority,
-          due,
+          due: due || null,
           status,
           notes,
           document_url: documentUrl.trim() || undefined,
@@ -115,6 +117,7 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
           if (uploadError) { flash("Document upload failed: " + uploadError.message); }
           else {
             const { error: dbError } = await supabase.from("crm_documents").insert({
+              organisation_id: organisation?.id || null,
               board_item_id: project.id,
               file_name: attachment.name,
               file_path: path,
@@ -152,15 +155,17 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
         const { data: taskRow, error: taskError } = await supabase
           .from("crm_board_items")
           .insert({
+            organisation_id: organisation?.id || null,
+            user_id: session?.user.id,
             title: task.title.trim(),
             type: "task",
             company: company.trim(),
             owner: task.assigneeName || "Unassigned",
             priority: task.priority,
-            due: task.due,
+            due: task.due || null,
             notes: task.brief,
             status: "open",
-            assigned_to: task.assigneeId || "",
+            assigned_to: task.assigneeId || profile?.user_id || session?.user.id || null,
             visibility: "team",
           })
           .select("id")
@@ -177,8 +182,10 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
         }
       }
 
-      const { error: notifyError } = await supabase.from("crm_notifications").insert(notifications);
-      if (notifyError) { flash("Notification delivery failed: " + notifyError.message); }
+      if (notifications.length > 0) {
+        const { error: notifyError } = await supabase.from("crm_notifications").insert(notifications);
+        if (notifyError) { flash("Notification delivery failed: " + notifyError.message); }
+      }
 
       flash("Project created successfully");
       onClose();
@@ -189,7 +196,7 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
     } finally {
       setLoading(false);
     }
-  }, [title, company, owner, priority, status, due, attachment, documentUrl, session, teamProfiles, notes, tasks, isManager, profile, flash, loadRemoteItems, loadDocuments, onClose, onCreated]);
+  }, [title, company, owner, priority, status, due, attachment, documentUrl, session, organisation?.id, teamProfiles, notes, tasks, isManager, profile, flash, loadRemoteItems, loadDocuments, onClose, onCreated]);
 
   return (
     <Drawer open={open} onClose={onClose} title="New project" size="lg">
