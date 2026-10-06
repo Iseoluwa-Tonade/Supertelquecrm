@@ -2,12 +2,26 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Inbox, Send, Archive, Bell, ShieldAlert, Search, RefreshCw, Mail, FileText } from "lucide-react";
+import {
+  Archive,
+  ArrowDownAZ,
+  ArrowUpAZ,
+  Bell,
+  Columns3,
+  FileText,
+  Inbox,
+  Mail,
+  RefreshCw,
+  Search,
+  Send,
+  ShieldAlert,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useApp } from "@/lib/AppContext";
 import { createClient } from "@/lib/supabase/client";
-import { Btn, PageHeader, Panel, PanelHead, Tag } from "@/components/kit.launchpad";
+import { Btn, DropdownSelect, PageHeader, Panel, PanelHead, Tag } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -41,6 +55,20 @@ type EmailAccount = {
   status: string;
   is_default: boolean;
 };
+
+type ColumnKey = "peer" | "subject" | "preview" | "mailbox" | "category" | "direction" | "messages" | "unread" | "date";
+
+const ALL_COLUMNS: Array<{ id: ColumnKey; label: string }> = [
+  { id: "peer", label: "Contact" },
+  { id: "subject", label: "Subject" },
+  { id: "preview", label: "Preview" },
+  { id: "mailbox", label: "Mailbox" },
+  { id: "category", label: "Folder" },
+  { id: "direction", label: "Direction" },
+  { id: "messages", label: "Messages" },
+  { id: "unread", label: "Unread" },
+  { id: "date", label: "Last activity" },
+];
 
 const CATEGORIES = [
   { id: "", label: "All", icon: Mail },
@@ -80,10 +108,29 @@ export default function EmailsPage() {
   const [query, setQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const [category, setCategory] = useState("");
+  const [direction, setDirection] = useState("");
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [sortKey, setSortKey] = useState("last_message_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [columns, setColumns] = useState<ColumnKey[]>(["peer","subject","preview","mailbox","category","messages","unread","date"]);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const pageSize = 50;
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("crm.email.columns");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length) setColumns(parsed);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try { window.localStorage.setItem("crm.email.columns", JSON.stringify(columns)); } catch {}
+  }, [columns]);
 
   const loadAccounts = useCallback(async () => {
     if (!organisation?.id) return;
@@ -124,11 +171,13 @@ export default function EmailsPage() {
       .from("crm_email_thread_summaries")
       .select("*", { count: "exact" })
       .eq("organisation_id", organisation.id)
-      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .order(sortKey, { ascending: sortDir === "asc", nullsFirst: false })
       .range(offset, offset + pageSize - 1);
 
     if (accountId) request = request.eq("provider_account_id", accountId);
     if (category) request = request.eq("mailbox_category", category);
+    if (direction) request = request.eq("direction", direction);
+    if (unreadOnly) request = request.gt("unread_count", 0);
 
     if (activeQuery) {
       const safe = activeQuery.replace(/[,%()]/g, " ").trim();
@@ -145,7 +194,7 @@ export default function EmailsPage() {
       setTotal(count || 0);
     }
     setLoading(false);
-  }, [organisation?.id, accountId, category, activeQuery, offset]);
+  }, [organisation?.id, accountId, category, direction, unreadOnly, activeQuery, offset, sortKey, sortDir]);
 
   useEffect(() => { loadAccounts(); }, [loadAccounts]);
   useEffect(() => { loadCounts(); }, [loadCounts]);
@@ -154,13 +203,27 @@ export default function EmailsPage() {
   const page = Math.floor(offset / pageSize) + 1;
   const pages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total]);
 
+  function toggleColumn(id: ColumnKey) {
+    setColumns((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+  }
+
+  function clearFilters() {
+    setQuery("");
+    setActiveQuery("");
+    setCategory("");
+    setAccountId("");
+    setDirection("");
+    setUnreadOnly(false);
+    setOffset(0);
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         variant="revenue"
-        eyebrow="Communications"
+        eyebrow="CRM & communication"
         title="Email"
-        desc="Conversation-first mailbox across all connected email accounts."
+        desc="Search, filter and sort every conversation across all connected mailboxes."
         actions={
           <Btn
             variant="outline"
@@ -179,7 +242,6 @@ export default function EmailsPage() {
           const active = category === item.id;
           const Icon = item.icon;
           const count = counts[item.id || "All"] || 0;
-
           return (
             <motion.button
               key={item.label}
@@ -189,14 +251,8 @@ export default function EmailsPage() {
               transition={{ delay: index * 0.035, duration: 0.28 }}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                setCategory(item.id);
-                setOffset(0);
-              }}
-              className={`rounded-2xl border p-4 text-left transition-shadow ${active
-                ? "border-primary/50 bg-primary/10 shadow-sm"
-                : "border-border bg-surface hover:shadow-md"
-              }`}
+              onClick={() => { setCategory(item.id); setOffset(0); }}
+              className={`rounded-2xl border p-4 text-left transition-shadow ${active ? "border-primary/50 bg-primary/10 shadow-sm" : "border-border bg-surface hover:shadow-md"}`}
             >
               <div className="flex items-center justify-between gap-2">
                 <span className={`grid h-9 w-9 place-items-center rounded-xl ${active ? "bg-primary text-primary-foreground" : "bg-surface-raised text-muted-foreground"}`}>
@@ -213,18 +269,15 @@ export default function EmailsPage() {
       <Panel>
         <PanelHead
           title={category ? category + " conversations" : "All conversations"}
-          hint={total.toLocaleString() + " threads"}
+          hint={total.toLocaleString() + " matching threads"}
           action={<Tag tone="success">Threaded</Tag>}
         />
 
-        <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row">
+        <div className="grid gap-3 border-b border-border p-4 xl:grid-cols-[240px_minmax(260px,1fr)_150px_160px_190px_auto_auto]">
           <select
             value={accountId}
-            onChange={(event) => {
-              setAccountId(event.target.value);
-              setOffset(0);
-            }}
-            className="h-10 rounded-xl border border-border bg-input px-3 text-sm lg:w-64"
+            onChange={(e) => { setAccountId(e.target.value); setOffset(0); }}
+            className="h-10 rounded-xl border border-border bg-input px-3 text-sm"
           >
             <option value="">All connected mailboxes</option>
             {accounts.map((account) => (
@@ -233,8 +286,9 @@ export default function EmailsPage() {
               </option>
             ))}
           </select>
+
           <form
-            className="relative flex-1"
+            className="relative"
             onSubmit={(event) => {
               event.preventDefault();
               setOffset(0);
@@ -244,73 +298,125 @@ export default function EmailsPage() {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search subject, sender or preview…"
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search sender, subject or message preview…"
               className="h-10 w-full rounded-xl border border-border bg-input pl-9 pr-3 text-sm outline-none focus:border-primary/60"
             />
           </form>
 
-          {(activeQuery || category || accountId) && (
-            <Btn
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setQuery("");
-                setActiveQuery("");
-                setCategory("");
-                setAccountId("");
-                setOffset(0);
-              }}
-            >
-              Clear filters
-            </Btn>
-          )}
+          <DropdownSelect
+            value={direction}
+            onChange={(value) => { setDirection(value); setOffset(0); }}
+            ariaLabel="Direction filter"
+            placeholder="Any direction"
+            options={[
+              { value: "", label: "Any direction" },
+              { value: "inbound", label: "Inbound" },
+              { value: "outbound", label: "Outbound" },
+              { value: "system", label: "System" },
+            ]}
+          />
+
+          <label className="flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm">
+            <input type="checkbox" checked={unreadOnly} onChange={(e) => { setUnreadOnly(e.target.checked); setOffset(0); }} />
+            Unread only
+          </label>
+
+          <DropdownSelect
+            value={sortKey}
+            onChange={(value) => { setSortKey(value); setOffset(0); }}
+            ariaLabel="Sort email"
+            placeholder="Sort by"
+            options={[
+              { value: "last_message_at", label: "Last activity" },
+              { value: "message_count", label: "Message count" },
+              { value: "unread_count", label: "Unread count" },
+              { value: "subject", label: "Subject" },
+              { value: "from_name", label: "Sender name" },
+            ]}
+          />
+
+          <Btn variant="outline" onClick={() => setSortDir((d) => d === "asc" ? "desc" : "asc")}>
+            {sortDir === "asc" ? <ArrowUpAZ className="h-4 w-4" /> : <ArrowDownAZ className="h-4 w-4" />}
+            {sortDir === "asc" ? "Asc" : "Desc"}
+          </Btn>
+
+          <details className="relative">
+            <summary className="flex h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-medium">
+              <Columns3 className="h-4 w-4" /> Columns
+            </summary>
+            <div className="absolute right-0 z-30 mt-2 w-56 rounded-xl border border-border bg-popover p-2 shadow-xl">
+              {ALL_COLUMNS.map((col) => (
+                <label key={col.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-surface-raised">
+                  <input type="checkbox" checked={columns.includes(col.id)} onChange={() => toggleColumn(col.id)} />
+                  {col.label}
+                </label>
+              ))}
+            </div>
+          </details>
         </div>
 
-        <div className="divide-y divide-border">
-          {loading ? (
-            <div className="px-4 py-10 text-center text-sm text-muted-foreground">Loading conversations…</div>
-          ) : threads.length === 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-muted-foreground">No matching conversations found.</div>
-          ) : threads.map((thread, index) => (
-            <motion.button
-              key={thread.id}
-              type="button"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(index * 0.015, 0.25), duration: 0.22 }}
-              onClick={() => router.push(`/emails/${thread.id}`)}
-              className="group block w-full px-4 py-4 text-left transition-colors hover:bg-surface-raised/70"
-            >
-              <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)_150px] md:items-center">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{peer(thread)}</p>
-                  <p className="truncate text-xs text-muted-foreground">{thread.from_address || thread.direction || "Conversation"}</p>
-                  {thread.mailbox_address ? <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70">Mailbox: {thread.mailbox_address}</p> : null}
-                </div>
+        {(activeQuery || category || accountId || direction || unreadOnly) ? (
+          <div className="flex items-center gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground">
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            Filters active
+            <button className="font-medium text-primary hover:underline" onClick={clearFilters}>Clear all</button>
+          </div>
+        ) : null}
 
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium">{thread.subject || "(no subject)"}</p>
-                    {thread.message_count > 1 && <Tag tone="primary">{thread.message_count} msgs</Tag>}
-                    {thread.unread_count > 0 && <Tag tone="warning">{thread.unread_count} unread</Tag>}
-                  </div>
-                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground transition-all group-hover:line-clamp-4">{thread.summary || "No preview available."}</p>
-                </div>
-
-                <div className="flex items-center justify-between gap-2 md:justify-end">
-                  <Tag tone={thread.mailbox_category === "Inbox" ? "primary" : thread.mailbox_category === "Sent" ? "success" : "neutral"}>
-                    {thread.mailbox_category || "Other"}
-                  </Tag>
-                  <span className="whitespace-nowrap text-xs text-muted-foreground">{fmt(thread.last_message_at)}</span>
-                </div>
-              </div>
-            </motion.button>
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1100px] text-sm">
+            <thead>
+              <tr className="border-b border-border bg-surface-raised/50 text-xs text-muted-foreground">
+                {columns.includes("peer") && <th className="px-4 py-3 text-left font-medium">Contact</th>}
+                {columns.includes("subject") && <th className="px-4 py-3 text-left font-medium">Subject</th>}
+                {columns.includes("preview") && <th className="px-4 py-3 text-left font-medium">Preview</th>}
+                {columns.includes("mailbox") && <th className="px-4 py-3 text-left font-medium">Mailbox</th>}
+                {columns.includes("category") && <th className="px-4 py-3 text-left font-medium">Folder</th>}
+                {columns.includes("direction") && <th className="px-4 py-3 text-left font-medium">Direction</th>}
+                {columns.includes("messages") && <th className="px-4 py-3 text-right font-medium">Msgs</th>}
+                {columns.includes("unread") && <th className="px-4 py-3 text-right font-medium">Unread</th>}
+                {columns.includes("date") && <th className="px-4 py-3 text-right font-medium">Last activity</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={columns.length || 1} className="px-4 py-12 text-center text-muted-foreground">Loading conversations…</td></tr>
+              ) : threads.length === 0 ? (
+                <tr><td colSpan={columns.length || 1} className="px-4 py-12 text-center text-muted-foreground">No matching conversations found.</td></tr>
+              ) : threads.map((thread, index) => (
+                <motion.tr
+                  key={thread.id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index * 0.01, 0.18), duration: 0.18 }}
+                  onClick={() => router.push(`/emails/${thread.id}`)}
+                  className="group cursor-pointer border-b border-border last:border-0 hover:bg-surface-raised/70"
+                >
+                  {columns.includes("peer") && <td className="px-4 py-3">
+                    <p className="max-w-56 truncate font-semibold">{peer(thread)}</p>
+                    <p className="max-w-56 truncate text-xs text-muted-foreground">{thread.from_address || thread.direction || "Conversation"}</p>
+                  </td>}
+                  {columns.includes("subject") && <td className="px-4 py-3"><p className="max-w-72 truncate font-medium">{thread.subject || "(no subject)"}</p></td>}
+                  {columns.includes("preview") && <td className="px-4 py-3">
+                    <p className="max-w-xl line-clamp-1 text-xs text-muted-foreground transition-all group-hover:line-clamp-4 group-hover:whitespace-pre-wrap">
+                      {thread.summary || "No preview available."}
+                    </p>
+                  </td>}
+                  {columns.includes("mailbox") && <td className="px-4 py-3 text-xs text-muted-foreground">{thread.mailbox_address || "—"}</td>}
+                  {columns.includes("category") && <td className="px-4 py-3"><Tag tone={thread.mailbox_category === "Inbox" ? "primary" : thread.mailbox_category === "Sent" ? "success" : "neutral"}>{thread.mailbox_category || "Other"}</Tag></td>}
+                  {columns.includes("direction") && <td className="px-4 py-3"><Tag tone={thread.direction === "inbound" ? "primary" : thread.direction === "outbound" ? "success" : "neutral"}>{thread.direction || "—"}</Tag></td>}
+                  {columns.includes("messages") && <td className="px-4 py-3 text-right num">{thread.message_count || 0}</td>}
+                  {columns.includes("unread") && <td className="px-4 py-3 text-right">{thread.unread_count > 0 ? <Tag tone="warning">{thread.unread_count}</Tag> : <span className="text-muted-foreground">0</span>}</td>}
+                  {columns.includes("date") && <td className="whitespace-nowrap px-4 py-3 text-right text-xs text-muted-foreground">{fmt(thread.last_message_at)}</td>}
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <div className="flex items-center justify-between gap-3 p-4">
-          <p className="text-xs text-muted-foreground">Page {page} of {pages}</p>
+          <p className="text-xs text-muted-foreground">Page {page} of {pages} · {total.toLocaleString()} threads</p>
           <div className="flex gap-2">
             <Btn size="sm" variant="outline" disabled={offset === 0 || loading} onClick={() => setOffset(Math.max(0, offset - pageSize))}>Previous</Btn>
             <Btn size="sm" variant="outline" disabled={offset + pageSize >= total || loading} onClick={() => setOffset(offset + pageSize)}>Next</Btn>
