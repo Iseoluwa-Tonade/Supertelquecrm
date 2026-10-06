@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, Printer } from "lucide-react";
 import { useApp } from "@/lib/AppContext";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
@@ -167,10 +167,10 @@ export default function InvoicingPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
             <thead><tr className="border-b border-border text-xs text-muted-foreground">
-              <th className="px-4 py-2.5 text-left">Invoice</th><th className="px-4 py-2.5 text-left">Client</th><th className="px-4 py-2.5 text-left">Issued</th><th className="px-4 py-2.5 text-left">Due</th><th className="px-4 py-2.5 text-right">Amount</th><th className="px-4 py-2.5 text-right">Paid</th><th className="px-4 py-2.5 text-left">Status</th>
+              <th className="px-4 py-2.5 text-left">Invoice</th><th className="px-4 py-2.5 text-left">Client</th><th className="px-4 py-2.5 text-left">Issued</th><th className="px-4 py-2.5 text-left">Due</th><th className="px-4 py-2.5 text-right">Amount</th><th className="px-4 py-2.5 text-right">Paid</th><th className="px-4 py-2.5 text-left">Status</th><th className="px-4 py-2.5 text-right">Actions</th>
             </tr></thead>
             <tbody>
-              {rows.length === 0 ? <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">No live invoices yet.</td></tr> : rows.map((inv) => (
+              {rows.length === 0 ? <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No live invoices yet.</td></tr> : rows.map((inv) => (
                 <tr key={inv.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 font-mono text-xs">{inv.invoice_number}</td>
                   <td className="px-4 py-3"><p className="font-medium">{inv.client_name}</p><p className="text-xs text-muted-foreground">{inv.client_email || "—"}</p></td>
@@ -180,6 +180,16 @@ export default function InvoicingPage() {
                   <td className="px-4 py-3 text-right num">{money(Number(inv.amount_paid))}</td>
                   <td className="px-4 py-3">
                     <DropdownSelect value={inv.status} onChange={(value) => updateStatus(inv, value)} ariaLabel={`Status for ${inv.invoice_number}`} placeholder="Choose status" options={["draft","sent","partial","paid","overdue","void"].map((s) => ({ value: s, label: s.replace("_", " ") }))} className="h-8 text-xs" />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Btn
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`/invoicing/${inv.id}/print`, "_blank", "noopener,noreferrer")}
+                    >
+                      <Printer className="h-3.5 w-3.5" />
+                      Print
+                    </Btn>
                   </td>
                 </tr>
               ))}
