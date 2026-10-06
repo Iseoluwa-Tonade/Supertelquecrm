@@ -257,7 +257,7 @@ export function Btn({
     <button
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-[13px] font-semibold transition-[transform,background,border-color,box-shadow,color] duration-200 disabled:pointer-events-none disabled:opacity-50 active:translate-y-px",
-        size === "sm" ? "h-8.5 px-3 text-xs" : "h-10 px-4 text-sm",
+        size === "sm" ? "h-[34px] px-3 text-xs" : "h-10 px-4 text-sm",
         variant === "primary" && "bg-primary text-primary-foreground shadow-[0_10px_24px_-14px_rgba(13,148,136,.72)] hover:-translate-y-px hover:bg-primary/92 hover:shadow-[0_14px_28px_-14px_rgba(13,148,136,.62)]",
         variant === "ghost" && "text-muted-foreground hover:bg-surface-raised/85 hover:text-foreground",
         variant === "outline" &&
