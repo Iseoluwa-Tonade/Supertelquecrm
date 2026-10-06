@@ -6,17 +6,18 @@ import { PIPELINE_COLUMNS, PROJECT_COLUMNS, FOCUS_COLUMNS } from "@/lib/types";
 import type { Column, BoardItem } from "@/lib/types";
 import { label, money, daysUntil, dueLabel, normalizeStatus } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
-import { useCallback, useState, useRef } from "react";
-import DetailPanel from "@/components/DetailPanel";
+import { useCallback, useRef } from "react";
 import { Btn, Tag, Avatar, DropdownSelect } from "@/components/kit.launchpad";
+import { useRouter } from "next/navigation";
 
 const supabase = createClient();
 export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | "focus" }) {
   const {
-    items, session, profile, changeRequests, documents, search, type, owner, priority,
-    selectedId, setSelectedId, setType, setOwner, setPriority, loadRemoteItems,
+    items, session, profile, organisation, changeRequests, documents, search, type, owner, priority,
+    setType, setOwner, setPriority, loadRemoteItems,
   } = useApp();
   const { flash } = useToast();
+  const router = useRouter();
   const dragItem = useRef<string | null>(null);
 
   const role = profile?.role;
@@ -70,7 +71,9 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
       const pending = changeRequests.filter((r) => r.board_item_id === itemId && r.status === "pending");
       if (pending.length > 0) { flash("There's already a pending change request for this item"); return; }
       const { error } = await supabase.from("crm_change_requests").insert({
+        organisation_id: organisation?.id || null,
         board_item_id: itemId,
+        requested_by: session?.user.id,
         action: "update",
         before_payload: { status: item.status },
         payload,
@@ -78,7 +81,7 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
       if (error) { flash(error.message); return; }
       flash("Change request submitted for review");
     }
-  }, [filteredItems, isViewer, isManager, supabase, loadRemoteItems, flash, changeRequests]);
+  }, [filteredItems, isViewer, isManager, supabase, loadRemoteItems, flash, changeRequests, organisation?.id, session?.user.id]);
 
   const createItem = useCallback(async (colId: string) => {
     if (!session) { flash("Sign in to create items"); return; }
@@ -86,6 +89,10 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
     const owner = profile?.display_name || session.user.email || "User";
     if (isManager) {
       const { error } = await supabase.from("crm_board_items").insert({
+        organisation_id: organisation?.id || null,
+        user_id: session.user.id,
+        assigned_to: session.user.id,
+        visibility: "team",
         title: "New " + view.slice(0, -1),
         type: view === "pipeline" ? "deal" : "project",
         company: "New account",
@@ -105,13 +112,15 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
       const pending = changeRequests.filter((r) => r.status === "pending");
       if (pending.length > 0) { flash("You already have a pending change request"); return; }
       const { error } = await supabase.from("crm_change_requests").insert({
+        organisation_id: organisation?.id || null,
+        requested_by: session.user.id,
         action: "create",
         payload,
       });
       if (error) { flash(error.message); return; }
       flash("Create request submitted for review");
     }
-  }, [session, isViewer, isManager, view, profile, supabase, loadRemoteItems, flash, changeRequests]);
+  }, [session, isViewer, isManager, view, profile, organisation?.id, supabase, loadRemoteItems, flash, changeRequests]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -180,10 +189,15 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
                       key={item.id}
                       draggable={!isViewer}
                       onDragStart={() => { dragItem.current = item.id; }}
-                      onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
-                      className={`cursor-pointer rounded-lg border bg-surface p-3 shadow-sm transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-0.5 hover:shadow-md ${
-                        item.id === selectedId ? "border-primary shadow-[0_0_0_2px_var(--color-primary)/.16]" : "border-border"
-                      }`}
+                      onClick={() => {
+                        const route = item.type === "deal"
+                          ? `/pipeline/${item.id}`
+                          : item.type === "project"
+                            ? `/projects/${item.id}`
+                            : `/tasks/${item.id}`;
+                        router.push(route);
+                      }}
+                      className="cursor-pointer rounded-lg border border-border bg-surface p-3 shadow-sm transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -223,7 +237,6 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
         })}
       </div>
 
-      {selectedId && <DetailPanel />}
     </div>
   );
 }
