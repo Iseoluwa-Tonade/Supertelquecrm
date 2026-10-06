@@ -42,8 +42,13 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  let failureClient: Awaited<ReturnType<typeof createServerSupabaseClient>> | null = null;
+  let failureConnectionId: string | null = null;
+
   try {
     const { supabase, user, profile } = await getContext();
+    failureClient = supabase;
+
     const body = await request.json();
     const provider = String(body.provider || "custom");
     const name = String(body.name || provider || "MCP connection");
@@ -51,29 +56,71 @@ export async function POST(request: NextRequest) {
       body.server_url ||
       (provider === "clay" ? "https://api.clay.com/v3/mcp" : "")
     ).trim();
-    const authType = String(body.auth_type || "oauth");
+    const authType = String(provider === "zoho" ? "oauth" : (body.auth_type || "oauth"));
 
     if (!serverUrl || !/^https:\/\//i.test(serverUrl)) {
       return NextResponse.json({ error: "A valid HTTPS MCP server URL is required" }, { status: 400 });
     }
 
-    const { data: connection, error: insertError } = await supabase
+    const { data: existingRows } = await supabase
       .from("crm_mcp_connections")
-      .insert({
-        organisation_id: profile.organisation_id,
-        created_by: user.id,
-        name,
-        provider,
-        server_url: serverUrl,
-        auth_type: authType,
-        status: "connecting",
-        last_error: null,
-        updated_at: new Date().toISOString(),
-      })
       .select("*")
-      .single();
+      .eq("organisation_id", profile.organisation_id)
+      .eq("provider", provider)
+      .eq("server_url", serverUrl)
+      .order("created_at", { ascending: false })
+      .limit(1);
 
-    if (insertError || !connection) throw insertError || new Error("Could not create MCP connection");
+    const existing = existingRows?.[0] || null;
+
+    if (existing?.status === "connected") {
+      return NextResponse.json({
+        connected: true,
+        connection_id: existing.id,
+        tools: existing.tools_cache || [],
+        message: "This MCP server is already connected.",
+      });
+    }
+
+    let connection: any = null;
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from("crm_mcp_connections")
+        .update({
+          name,
+          auth_type: authType,
+          status: "connecting",
+          last_error: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id)
+        .eq("organisation_id", profile.organisation_id)
+        .select("*")
+        .single();
+      if (error || !data) throw error || new Error("Could not restart MCP connection");
+      connection = data;
+    } else {
+      const { data, error } = await supabase
+        .from("crm_mcp_connections")
+        .insert({
+          organisation_id: profile.organisation_id,
+          created_by: user.id,
+          name,
+          provider,
+          server_url: serverUrl,
+          auth_type: authType,
+          status: "connecting",
+          last_error: null,
+          updated_at: new Date().toISOString(),
+        })
+        .select("*")
+        .single();
+      if (error || !data) throw error || new Error("Could not create MCP connection");
+      connection = data;
+    }
+
+    failureConnectionId = connection.id;
 
     if (authType === "none") {
       const listed = await listRemoteTools(serverUrl, null);
@@ -88,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     if (authType === "bearer") {
       if (!body.bearer_token) {
-        return NextResponse.json({ error: "Bearer token is required" }, { status: 400 });
+        throw new Error("Bearer token is required");
       }
       const token = String(body.bearer_token);
       const listed = await listRemoteTools(serverUrl, token);
@@ -126,9 +173,11 @@ export async function POST(request: NextRequest) {
         token_endpoint: metadata.token_endpoint || null,
         oauth_metadata: metadata,
         last_error: "This MCP server does not advertise Dynamic Client Registration.",
+        updated_at: new Date().toISOString(),
       }).eq("id", connection.id);
+
       return NextResponse.json({
-        error: "This MCP server requires a pre-registered OAuth client. Add the client credentials before connecting.",
+        error: "This MCP server requires a pre-registered OAuth client.",
         connection_id: connection.id,
       }, { status: 400 });
     }
@@ -151,9 +200,13 @@ export async function POST(request: NextRequest) {
       cache: "no-store",
     });
 
-    const registered = await registration.json();
+    const registered = await registration.json().catch(() => ({}));
     if (!registration.ok || !registered.client_id) {
-      throw new Error(registered.error_description || registered.error || "MCP OAuth client registration failed");
+      throw new Error(
+        registered.error_description ||
+        registered.error ||
+        `MCP OAuth client registration failed (${registration.status})`
+      );
     }
 
     const pkce = await createPkcePair();
@@ -178,6 +231,7 @@ export async function POST(request: NextRequest) {
         },
       },
       status: "connecting",
+      last_error: null,
       updated_at: new Date().toISOString(),
     }).eq("id", connection.id);
 
@@ -199,10 +253,21 @@ export async function POST(request: NextRequest) {
       authorization_url: authorizationUrl.toString(),
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "MCP connection failed" },
-      { status: 400 },
-    );
+    const message = error instanceof Error ? error.message : "MCP connection failed";
+
+    if (failureClient && failureConnectionId) {
+      await failureClient
+        .from("crm_mcp_connections")
+        .update({
+          status: "attention",
+          last_error: message,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", failureConnectionId)
+        .catch(() => null);
+    }
+
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
 
