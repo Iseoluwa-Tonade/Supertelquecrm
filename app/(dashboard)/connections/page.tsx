@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   Bot,
@@ -69,7 +68,6 @@ function fmt(value?: string | null) {
 
 export default function ConnectionsPage() {
   const { organisation, profile } = useApp();
-  const searchParams = useSearchParams();
   const canManage = profile?.role === "admin" || profile?.role === "manager";
 
   const [accounts, setAccounts] = useState<EmailAccount[]>([]);
@@ -132,11 +130,12 @@ export default function ConnectionsPage() {
   }, [refresh]);
 
   useEffect(() => {
-    const state = searchParams.get("mcp");
-    const reason = searchParams.get("reason");
+    const params = new URLSearchParams(window.location.search);
+    const state = params.get("mcp");
+    const reason = params.get("reason");
     if (state === "connected") setMessage("MCP connection authorized successfully.");
     if (state === "error") setMessage(`MCP connection failed: ${reason || "Unknown error"}`);
-  }, [searchParams]);
+  }, []);
 
   const productionConnected =
     typeof window !== "undefined" && window.location.hostname === "crm.supertelque.com";
