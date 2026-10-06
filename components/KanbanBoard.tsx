@@ -96,7 +96,11 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
         title: "New " + view.slice(0, -1),
         type: view === "pipeline" ? "deal" : "project",
         company: "New account",
+        priority: "medium",
+        value: 0,
+        due: null,
         status: colId,
+        notes: "",
         owner,
         priority: "medium",
       });
