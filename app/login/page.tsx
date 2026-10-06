@@ -25,7 +25,13 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
+  const [nextPath, setNextPath] = useState<string | null>(null);
   const supabase = createClient();
+
+  useEffect(() => {
+    const rawNext = new URLSearchParams(window.location.search).get("next");
+    setNextPath(rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null);
+  }, []);
 
   async function handleSignIn(e: FormEvent) {
     e.preventDefault();
@@ -69,7 +75,7 @@ export default function LoginPage() {
         });
         router.push("/profile");
       } else if (profile.registration_complete) {
-        router.push("/overview");
+        router.push(nextPath || "/overview");
       } else {
         const savedChoice = sessionStorage.getItem("signup_choice");
         if (savedChoice === "org") {
@@ -195,7 +201,9 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${siteUrl}/auth/callback`,
+        redirectTo: nextPath
+          ? `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`
+          : `${siteUrl}/auth/callback`,
       },
     });
     if (error) {
