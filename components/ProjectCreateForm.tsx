@@ -97,7 +97,7 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
           company: company.trim(),
           owner: owner.trim() || profile?.display_name || "User",
           priority,
-          due,
+          due: due || null,
           status,
           notes,
           document_url: documentUrl.trim() || undefined,
@@ -162,10 +162,10 @@ export function ProjectCreateForm({ open, onClose, onCreated }: { open: boolean;
             company: company.trim(),
             owner: task.assigneeName || "Unassigned",
             priority: task.priority,
-            due: task.due,
+            due: task.due || null,
             notes: task.brief,
             status: "open",
-            assigned_to: task.assigneeId || "",
+            assigned_to: task.assigneeId || profile?.user_id || session?.user.id || null,
             visibility: "team",
           })
           .select("id")
