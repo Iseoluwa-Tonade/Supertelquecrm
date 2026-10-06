@@ -11,6 +11,7 @@ import {
   Activity,
   Files,
   MessageSquare,
+  Mail,
   ShieldCheck,
   Users,
   Calculator,
@@ -52,6 +53,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: "/activity", label: "Activity log", icon: Activity },
       { to: "/notifications", label: "Notifications", icon: Bell },
       { to: "/messages", label: "Messages", icon: MessageSquare },
+      { to: "/emails", label: "Zoho Email", icon: Mail },
     ],
   },  {
     group: "Revenue",
