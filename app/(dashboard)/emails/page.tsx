@@ -45,6 +45,14 @@ type ThreadSummary = {
   provider_account_id: string | null;
   mailbox_address: string | null;
   mailbox_display_name: string | null;
+  ai_summary: string | null;
+  ai_insight: string | null;
+  ai_next_action: string | null;
+  ai_needs_reply: boolean | null;
+  ai_suggested_to: string | null;
+  ai_suggested_subject: string | null;
+  ai_suggested_body: string | null;
+  ai_status: string | null;
 };
 
 type EmailAccount = {
@@ -58,12 +66,16 @@ type EmailAccount = {
   is_default: boolean;
 };
 
-type ColumnKey = "peer" | "subject" | "preview" | "mailbox" | "category" | "direction" | "messages" | "unread" | "date";
+type ColumnKey = "peer" | "subject" | "preview" | "ai_summary" | "ai_insight" | "ai_next_action" | "ai_suggested" | "mailbox" | "category" | "direction" | "messages" | "unread" | "date";
 
 const ALL_COLUMNS: Array<{ id: ColumnKey; label: string }> = [
   { id: "peer", label: "Contact" },
   { id: "subject", label: "Subject" },
-  { id: "preview", label: "Preview" },
+  { id: "preview", label: "Latest preview" },
+  { id: "ai_summary", label: "AI summary" },
+  { id: "ai_insight", label: "AI insight" },
+  { id: "ai_next_action", label: "Next action" },
+  { id: "ai_suggested", label: "Suggested email" },
   { id: "mailbox", label: "Mailbox" },
   { id: "category", label: "Folder" },
   { id: "direction", label: "Direction" },
@@ -115,7 +127,7 @@ export default function EmailsPage() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [sortKey, setSortKey] = useState("last_message_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [columns, setColumns] = useState<ColumnKey[]>(["peer","subject","preview","mailbox","category","messages","unread","date"]);
+  const [columns, setColumns] = useState<ColumnKey[]>(["peer","subject","ai_summary","ai_insight","ai_next_action","ai_suggested","date"]);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -400,6 +412,7 @@ export default function EmailsPage() {
               { value: "unread_count", label: "Unread count" },
               { value: "subject", label: "Subject" },
               { value: "from_name", label: "Sender name" },
+              { value: "ai_next_action", label: "AI next action" },
             ]}
           />
 
@@ -438,6 +451,10 @@ export default function EmailsPage() {
                 {columns.includes("peer") && <th className="px-4 py-3 text-left font-medium">Contact</th>}
                 {columns.includes("subject") && <th className="px-4 py-3 text-left font-medium">Subject</th>}
                 {columns.includes("preview") && <th className="px-4 py-3 text-left font-medium">Preview</th>}
+                {columns.includes("ai_summary") && <th className="px-4 py-3 text-left font-medium">AI summary</th>}
+                {columns.includes("ai_insight") && <th className="px-4 py-3 text-left font-medium">AI insight</th>}
+                {columns.includes("ai_next_action") && <th className="px-4 py-3 text-left font-medium">Next action</th>}
+                {columns.includes("ai_suggested") && <th className="px-4 py-3 text-left font-medium">Suggested email</th>}
                 {columns.includes("mailbox") && <th className="px-4 py-3 text-left font-medium">Mailbox</th>}
                 {columns.includes("category") && <th className="px-4 py-3 text-left font-medium">Folder</th>}
                 {columns.includes("direction") && <th className="px-4 py-3 text-left font-medium">Direction</th>}
@@ -469,6 +486,12 @@ export default function EmailsPage() {
                     <p className="max-w-xl line-clamp-1 text-xs text-muted-foreground transition-all group-hover:line-clamp-4 group-hover:whitespace-pre-wrap">
                       {thread.summary || "No preview available."}
                     </p>
+                  </td>}
+                  {columns.includes("ai_summary") && <td className="px-4 py-3"><p className="max-w-sm line-clamp-3 text-xs leading-5 text-muted-foreground">{thread.ai_summary || "Waiting for a new email"}</p></td>}
+                  {columns.includes("ai_insight") && <td className="px-4 py-3"><p className="max-w-sm line-clamp-3 text-xs leading-5 text-muted-foreground">{thread.ai_insight || "—"}</p></td>}
+                  {columns.includes("ai_next_action") && <td className="px-4 py-3"><p className="max-w-xs line-clamp-3 text-xs font-medium leading-5">{thread.ai_next_action || "—"}</p></td>}
+                  {columns.includes("ai_suggested") && <td className="px-4 py-3">
+                    {thread.ai_suggested_body ? <div className="max-w-sm"><p className="line-clamp-1 text-xs font-semibold">{thread.ai_suggested_subject || "Suggested reply"}</p><p className="mt-1 line-clamp-3 whitespace-pre-wrap text-xs leading-5 text-muted-foreground">{thread.ai_suggested_body}</p></div> : <span className="text-xs text-muted-foreground">—</span>}
                   </td>}
                   {columns.includes("mailbox") && <td className="px-4 py-3 text-xs text-muted-foreground">{thread.mailbox_address || "—"}</td>}
                   {columns.includes("category") && <td className="px-4 py-3"><Tag tone={thread.mailbox_category === "Inbox" ? "primary" : thread.mailbox_category === "Sent" ? "success" : "neutral"}>{thread.mailbox_category || "Other"}</Tag></td>}
