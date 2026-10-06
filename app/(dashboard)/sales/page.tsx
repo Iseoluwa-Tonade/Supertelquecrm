@@ -5,6 +5,7 @@ import { useApp } from "@/lib/AppContext";
 import { money, label, dateLabel } from "@/lib/utils";
 import { PageHeader, Panel, PanelHead, Stat, Tag, EmptyLock, Btn } from "@/components/kit.launchpad";
 import { Plus } from "lucide-react";
+import Link from "next/link";
 
 const STATUS_TONES: Record<string, string> = {
   responded_email: "warning",
@@ -52,14 +53,14 @@ export default function SalesPage() {
         eyebrow="Revenue"
         title="Sales"
         desc="Track orders, quota attainment and won revenue."
-        actions={<Btn variant="primary" size="sm"><Plus className="h-4 w-4" /> New order</Btn>}
+        actions={<Link href="/pipeline"><Btn variant="primary" size="sm"><Plus className="h-4 w-4" /> New deal</Btn></Link>}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Orders this month" value={String(metrics.ordersThisMonth)} delta="All deals" spark={[3, 4, 5, 4, 6, 5]} />
-        <Stat label="Order value" value={money(metrics.orderValue)} delta="This month" spark={[4, 5, 6, 5, 7, 6]} />
-        <Stat label="Avg order size" value={money(metrics.avgOrderSize)} delta="Per deal" spark={[2, 3, 4, 3, 5, 4]} />
-        <Stat label="Win rate" value={`${metrics.winRate}%`} delta="Overall" spark={[60, 65, 62, 68, 70, 72]} />
+        <Stat label="Orders this month" value={String(metrics.ordersThisMonth)} delta="Live deal records" />
+        <Stat label="Order value" value={money(metrics.orderValue)} delta="This month" />
+        <Stat label="Avg order size" value={money(metrics.avgOrderSize)} delta="Per deal" />
+        <Stat label="Win rate" value={`${metrics.winRate}%`} delta="Overall" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -95,24 +96,17 @@ export default function SalesPage() {
 
         <div className="space-y-4">
           <Panel>
-            <PanelHead title="Quota attainment" hint="Rep performance" />
+            <PanelHead title="Won revenue by rep" hint="Live closed-won value" />
             <div className="space-y-3 p-4">
               {wonDeals.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No closed-won deals yet.</p>
               ) : (
                 [...new Set(wonDeals.map((d) => d.owner))].slice(0, 5).map((rep) => {
                   const repValue = wonDeals.filter((d) => d.owner === rep).reduce((s, d) => s + Number(d.value || 0), 0);
-                  const target = 100000;
-                  const pct = Math.min(100, Math.round((repValue / target) * 100));
                   return (
-                    <div key={rep}>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-foreground">{rep}</span>
-                        <span className="num text-muted-foreground">{pct}%</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-surface-raised">
-                        <div className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-success" : "bg-primary"}`} style={{ width: `${pct}%` }} />
-                      </div>
+                    <div key={rep} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-xs">
+                      <span className="text-foreground">{rep}</span>
+                      <span className="num font-semibold text-foreground">{money(repValue)}</span>
                     </div>
                   );
                 })
