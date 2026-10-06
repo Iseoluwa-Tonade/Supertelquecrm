@@ -26,6 +26,7 @@ import {
   Panel,
   PanelHead,
   Tag,
+  Textarea,
 } from "@/components/kit.launchpad";
 
 const supabase = createClient();
@@ -84,6 +85,11 @@ export default function ConnectionsPage() {
   const [authType, setAuthType] = useState("oauth");
   const [bearerToken, setBearerToken] = useState("");
   const [message, setMessage] = useState("");
+  const [toolConnectionId, setToolConnectionId] = useState("");
+  const [toolName, setToolName] = useState("");
+  const [toolArgs, setToolArgs] = useState("{}");
+  const [toolResult, setToolResult] = useState("");
+  const [runningTool, setRunningTool] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!organisation?.id) return;
@@ -225,11 +231,47 @@ export default function ConnectionsPage() {
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Could not load tools");
       setMessage(`${json.tools?.length || 0} tools discovered from ${connection.name}.`);
+      setMcpConnections((current) =>
+        current.map((row) => row.id === connection.id ? { ...row, tools_cache: json.tools || [] } : row)
+      );
+      setToolConnectionId(connection.id);
+      setToolName(json.tools?.[0]?.name || "");
+      setToolArgs("{}");
+      setToolResult("");
       await refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Tool discovery failed");
     } finally {
       setConnecting("");
+    }
+  }
+
+  async function runRemoteTool(event: React.FormEvent) {
+    event.preventDefault();
+    if (!toolConnectionId || !toolName) return;
+    setRunningTool(true);
+    setToolResult("");
+    setMessage("");
+    try {
+      let args: Record<string, unknown> = {};
+      try {
+        args = toolArgs.trim() ? JSON.parse(toolArgs) : {};
+      } catch {
+        throw new Error("Tool arguments must be valid JSON.");
+      }
+
+      const response = await fetch(`/api/mcp/connections/${toolConnectionId}/tools`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool_name: toolName, arguments: args }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "MCP tool call failed");
+      setToolResult(JSON.stringify(json.result, null, 2));
+    } catch (error) {
+      setToolResult(error instanceof Error ? error.message : "MCP tool call failed");
+    } finally {
+      setRunningTool(false);
     }
   }
 
@@ -470,7 +512,16 @@ export default function ConnectionsPage() {
                     <Btn
                       size="sm"
                       variant="outline"
-                      onClick={() => refreshTools(connection)}
+                      onClick={() => {
+                        if (connection.tools_cache?.length) {
+                          setToolConnectionId(connection.id);
+                          setToolName(connection.tools_cache[0]?.name || "");
+                          setToolArgs("{}");
+                          setToolResult("");
+                        } else {
+                          refreshTools(connection);
+                        }
+                      }}
                       disabled={connecting === connection.id}
                     >
                       <RefreshCw className={`h-3.5 w-3.5 ${connecting === connection.id ? "animate-spin" : ""}`} />
@@ -484,6 +535,62 @@ export default function ConnectionsPage() {
               ))
             )}
           </div>
+
+          {toolConnectionId ? (() => {
+            const active = mcpConnections.find((row) => row.id === toolConnectionId);
+            const tools = active?.tools_cache || [];
+            return (
+              <div className="border-t border-border p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">MCP Tool Explorer</p>
+                    <p className="text-xs text-muted-foreground">{active?.name || "Connected MCP server"} · {tools.length} tools</p>
+                  </div>
+                  <Btn size="sm" onClick={() => { setToolConnectionId(""); setToolResult(""); }}>Close</Btn>
+                </div>
+                {tools.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No tools have been discovered for this connection yet.</p>
+                ) : (
+                  <form onSubmit={runRemoteTool} className="grid gap-3">
+                    <DropdownSelect
+                      value={toolName}
+                      onChange={setToolName}
+                      ariaLabel="MCP tool"
+                      placeholder="Choose a tool"
+                      options={tools.filter((tool) => tool.name).map((tool) => ({
+                        value: tool.name as string,
+                        label: tool.name as string,
+                      }))}
+                    />
+                    {tools.find((tool) => tool.name === toolName)?.description ? (
+                      <p className="text-xs text-muted-foreground">
+                        {tools.find((tool) => tool.name === toolName)?.description}
+                      </p>
+                    ) : null}
+                    <Field label="Tool arguments (JSON)">
+                      <Textarea
+                        value={toolArgs}
+                        onChange={(event) => setToolArgs(event.target.value)}
+                        rows={7}
+                        className="font-mono text-xs"
+                        placeholder='{"query":"example"}'
+                      />
+                    </Field>
+                    <div className="flex justify-end">
+                      <Btn type="submit" variant="primary" disabled={runningTool || !toolName}>
+                        {runningTool ? "Running..." : "Run MCP tool"}
+                      </Btn>
+                    </div>
+                    {toolResult ? (
+                      <pre className="max-h-96 overflow-auto rounded-xl border border-border bg-surface-raised p-3 text-xs whitespace-pre-wrap">
+                        {toolResult}
+                      </pre>
+                    ) : null}
+                  </form>
+                )}
+              </div>
+            );
+          })() : null}
         </Panel>
       ) : null}
 
