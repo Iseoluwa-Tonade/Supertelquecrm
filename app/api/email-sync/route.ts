@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { decryptSecret, encryptSecret } from "@/lib/mcp/crypto";
 import { callRemoteTool, listRemoteTools } from "@/lib/mcp/client";
+import { analyzeEmailThreadIfChanged } from "@/lib/ai/email-intelligence";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -302,6 +303,7 @@ export async function POST() {
         let newContacts = 0;
         let newCompanies = 0;
         let bodyFetches = 0;
+        const newThreadIds = new Set<string>();
 
         for (const account of rawAccounts) {
           const accountId = String(account.accountId || account.account_id || account.id || "");
@@ -469,7 +471,10 @@ export async function POST() {
               syncedEmails++;
               const prior = existing.get(message.provider_message_id);
               const isNew = !prior;
-              if (isNew) newEmails++;
+              if (isNew) {
+                newEmails++;
+                if (message.thread_id) newThreadIds.add(String(message.thread_id));
+              }
 
               if (contentTool && (isNew || !prior?.body_text) && bodyFetches < 20) {
                 try {
@@ -569,6 +574,16 @@ export async function POST() {
           if (syncStateError) throw syncStateError;
         }
 
+        let analyzedThreads = 0;
+        for (const threadId of newThreadIds) {
+          const result = await analyzeEmailThreadIfChanged(
+            supabase,
+            profile.organisation_id,
+            threadId,
+          );
+          if (result.analyzed) analyzedThreads += 1;
+        }
+
         await supabase.from("crm_mcp_connections").update({
           last_connected_at: new Date().toISOString(),
           last_error: null,
@@ -583,7 +598,7 @@ export async function POST() {
           synced_emails: syncedEmails,
           new_contacts: newContacts,
           new_companies: newCompanies,
-          ai_analyzed_threads: 0,
+          ai_analyzed_threads: analyzedThreads,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Zoho sync failed";
