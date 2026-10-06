@@ -11,7 +11,7 @@ export function Panel({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border bg-surface/80 shadow-[0_12px_30px_-22px_rgba(15,23,42,0.32)] backdrop-blur-sm transition-shadow hover:shadow-[0_16px_38px_-24px_rgba(15,23,42,0.42)]",
+        "crm-surface rounded-[22px] border border-border/90 bg-surface/92 backdrop-blur-xl transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-px hover:border-primary/15",
         className,
       )}
       {...props}
@@ -112,7 +112,7 @@ export function DropdownSelect({
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
         className={cn(
-          "flex h-10 w-full items-center justify-between gap-3 rounded-xl border border-border bg-input px-3 text-left text-sm text-foreground outline-none transition-colors hover:border-primary/50 focus:border-primary/60 focus:ring-2 focus:ring-primary/20",
+          "flex h-10 w-full items-center justify-between gap-3 rounded-[14px] border border-border bg-input px-3 text-left text-sm text-foreground shadow-[0_1px_2px_rgba(16,24,40,.03)] outline-none transition-[border-color,box-shadow,background] hover:border-primary/35 hover:bg-surface focus:border-primary/55 focus:ring-4 focus:ring-primary/10",
           open && "border-primary/60 ring-2 ring-primary/20",
           className,
         )}
@@ -127,7 +127,7 @@ export function DropdownSelect({
         <>
           <div className="fixed inset-0 z-110 bg-transparent" onClick={() => setOpen(false)} />
           <div
-            className="fixed z-120 max-h-80 overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(180deg,rgba(24,34,45,.99),rgba(17,26,40,.96))] shadow-[0_28px_60px_-30px_rgba(15,23,42,0.75)] ring-1 ring-white/5 backdrop-blur-xl"
+            className="fixed z-120 max-h-80 overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(19,29,43,.99),rgba(11,18,32,.98))] shadow-[0_28px_70px_-26px_rgba(2,8,23,.78)] ring-1 ring-white/5 backdrop-blur-2xl"
             style={{ top: position.top, left: position.left, width: position.width }}
           >
             <div className="border-b border-white/10 px-3 py-2">
@@ -173,9 +173,9 @@ export function PanelHead({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+    <div className="flex items-center justify-between gap-3 border-b border-border/80 px-5 py-4">
       <div className="min-w-0">
-        <h3 className="truncate text-sm font-semibold text-foreground">{title}</h3>
+        <h3 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
         {hint ? <p className="truncate text-xs text-muted-foreground">{hint}</p> : null}
       </div>
       {action}
@@ -205,7 +205,7 @@ export function Tag({
   return (
     <span
       className={cn(
-        "label-tag inline-flex items-center gap-1 rounded-full border px-2 py-0.5",
+        "label-tag inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold",
         toneMap[tone] ?? toneMap.neutral,
         className,
       )}
@@ -256,12 +256,12 @@ export function Btn({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
-        size === "sm" ? "h-8 px-2.5 text-xs" : "h-9 px-3.5 text-sm",
-        variant === "primary" && "bg-primary text-primary-foreground shadow-[0_10px_20px_-12px_rgba(15,118,110,0.8)] hover:bg-primary/90",
-        variant === "ghost" && "text-muted-foreground hover:bg-surface-raised hover:text-foreground",
+        "inline-flex items-center justify-center gap-2 rounded-[13px] font-semibold transition-[transform,background,border-color,box-shadow,color] duration-200 disabled:pointer-events-none disabled:opacity-50 active:translate-y-px",
+        size === "sm" ? "h-8.5 px-3 text-xs" : "h-10 px-4 text-sm",
+        variant === "primary" && "bg-primary text-primary-foreground shadow-[0_10px_24px_-14px_rgba(13,148,136,.72)] hover:-translate-y-px hover:bg-primary/92 hover:shadow-[0_14px_28px_-14px_rgba(13,148,136,.62)]",
+        variant === "ghost" && "text-muted-foreground hover:bg-surface-raised/85 hover:text-foreground",
         variant === "outline" &&
-          "border border-border-strong text-foreground hover:border-primary/50 hover:bg-surface-raised",
+          "border border-border-strong bg-surface/70 text-foreground shadow-[0_1px_2px_rgba(16,24,40,.03)] hover:-translate-y-px hover:border-primary/35 hover:bg-surface-raised",
         variant === "danger" &&
           "border border-destructive/40 text-destructive hover:bg-destructive/10",
         className,
@@ -293,7 +293,7 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
   return (
     <input
       className={cn(
-        "h-10 w-full rounded-xl border border-border bg-input px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-2 focus:ring-primary/20",
+        "h-10 w-full rounded-[14px] border border-border bg-input px-3.5 text-sm text-foreground shadow-[0_1px_2px_rgba(16,24,40,.03)] outline-none transition-[border-color,box-shadow,background] placeholder:text-muted-foreground/65 hover:border-primary/25 focus:border-primary/55 focus:bg-surface focus:ring-4 focus:ring-primary/10",
         className,
       )}
       {...props}
@@ -308,7 +308,7 @@ export function Textarea({
   return (
     <textarea
       className={cn(
-        "w-full rounded-xl border border-border bg-input px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-2 focus:ring-primary/20",
+        "w-full rounded-[14px] border border-border bg-input px-3.5 py-2.5 text-sm text-foreground shadow-[0_1px_2px_rgba(16,24,40,.03)] outline-none transition-[border-color,box-shadow,background] placeholder:text-muted-foreground/65 hover:border-primary/25 focus:border-primary/55 focus:bg-surface focus:ring-4 focus:ring-primary/10",
         className,
       )}
       {...props}
@@ -317,12 +317,12 @@ export function Textarea({
 }
 
 const PAGE_HEADER_VARIANTS: Record<string, string> = {
-  overview: "border-emerald-700 bg-gradient-to-r from-emerald-600 to-teal-600 text-white [&_p]:!text-emerald-100 [&_h1]:!text-white",
-  revenue: "border-amber-700 bg-gradient-to-r from-amber-600 to-yellow-600 text-white [&_p]:!text-amber-100 [&_h1]:!text-white",
-  delivery: "border-blue-700 bg-gradient-to-r from-blue-600 to-indigo-600 text-white [&_p]:!text-blue-100 [&_h1]:!text-white",
-  finance: "border-rose-700 bg-gradient-to-r from-rose-600 to-pink-600 text-white [&_p]:!text-rose-100 [&_h1]:!text-white",
-  operations: "border-slate-700 bg-gradient-to-r from-slate-600 to-gray-600 text-white [&_p]:!text-slate-100 [&_h1]:!text-white",
-  account: "border-violet-700 bg-gradient-to-r from-violet-600 to-purple-600 text-white [&_p]:!text-violet-100 [&_h1]:!text-white",
+  overview: "border-emerald-200/80 before:bg-emerald-500 [&_.page-eyebrow]:text-emerald-700 dark:border-emerald-400/15 dark:[&_.page-eyebrow]:text-emerald-300",
+  revenue: "border-amber-200/80 before:bg-amber-500 [&_.page-eyebrow]:text-amber-700 dark:border-amber-400/15 dark:[&_.page-eyebrow]:text-amber-300",
+  delivery: "border-blue-200/80 before:bg-blue-500 [&_.page-eyebrow]:text-blue-700 dark:border-blue-400/15 dark:[&_.page-eyebrow]:text-blue-300",
+  finance: "border-rose-200/80 before:bg-rose-500 [&_.page-eyebrow]:text-rose-700 dark:border-rose-400/15 dark:[&_.page-eyebrow]:text-rose-300",
+  operations: "border-slate-200/90 before:bg-slate-500 [&_.page-eyebrow]:text-slate-700 dark:border-slate-400/15 dark:[&_.page-eyebrow]:text-slate-300",
+  account: "border-violet-200/80 before:bg-violet-500 [&_.page-eyebrow]:text-violet-700 dark:border-violet-400/15 dark:[&_.page-eyebrow]:text-violet-300",
 };
 
 export function PageHeader({
@@ -339,12 +339,12 @@ export function PageHeader({
   variant?: keyof typeof PAGE_HEADER_VARIANTS;
 }) {
   return (
-    <div className={`rounded-2xl border px-5 py-5 shadow-[0_16px_38px_-28px_rgba(15,23,42,0.36)] backdrop-blur-sm sm:px-6 ${PAGE_HEADER_VARIANTS[variant ?? "overview"] ?? "bg-surface/75 border-border"}`}>
+    <div className={`relative overflow-hidden rounded-[26px] border bg-[radial-gradient(circle_at_92%_0%,rgba(13,148,136,.08),transparent_30%),linear-gradient(180deg,rgba(255,255,255,.96),rgba(248,250,252,.92))] px-5 py-6 shadow-[0_18px_45px_-32px_rgba(16,24,40,.32)] before:absolute before:left-0 before:top-6 before:h-14 before:w-1 before:rounded-r-full dark:bg-[linear-gradient(180deg,rgba(16,24,38,.96),rgba(11,18,32,.94))] sm:px-7 ${PAGE_HEADER_VARIANTS[variant ?? "overview"] ?? "border-border before:bg-primary"}`}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="label-tag text-primary">{eyebrow}</p>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-          {desc ? <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{desc}</p> : null}
+          <p className="page-eyebrow label-tag font-semibold">{eyebrow}</p>
+          <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.035em] text-foreground sm:text-[32px]">{title}</h1>
+          {desc ? <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{desc}</p> : null}
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
@@ -367,9 +367,9 @@ export function Stat({
 }) {
   const max = spark ? Math.max(...spark) : 1;
   return (
-    <Panel className="relative overflow-hidden p-4">
+    <Panel className="group relative overflow-hidden p-5">
       <p className="label-tag text-muted-foreground">{label}</p>
-      <p className="num mt-2 text-2xl text-foreground">{value}</p>
+      <p className="num mt-2 text-[28px] font-semibold tracking-[-0.04em] text-foreground">{value}</p>
       {delta ? (
         <p className={cn("num mt-1 text-xs", positive ? "text-success" : "text-destructive")}>
           {positive ? "▲" : "▼"} {delta}
@@ -380,7 +380,7 @@ export function Stat({
           {spark.map((v, i) => (
             <span
               key={i}
-              className="flex-1 rounded-sm bg-primary/25"
+              className="flex-1 rounded-full bg-primary/22 transition-[height,background] duration-300 group-hover:bg-primary/35"
               style={{ height: `${Math.max(12, (v / max) * 100)}%` }}
             />
           ))}
