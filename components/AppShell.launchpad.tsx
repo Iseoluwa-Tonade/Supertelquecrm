@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -102,10 +102,14 @@ const NAV: { group: string; items: NavItem[] }[] = [
 ];
 
 export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
-  const { profile, organisation, session, theme, setTheme, signOut, notifications } = useApp();
+  const { profile, organisation, session, theme, setTheme, signOut, notifications, items } = useApp();
   const pathname = usePathname() || "/";
+  const router = useRouter();
   const [accountOpen, setAccountOpen] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [globalQuery, setGlobalQuery] = React.useState("");
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  const searchRef = React.useRef<HTMLInputElement>(null);
 
   const unreadNotifications = notifications.filter((n) => !n.read_at).length;
   const regComplete = profile?.registration_complete ?? true;
@@ -121,6 +125,50 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
           ),
       })).filter((group) => group.items.length > 0)
     : [{ group: "Getting started", items: [{ to: "/profile", label: "My profile", icon: Users }] }];
+  const flatNav = navItems.flatMap((group) => group.items.map((item) => ({ ...item, group: group.group })));
+  const normalizedGlobalQuery = globalQuery.trim().toLowerCase();
+  const navMatches = normalizedGlobalQuery
+    ? flatNav.filter((item) =>
+        (item.label + " " + item.group).toLowerCase().includes(normalizedGlobalQuery)
+      ).slice(0, 5)
+    : flatNav.slice(0, 5);
+
+  const itemMatches = normalizedGlobalQuery
+    ? items.filter((item) =>
+        [item.title, item.company, item.owner, item.status, item.type]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(normalizedGlobalQuery))
+      ).slice(0, 6)
+    : [];
+
+  React.useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+        setSearchOpen(true);
+      }
+      if (event.key === "Escape") setSearchOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  function goToSearch(path: string) {
+    const q = globalQuery.trim();
+    router.push(q ? `${path}?q=${encodeURIComponent(q)}` : path);
+    setSearchOpen(false);
+  }
+
+  function goToItem(item: { id: string; type: string }) {
+    const path =
+      item.type === "deal" ? `/pipeline/${item.id}` :
+      item.type === "project" ? `/projects/${item.id}` :
+      `/tasks/${item.id}`;
+    router.push(path);
+    setSearchOpen(false);
+  }
+
   const CURRENT_ORG = organisation || { name: "Workspace", company_type: "workspace" };
   const CURRENT_USER = profile || { display_name: "You", job_title: "" };
   const initials =
@@ -282,12 +330,103 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
           <div className="relative hidden w-full max-w-sm items-center sm:flex">
-            <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-muted-foreground" />
             <input
+              ref={searchRef}
+              value={globalQuery}
+              onChange={(event) => {
+                setGlobalQuery(event.target.value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  if (itemMatches[0]) goToItem(itemMatches[0]);
+                  else if (navMatches[0]) {
+                    router.push(navMatches[0].to);
+                    setSearchOpen(false);
+                  } else goToSearch("/contacts");
+                }
+              }}
               placeholder="Search CRM, email, deals, projects…"
               className="h-10 w-full rounded-[14px] border border-border/90 bg-surface/85 pl-9 pr-14 text-sm shadow-[0_1px_2px_rgba(16,24,40,.03)] outline-none placeholder:text-muted-foreground/65 hover:border-primary/25 focus:border-primary/45 focus:ring-4 focus:ring-primary/10"
             />
-            <kbd className="num absolute right-2 rounded-md border border-border bg-surface-raised px-1.5 py-0.5 text-[10px] text-muted-foreground shadow-sm">⌘K</kbd>
+            <kbd className="num pointer-events-none absolute right-2 rounded-md border border-border bg-surface-raised px-1.5 py-0.5 text-[10px] text-muted-foreground shadow-sm">⌘K</kbd>
+
+            {searchOpen ? (
+              <>
+                <button
+                  type="button"
+                  className="fixed inset-0 z-30 cursor-default bg-transparent"
+                  aria-label="Close global search"
+                  onClick={() => setSearchOpen(false)}
+                />
+                <div className="absolute left-0 top-12 z-40 w-[min(560px,80vw)] overflow-hidden rounded-2xl border border-border bg-popover shadow-2xl">
+                  <div className="border-b border-border px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">Global search</p>
+                  </div>
+
+                  {globalQuery.trim() ? (
+                    <div className="grid grid-cols-3 gap-1 border-b border-border p-2">
+                      <button type="button" onClick={() => goToSearch("/contacts")} className="rounded-xl px-3 py-2 text-left text-xs hover:bg-surface-raised">
+                        <span className="font-semibold">Contacts</span><span className="block truncate text-muted-foreground">{globalQuery}</span>
+                      </button>
+                      <button type="button" onClick={() => goToSearch("/clients")} className="rounded-xl px-3 py-2 text-left text-xs hover:bg-surface-raised">
+                        <span className="font-semibold">Companies</span><span className="block truncate text-muted-foreground">{globalQuery}</span>
+                      </button>
+                      <button type="button" onClick={() => goToSearch("/emails")} className="rounded-xl px-3 py-2 text-left text-xs hover:bg-surface-raised">
+                        <span className="font-semibold">Email</span><span className="block truncate text-muted-foreground">{globalQuery}</span>
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <div className="max-h-80 overflow-y-auto p-2">
+                    {itemMatches.length ? (
+                      <div className="mb-2">
+                        <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Records</p>
+                        {itemMatches.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => goToItem(item)}
+                            className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-surface-raised"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">{item.title}</p>
+                              <p className="truncate text-xs text-muted-foreground">{item.company || item.type}</p>
+                            </div>
+                            <span className="text-[10px] uppercase text-muted-foreground">{item.type}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Pages</p>
+                    {navMatches.map((item) => (
+                      <button
+                        key={item.to}
+                        type="button"
+                        onClick={() => {
+                          router.push(item.to);
+                          setSearchOpen(false);
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-surface-raised"
+                      >
+                        <item.icon className="h-4 w-4 text-primary" />
+                        <div>
+                          <p className="text-sm font-medium">{item.label}</p>
+                          <p className="text-[11px] text-muted-foreground">{item.group}</p>
+                        </div>
+                      </button>
+                    ))}
+                    {!navMatches.length && !itemMatches.length ? (
+                      <p className="px-3 py-5 text-center text-sm text-muted-foreground">No direct match. Use Contacts, Companies, or Email search above.</p>
+                    ) : null}
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
           <div className="ml-auto flex items-center gap-2">
             {/* <Tag tone="neutral" className="hidden sm:inline-flex">
