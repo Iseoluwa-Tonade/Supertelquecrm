@@ -12,7 +12,7 @@ import { Panel, PanelHead, PageHeader, Tag, Btn, Input, Field, DropdownSelect } 
 const supabase = createClient();
 
 export default function PricingPage() {
-  const { session, profile, services, editingServiceId, setEditingServiceId, loadServices } = useApp();
+  const { session, profile, organisation, services, editingServiceId, setEditingServiceId, loadServices } = useApp();
   const { flash } = useToast();
   const [calcQty, setCalcQty] = useState<Record<string, number>>({});
   const [calcDiscount, setCalcDiscount] = useState(0);
@@ -29,10 +29,10 @@ export default function PricingPage() {
     e.preventDefault();
     if (!isAdmin) return;
     if (!formName.trim()) { flash("Enter a service name"); return; }
-    const payload = { name: formName.trim(), unit_label: formUnit, unit_price: Number(formPrice) || 0 };
+    const payload = { organisation_id: organisation?.id || null, name: formName.trim(), unit_label: formUnit, unit_price: Number(formPrice) || 0 };
 
     if (editingServiceId) {
-      const { error } = await supabase.from("crm_services").update(payload).eq("id", editingServiceId);
+      const { error } = await supabase.from("crm_services").update({ name: payload.name, unit_label: payload.unit_label, unit_price: payload.unit_price }).eq("id", editingServiceId).eq("organisation_id", organisation?.id || "");
       if (error) { flash(error.message); return; }
       setEditingServiceId(null);
     } else {
@@ -42,16 +42,16 @@ export default function PricingPage() {
     await loadServices();
     setFormName(""); setFormPrice(""); setFormUnit("flat");
     flash(editingServiceId ? "Service updated" : "Service added");
-  }, [isAdmin, formName, formPrice, formUnit, editingServiceId, supabase, setEditingServiceId, loadServices, flash]);
+  }, [isAdmin, formName, formPrice, formUnit, editingServiceId, organisation?.id, supabase, setEditingServiceId, loadServices, flash]);
 
   const deleteService = useCallback(async (id: string) => {
     if (!confirm("Delete this service?")) return;
-    const { error } = await supabase.from("crm_services").delete().eq("id", id);
+    const { error } = await supabase.from("crm_services").delete().eq("id", id).eq("organisation_id", organisation?.id || "");
     if (error) { flash(error.message); return; }
     await loadServices();
     setCalcQty((prev) => { const n = { ...prev }; delete n[id]; return n; });
     flash("Service deleted");
-  }, [supabase, loadServices, flash]);
+  }, [supabase, organisation?.id, loadServices, flash]);
 
   function computeTotals() {
     const subtotal = services.reduce((sum, s) => {
