@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
@@ -25,6 +25,9 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawNext = searchParams.get("next");
+  const nextPath = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
   const supabase = createClient();
 
   async function handleSignIn(e: FormEvent) {
@@ -69,7 +72,7 @@ export default function LoginPage() {
         });
         router.push("/profile");
       } else if (profile.registration_complete) {
-        router.push("/overview");
+        router.push(nextPath || "/overview");
       } else {
         const savedChoice = sessionStorage.getItem("signup_choice");
         if (savedChoice === "org") {
@@ -195,7 +198,9 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${siteUrl}/auth/callback`,
+        redirectTo: nextPath
+          ? `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`
+          : `${siteUrl}/auth/callback`,
       },
     });
     if (error) {
