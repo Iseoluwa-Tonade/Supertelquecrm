@@ -1,147 +1,135 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { Check, CircleDot, Clock, Play } from "lucide-react";
+
 import { useApp } from "@/lib/AppContext";
-import { dateLabel } from "@/lib/utils";
+import { dateLabel, label } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/Toast";
-import { PageHeader, Panel, PanelHead, Tag, Avatar, Btn } from "@/components/kit.launchpad";
-import { Check, CircleDot, Clock, FileUp, Play } from "lucide-react";
+import { PageHeader, Panel, Tag, Btn } from "@/components/kit.launchpad";
 
-type TaskStatus = "todo" | "in-progress" | "submitted" | "done";
-
-type MyTask = {
-  id: string;
-  title: string;
-  brief: string;
-  project: string;
-  assignedBy: string;
-  due: string;
-  priority: string;
-  requiresFile: boolean;
-  status: TaskStatus;
-  attachment?: string;
-};
+const supabase = createClient();
 
 export default function MyTasksPage() {
-  const { profile } = useApp();
+  const { profile, items, loadRemoteItems } = useApp();
   const { flash, success } = useToast();
-  const filterOptions: TaskStatus[] = ["todo", "in-progress", "submitted", "done"];
-  const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [activeFilter, setActiveFilter] = useState("all");
 
-  const [tasks, setTasks] = useState<MyTask[]>([
-    { id: "MT-101", title: "Follow up on Meridian proposal", brief: "Send revised quote and timeline", project: "Meridian Partners", assignedBy: "Tunde Bakare", due: "2026-08-05", priority: "high", requiresFile: false, status: "in-progress" },
-    { id: "MT-102", title: "Review Halcyon deliverable", brief: "Check final draft before client review", project: "Halcyon Logistics", assignedBy: "Tunde Bakare", due: "2026-07-30", priority: "high", requiresFile: true, status: "todo" },
-    { id: "MT-103", title: "Prepare monthly ops report", brief: "Compile activity data for last month", project: "Internal", assignedBy: "Simi Bello", due: "2026-08-01", priority: "medium", requiresFile: false, status: "submitted" },
-    { id: "MT-104", title: "Schedule kickoff call", brief: "Coordinate with Aura Ventures team", project: "Aura Ventures", assignedBy: "Simi Bello", due: "2026-07-28", priority: "medium", requiresFile: false, status: "todo" },
-    { id: "MT-105", title: "Update pricing catalog", brief: "Add new Q3 service tiers", project: "Internal", assignedBy: "Tunde Bakare", due: "2026-07-25", priority: "low", requiresFile: false, status: "done" },
-  ]);
+  const tasks = useMemo(
+    () =>
+      items
+        .filter((item) => item.type === "task" && item.assigned_to === profile?.user_id)
+        .sort((a, b) => (a.due || "").localeCompare(b.due || "")),
+    [items, profile?.user_id]
+  );
 
-  const filtered = activeFilter === "all" ? tasks : tasks.filter((t) => t.status === activeFilter);
+  const filtered = activeFilter === "all" ? tasks : tasks.filter((task) => task.status === activeFilter);
 
-  const counts = useMemo(() => ({
-    open: tasks.filter((t) => t.status === "todo" || t.status === "in-progress").length,
-    review: tasks.filter((t) => t.status === "submitted").length,
-    completed: tasks.filter((t) => t.status === "done").length,
-  }), [tasks]);
+  const counts = useMemo(
+    () => ({
+      open: tasks.filter((task) => task.status === "open" || task.status === "in_progress").length,
+      review: tasks.filter((task) => task.status === "review").length,
+      completed: tasks.filter((task) => task.status === "done").length,
+    }),
+    [tasks]
+  );
 
-  const updateTask = (id: string, status: TaskStatus, attachment?: string) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status, ...(attachment ? { attachment } : {}) } : t)));
-  };
-
-  const canAssign = profile?.role === "admin" || profile?.role === "manager";
+  async function updateStatus(id: string, status: string) {
+    const { error } = await supabase.from("crm_board_items").update({ status }).eq("id", id);
+    if (error) return flash(error.message);
+    await loadRemoteItems();
+    if (status === "done") success("Task completed");
+  }
 
   return (
     <div className="space-y-6">
-      <PageHeader variant="delivery"
+      <PageHeader
+        variant="delivery"
         eyebrow="Delivery"
         title="My tasks"
-        desc="Your assigned work and deliverables."
+        desc="Your assigned work from the shared CRM task system."
       />
-
-      <div className="flex items-center gap-2 flex-wrap">
-        {["all", ...filterOptions].map((f) => (
-          <button key={f} onClick={() => setActiveFilter(f)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              activeFilter === f ? "bg-primary text-primary-foreground" : "bg-surface-raised text-muted-foreground hover:text-foreground"
-            }`}>
-            {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1).replace("-", " ")}
-          </button>
-        ))}
-      </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Panel className="p-4 text-center">
           <p className="label-tag text-muted-foreground">Open</p>
-          <p className="mt-1 text-2xl font-semibold text-foreground">{counts.open}</p>
+          <p className="mt-1 text-2xl font-semibold">{counts.open}</p>
         </Panel>
         <Panel className="p-4 text-center">
           <p className="label-tag text-muted-foreground">Awaiting review</p>
-          <p className="mt-1 text-2xl font-semibold text-foreground">{counts.review}</p>
+          <p className="mt-1 text-2xl font-semibold">{counts.review}</p>
         </Panel>
         <Panel className="p-4 text-center">
           <p className="label-tag text-muted-foreground">Completed</p>
-          <p className="mt-1 text-2xl font-semibold text-foreground">{counts.completed}</p>
+          <p className="mt-1 text-2xl font-semibold">{counts.completed}</p>
         </Panel>
       </div>
 
-      <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {["all","open","in_progress","review","done"].map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            onClick={() => setActiveFilter(filter)}
+            className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-colors ${
+              activeFilter === filter
+                ? "bg-primary text-primary-foreground"
+                : "bg-surface-raised text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {filter === "all" ? "All" : label(filter)}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-3">
         {filtered.length === 0 ? (
-          <Panel className="p-6 text-center text-sm text-muted-foreground">No tasks in this view.</Panel>
-        ) : filtered.map((t) => (
-          <Panel key={t.id} className={t.status === "done" ? "opacity-70" : ""}>
-            <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-3">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <div className="mt-0.5 shrink-0">
-                  {t.status === "done" ? (
-                    <Check className="h-5 w-5 text-success" />
-                  ) : (
-                    <CircleDot className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium truncate ${t.status === "done" ? "line-through text-muted-foreground" : "text-foreground"}`}>{t.title}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{t.brief}</p>
-                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                    <Tag tone={t.priority === "high" ? "danger" : t.priority === "medium" ? "warning" : "neutral"}>{t.priority}</Tag>
-                    <Tag tone={t.status === "done" ? "success" : t.status === "submitted" ? "info" : t.status === "in-progress" ? "primary" : "neutral"}>{t.status}</Tag>
-                    {t.requiresFile && <Tag tone="neutral"><FileUp className="mr-1 h-3 w-3" /> File required</Tag>}
-                    {t.attachment && <Tag tone="accent">Attached: {t.attachment}</Tag>}
-                  </div>
-                  <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                    <span className="num">{t.id}</span>
-                    <span className="truncate max-w-[120px]">{t.project}</span>
-                    <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3" /> {dateLabel(t.due)}</span>
-                    <span className="flex items-center gap-1 whitespace-nowrap"><Avatar initials={t.assignedBy.slice(0, 2).toUpperCase()} size="sm" /> {t.assignedBy}</span>
+          <Panel className="p-8 text-center text-sm text-muted-foreground">No tasks in this view.</Panel>
+        ) : filtered.map((task) => (
+          <Panel key={task.id} className={task.status === "done" ? "opacity-70" : ""}>
+            <div className="flex flex-col gap-4 p-4 md:flex-row md:items-center">
+              <Link href={"/tasks/" + task.id} className="flex min-w-0 flex-1 items-start gap-3">
+                <span className="mt-0.5 shrink-0">
+                  {task.status === "done" ? <Check className="h-5 w-5 text-success" /> : <CircleDot className="h-5 w-5 text-muted-foreground" />}
+                </span>
+                <div className="min-w-0">
+                  <p className={`truncate text-sm font-semibold ${task.status === "done" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                    {task.title}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.notes || task.company}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Tag tone={task.priority === "high" ? "danger" : task.priority === "medium" ? "warning" : "neutral"}>{task.priority}</Tag>
+                    <Tag tone={task.status === "done" ? "success" : task.status === "review" ? "info" : "primary"}>{label(task.status)}</Tag>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" /> {task.due ? dateLabel(task.due) : "No due date"}
+                    </span>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0 sm:flex-col">
-                {t.status === "todo" && (
-                  <Btn size="sm" variant="primary" onClick={() => updateTask(t.id, "in-progress")}>
+              </Link>
+
+              <div className="flex shrink-0 flex-wrap gap-2">
+                {task.status === "open" && (
+                  <Btn size="sm" variant="primary" onClick={() => updateStatus(task.id, "in_progress")}>
                     <Play className="h-3.5 w-3.5" /> Start
                   </Btn>
                 )}
-                {t.requiresFile && t.status !== "done" && (
-                  <Btn size="sm" onClick={() => updateTask(t.id, t.status, `${t.id}_deliverable.pdf`)}>
-                    <FileUp className="h-3.5 w-3.5" /> {t.attachment ? "Replace" : "Upload"}
+                {task.status === "in_progress" && (
+                  <Btn size="sm" variant="primary" onClick={() => updateStatus(task.id, "review")}>
+                    Send to review
                   </Btn>
                 )}
-                {t.status !== "done" && t.status !== "todo" && (
-                  <Btn size="sm" variant="primary" onClick={() => { updateTask(t.id, "done"); success(`${t.title} completed`); }}
-                    disabled={t.requiresFile && !t.attachment}>
+                {task.status === "review" && (
+                  <Btn size="sm" variant="primary" onClick={() => updateStatus(task.id, "done")}>
                     <Check className="h-3.5 w-3.5" /> Mark done
                   </Btn>
-                )}
-                {t.status === "done" && (
-                  <Tag tone="success">completed · {t.assignedBy} notified</Tag>
                 )}
               </div>
             </div>
           </Panel>
         ))}
       </div>
-
-
     </div>
   );
 }
