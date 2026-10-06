@@ -221,6 +221,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+    const fullHistory = body.full_history === true;
     const connection = body.connection as Connection;
     if (!connection?.id || connection.provider !== "zoho" || !/^https:\/\//i.test(connection.server_url)) {
       return NextResponse.json({ error: "Invalid Zoho MCP connection" }, { status: 400 });
@@ -330,25 +331,35 @@ export async function POST(request: NextRequest) {
         const folderName = String(folder.folderName || folder.folderType || "Other");
         if (!folderId) continue;
 
-        const emailResult = await remoteCall(
-          emailsTool,
-          buildArgs(
-            emailsTool,
-            { accountId },
-            {
-              fields:
-                "summary,sentDateInGMT,subject,messageId,threadCount,toAddress,folderId,ccAddress,threadId,hasAttachment,size,sender,receivedTime,fromAddress,status",
-              folderId,
-              limit: 100,
-              start: 1,
-              sortBy: "date",
-              sortorder: false,
-              status: "all",
-            },
-          ),
-        );
+        const metas: any[] = [];
+        let start = 1;
+        const pageSize = 200;
+        const maxPages = fullHistory ? 30 : 1;
 
-        const metas = asArray(emailResult);
+        for (let page = 0; page < maxPages; page++) {
+          const emailResult = await remoteCall(
+            emailsTool,
+            buildArgs(
+              emailsTool,
+              { accountId },
+              {
+                fields:
+                  "summary,sentDateInGMT,subject,messageId,threadCount,toAddress,folderId,ccAddress,threadId,hasAttachment,size,sender,receivedTime,fromAddress,status",
+                folderId,
+                limit: pageSize,
+                start,
+                sortBy: "date",
+                sortorder: false,
+                status: "all",
+              },
+            ),
+          );
+
+          const pageRows = asArray(emailResult);
+          metas.push(...pageRows);
+          if (!fullHistory || pageRows.length < pageSize) break;
+          start += pageSize;
+        }
         for (const meta of metas) {
           const messageId = String(meta.messageId || meta.message_id || meta.id || "");
           if (!messageId) continue;
@@ -401,7 +412,7 @@ export async function POST(request: NextRequest) {
       states.push({
         provider_account_id: accountId,
         last_sync_at: new Date().toISOString(),
-        sync_cursor: { mode: "latest-100-per-folder", connection_id: connection.id },
+        sync_cursor: { mode: fullHistory ? "full-history-complete" : "latest-200-per-folder", connection_id: connection.id },
         status: "idle",
         last_error: null,
       });
