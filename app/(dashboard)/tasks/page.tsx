@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Send, Plus } from "lucide-react";
+import { CalendarClock, Send } from "lucide-react";
 
 import { useApp } from "@/lib/AppContext";
 import { dateLabel, label } from "@/lib/utils";
