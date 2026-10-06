@@ -117,10 +117,10 @@ export default function AccountingPage() {
         <Panel>
           <PanelHead title="Add finance entry" />
           <form onSubmit={addEntry} className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
-            <DropdownSelect value={entryType} onChange={setEntryType} ariaLabel="Entry type" options={[{ value: "income", label: "Income" }, { value: "expense", label: "Expense" }]} />
+            <DropdownSelect value={entryType} onChange={setEntryType} ariaLabel="Entry type" placeholder="Choose type" options={[{ value: "income", label: "Income" }, { value: "expense", label: "Expense" }]} />
             <Field label="Account"><Input value={account} onChange={(e) => setAccount(e.target.value)} placeholder="e.g. Sales revenue" required /></Field>
             <Field label="Amount"><Input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required /></Field>
-            <DropdownSelect value={currency} onChange={setCurrency} ariaLabel="Currency" options={[{ value: "USD", label: "USD" }, { value: "NGN", label: "NGN" }, { value: "GBP", label: "GBP" }, { value: "EUR", label: "EUR" }]} />
+            <DropdownSelect value={currency} onChange={setCurrency} ariaLabel="Currency" placeholder="Choose currency" options={[{ value: "USD", label: "USD" }, { value: "NGN", label: "NGN" }, { value: "GBP", label: "GBP" }, { value: "EUR", label: "EUR" }]} />
             <Field label="Date"><Input type="date" value={occurredAt} onChange={(e) => setOccurredAt(e.target.value)} /></Field>
             <Field label="Reference"><Input value={reference} onChange={(e) => setReference(e.target.value)} /></Field>
             <Field label="Memo"><Input value={memo} onChange={(e) => setMemo(e.target.value)} /></Field>
