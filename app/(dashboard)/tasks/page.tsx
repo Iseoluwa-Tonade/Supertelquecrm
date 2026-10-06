@@ -1,107 +1,146 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useApp } from "@/lib/AppContext";
-import { dateLabel } from "@/lib/utils";
-import { PageHeader, Panel, PanelHead, Tag, Avatar, Btn, Field, Input, Textarea, DropdownSelect } from "@/components/kit.launchpad";
-import { CalendarClock, Paperclip, Send } from "lucide-react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { CalendarClock, Send, Plus } from "lucide-react";
 
-type TaskItem = {
-  id: string;
-  title: string;
-  brief: string;
-  assignee: string;
-  project: string;
-  due: string;
-  priority: string;
-  requiresFile: boolean;
-  status: string;
-};
+import { useApp } from "@/lib/AppContext";
+import { dateLabel, label } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/Toast";
+import { PageHeader, Panel, PanelHead, Tag, Btn, Field, Input, Textarea, DropdownSelect } from "@/components/kit.launchpad";
+
+const supabase = createClient();
 
 export default function TasksPage() {
-  const { profile, teamProfiles } = useApp();
-  const isAdmin = profile?.role === "admin" || profile?.role === "manager";
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const { profile, organisation, teamProfiles, items, loadRemoteItems } = useApp();
+  const { flash } = useToast();
+  const canManage = profile?.role === "admin" || profile?.role === "manager";
+
   const [title, setTitle] = useState("");
   const [brief, setBrief] = useState("");
-  const [assignee, setAssignee] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
   const [project, setProject] = useState("");
   const [due, setDue] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [requiresFile, setRequiresFile] = useState(false);
-  const [notified, setNotified] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const assignTask = useCallback(() => {
-    if (!title.trim()) return;
-    const task: TaskItem = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      brief,
-      assignee: assignee || profile?.display_name || "Unassigned",
-      project: project || "General",
-      due,
-      priority: "high",
-      requiresFile,
-      status: "open",
-    };
-    setTasks((prev) => [task, ...prev]);
+  const tasks = useMemo(
+    () => items.filter((item) => item.type === "task").sort((a, b) => (a.due || "").localeCompare(b.due || "")),
+    [items]
+  );
+
+  const projectOptions = useMemo(() => {
+    const names = Array.from(new Set(items.filter((item) => item.type === "project").map((item) => item.company || item.title).filter(Boolean)));
+    return names;
+  }, [items]);
+
+  async function assignTask() {
+    if (!canManage || !profile || !organisation?.id) return;
+    if (!title.trim()) return flash("Enter a task title");
+
+    const assignee = teamProfiles.find((member) => member.user_id === assigneeId);
+    setSaving(true);
+
+    const { data, error } = await supabase
+      .from("crm_board_items")
+      .insert({
+        organisation_id: organisation.id,
+        type: "task",
+        title: title.trim(),
+        company: project.trim() || "General",
+        owner: assignee?.display_name || assignee?.email || profile.display_name || "Unassigned",
+        assigned_to: assigneeId || profile.user_id,
+        priority,
+        value: 0,
+        due: due || null,
+        status: "open",
+        notes: brief.trim(),
+        visibility: "team",
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      setSaving(false);
+      return flash(error.message);
+    }
+
+    if (assigneeId && assigneeId !== profile.user_id) {
+      await supabase.from("crm_notifications").insert({
+        user_id: assigneeId,
+        actor_id: profile.user_id,
+        type: "task_assigned",
+        title: "New task assigned: " + title.trim(),
+        body: (profile.display_name || profile.email || "A manager") + " assigned you a task",
+        item_id: data?.id || null,
+      });
+    }
+
+    await loadRemoteItems();
     setTitle("");
     setBrief("");
-    setNotified(true);
-    setTimeout(() => setNotified(false), 3500);
-  }, [title, brief, assignee, project, due, priority, requiresFile, profile]);
-
-  const scheduleItems = tasks
-    .filter((t) => t.due)
-    .slice(0, 5);
+    setAssigneeId("");
+    setProject("");
+    setDue("");
+    setPriority("medium");
+    setSaving(false);
+    flash("Task assigned");
+  }
 
   return (
     <div className="space-y-6">
-      <PageHeader variant="delivery"
+      <PageHeader
+        variant="delivery"
         eyebrow="Delivery"
         title="Task scheduling"
-        desc="Assign tasks to team members and track delivery."
+        desc="Persistent team tasks connected to projects, people and the dashboard."
       />
 
-      {isAdmin && (
+      {canManage && (
         <Panel>
           <PanelHead title="Assign a new task" />
-          <div className="space-y-3 p-4">
-            <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-4 p-4">
+            <div className="grid gap-3 md:grid-cols-2">
               <Field label="Task title">
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Follow up with Meridian" />
+                <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Follow up with Meridian" />
               </Field>
               <Field label="Assignee">
                 <DropdownSelect
-                  value={assignee}
-                  onChange={setAssignee}
+                  value={assigneeId}
+                  onChange={setAssigneeId}
                   ariaLabel="Assignee"
-                  placeholder="Select team member..."
+                  placeholder="Select team member"
                   options={[
-                    { value: "", label: "Select team member..." },
-                    ...teamProfiles.map((p) => ({ value: p.display_name || p.email, label: p.display_name || p.email })),
+                    { value: "", label: "Assign to me" },
+                    ...teamProfiles.map((member) => ({
+                      value: member.user_id,
+                      label: member.display_name || member.email || "Team member",
+                    })),
                   ]}
                 />
               </Field>
             </div>
+
             <Field label="Brief">
-              <Textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2} placeholder="What needs to be done?" />
+              <Textarea value={brief} onChange={(event) => setBrief(event.target.value)} rows={3} placeholder="What needs to be done?" />
             </Field>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Field label="Project">
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <Field label="Project / account">
                 <DropdownSelect
                   value={project}
                   onChange={setProject}
-                  ariaLabel="Project"
+                  ariaLabel="Project or account"
                   placeholder="General"
                   options={[
                     { value: "", label: "General" },
-                    ...["Meridian Partners", "Halcyon Logistics", "Perch Retail", "Aura Ventures", "Zeniq Works"].map((p) => ({ value: p, label: p })),
+                    ...projectOptions.map((name) => ({ value: name, label: name })),
                   ]}
                 />
               </Field>
               <Field label="Due date">
-                <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+                <Input type="date" value={due} onChange={(event) => setDue(event.target.value)} />
               </Field>
               <Field label="Priority">
                 <DropdownSelect
@@ -109,85 +148,49 @@ export default function TasksPage() {
                   onChange={setPriority}
                   ariaLabel="Priority"
                   placeholder="Choose priority"
-                  options={["high", "medium", "low"].map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))}
+                  options={["high","medium","low"].map((value) => ({ value, label: label(value) }))}
                 />
               </Field>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={requiresFile} onChange={(e) => setRequiresFile(e.target.checked)} className="h-4 w-4" />
-              <span className="text-foreground">Require file upload as proof of work</span>
-            </label>
+
             <div className="flex justify-end">
-              <Btn variant="primary" onClick={assignTask} disabled={!title.trim()}>
-                <Paperclip className="h-4 w-4" /> Assign task
+              <Btn variant="primary" onClick={assignTask} disabled={!title.trim() || saving}>
+                <Send className="h-4 w-4" /> {saving ? "Assigning…" : "Assign task"}
               </Btn>
             </div>
           </div>
-          {notified && (
-            <div className="border-t border-border px-4 py-2 flex items-center gap-2 text-sm text-success">
-              <Send className="h-4 w-4" /> Task assigned and team member notified.
-            </div>
-          )}
         </Panel>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Panel className="lg:col-span-2">
-          <PanelHead title="Scheduled tasks" hint={`${tasks.length} total`} />
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-125 text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground">
-                  <th className="px-4 py-2.5 text-left font-medium">Task</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Assignee</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Due</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Priority</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No tasks scheduled yet.</td></tr>
-                ) : tasks.map((t) => (
-                  <tr key={t.id} className="border-b border-border last:border-0 hover:bg-surface-raised transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-foreground">{t.title}</p>
-                      {t.brief && <p className="text-xs text-muted-foreground">{t.brief}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{t.assignee}</td>
-                    <td className="px-4 py-3"><span className="num text-muted-foreground">{t.due ? dateLabel(t.due) : "—"}</span></td>
-                    <td className="px-4 py-3">
-                      <Tag tone={t.priority === "high" ? "danger" : t.priority === "medium" ? "warning" : "neutral"}>{t.priority}</Tag>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Tag tone="info">{t.status}</Tag>
-                      {t.requiresFile && <Tag tone="neutral" className="ml-1"><Paperclip className="h-3 w-3" /></Tag>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-
-        <Panel>
-          <PanelHead title="Today's schedule" hint={`${scheduleItems.length} items`} />
-          <div className="divide-y divide-border">
-            {scheduleItems.length === 0 ? (
-              <div className="p-4 text-sm text-muted-foreground">No items scheduled for today.</div>
-            ) : scheduleItems.map((t) => (
-              <div key={t.id} className="flex items-start gap-3 px-4 py-3">
-                <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-foreground">{t.title}</p>
-                  <p className="text-xs text-muted-foreground">{t.assignee}</p>
-                </div>
-                <Tag tone={t.priority === "high" ? "danger" : "neutral"}>{t.priority}</Tag>
+      <Panel>
+        <PanelHead title={"Scheduled tasks (" + tasks.length + ")"} hint="Stored in the CRM database" />
+        <div className="divide-y divide-border">
+          {tasks.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+              No tasks yet. {canManage ? "Assign the first task above." : ""}
+            </div>
+          ) : tasks.map((task) => (
+            <Link
+              key={task.id}
+              href={"/tasks/" + task.id}
+              className="grid gap-3 px-4 py-4 transition-colors hover:bg-surface-raised/60 md:grid-cols-[minmax(0,1fr)_160px_120px_110px]"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-foreground">{task.title}</p>
+                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{task.notes || task.company}</p>
               </div>
-            ))}
-          </div>
-        </Panel>
-      </div>
+              <div className="text-sm text-muted-foreground">{task.owner || "Unassigned"}</div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CalendarClock className="h-3.5 w-3.5" /> {task.due ? dateLabel(task.due) : "No due date"}
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <Tag tone={task.priority === "high" ? "danger" : task.priority === "medium" ? "warning" : "neutral"}>{task.priority}</Tag>
+                <Tag tone={task.status === "done" ? "success" : task.status === "review" ? "info" : "primary"}>{label(task.status)}</Tag>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </Panel>
     </div>
   );
 }
