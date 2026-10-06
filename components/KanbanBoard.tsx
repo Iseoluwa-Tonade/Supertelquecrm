@@ -98,6 +98,7 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
         company: "New account",
         status: colId,
         owner,
+        priority: "medium",
       });
       if (error) { flash(error.message); return; }
       await loadRemoteItems();
@@ -108,6 +109,7 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
         company: "New account",
         status: colId,
         owner,
+        priority: "medium",
       };
       const pending = changeRequests.filter((r) => r.status === "pending");
       if (pending.length > 0) { flash("You already have a pending change request"); return; }
