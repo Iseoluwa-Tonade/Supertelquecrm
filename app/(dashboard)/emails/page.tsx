@@ -26,6 +26,20 @@ type ThreadSummary = {
   summary: string | null;
   has_attachments: boolean;
   unread_count: number;
+  provider_account_id: string | null;
+  mailbox_address: string | null;
+  mailbox_display_name: string | null;
+};
+
+type EmailAccount = {
+  id: string;
+  provider: string;
+  provider_account_id: string;
+  mailbox_address: string;
+  primary_email: string | null;
+  display_name: string | null;
+  status: string;
+  is_default: boolean;
 };
 
 const CATEGORIES = [
@@ -59,6 +73,8 @@ export default function EmailsPage() {
   const router = useRouter();
   const { organisation } = useApp();
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
+  const [accounts, setAccounts] = useState<EmailAccount[]>([]);
+  const [accountId, setAccountId] = useState("");
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState("");
@@ -68,6 +84,17 @@ export default function EmailsPage() {
   const [loading, setLoading] = useState(true);
 
   const pageSize = 50;
+
+  const loadAccounts = useCallback(async () => {
+    if (!organisation?.id) return;
+    const { data } = await supabase
+      .from("crm_email_accounts")
+      .select("id,provider,provider_account_id,mailbox_address,primary_email,display_name,status,is_default")
+      .eq("organisation_id", organisation.id)
+      .order("is_default", { ascending: false })
+      .order("mailbox_address");
+    setAccounts((data || []) as EmailAccount[]);
+  }, [organisation?.id]);
 
   const loadCounts = useCallback(async () => {
     if (!organisation?.id) return;
@@ -79,6 +106,7 @@ export default function EmailsPage() {
           .select("id", { count: "exact", head: true })
           .eq("organisation_id", organisation.id);
 
+        if (accountId) request = request.eq("provider_account_id", accountId);
         if (item.id) request = request.eq("mailbox_category", item.id);
         const { count } = await request;
         return [item.id || "All", count || 0] as const;
@@ -86,7 +114,7 @@ export default function EmailsPage() {
     );
 
     setCounts(Object.fromEntries(results));
-  }, [organisation?.id]);
+  }, [organisation?.id, accountId]);
 
   const loadThreads = useCallback(async () => {
     if (!organisation?.id) return;
@@ -99,6 +127,7 @@ export default function EmailsPage() {
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .range(offset, offset + pageSize - 1);
 
+    if (accountId) request = request.eq("provider_account_id", accountId);
     if (category) request = request.eq("mailbox_category", category);
 
     if (activeQuery) {
@@ -116,8 +145,9 @@ export default function EmailsPage() {
       setTotal(count || 0);
     }
     setLoading(false);
-  }, [organisation?.id, category, activeQuery, offset]);
+  }, [organisation?.id, accountId, category, activeQuery, offset]);
 
+  useEffect(() => { loadAccounts(); }, [loadAccounts]);
   useEffect(() => { loadCounts(); }, [loadCounts]);
   useEffect(() => { loadThreads(); }, [loadThreads]);
 
@@ -129,13 +159,13 @@ export default function EmailsPage() {
       <PageHeader
         variant="revenue"
         eyebrow="Communications"
-        title="Zoho Email"
-        desc="Conversation-first mailbox connected to the CRM."
+        title="Email"
+        desc="Conversation-first mailbox across all connected email accounts."
         actions={
           <Btn
             variant="outline"
             size="sm"
-            onClick={() => { loadCounts(); loadThreads(); }}
+            onClick={() => { loadAccounts(); loadCounts(); loadThreads(); }}
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -188,6 +218,21 @@ export default function EmailsPage() {
         />
 
         <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row">
+          <select
+            value={accountId}
+            onChange={(event) => {
+              setAccountId(event.target.value);
+              setOffset(0);
+            }}
+            className="h-10 rounded-xl border border-border bg-input px-3 text-sm lg:w-64"
+          >
+            <option value="">All connected mailboxes</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.provider_account_id}>
+                {account.display_name ? account.display_name + " — " : ""}{account.mailbox_address}
+              </option>
+            ))}
+          </select>
           <form
             className="relative flex-1"
             onSubmit={(event) => {
@@ -205,7 +250,7 @@ export default function EmailsPage() {
             />
           </form>
 
-          {(activeQuery || category) && (
+          {(activeQuery || category || accountId) && (
             <Btn
               variant="ghost"
               size="sm"
@@ -213,6 +258,7 @@ export default function EmailsPage() {
                 setQuery("");
                 setActiveQuery("");
                 setCategory("");
+                setAccountId("");
                 setOffset(0);
               }}
             >
@@ -234,12 +280,13 @@ export default function EmailsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(index * 0.015, 0.25), duration: 0.22 }}
               onClick={() => router.push(`/emails/${thread.id}`)}
-              className="block w-full px-4 py-4 text-left transition-colors hover:bg-surface-raised/70"
+              className="group block w-full px-4 py-4 text-left transition-colors hover:bg-surface-raised/70"
             >
               <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)_150px] md:items-center">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{peer(thread)}</p>
                   <p className="truncate text-xs text-muted-foreground">{thread.from_address || thread.direction || "Conversation"}</p>
+                  {thread.mailbox_address ? <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70">Mailbox: {thread.mailbox_address}</p> : null}
                 </div>
 
                 <div className="min-w-0">
@@ -248,7 +295,7 @@ export default function EmailsPage() {
                     {thread.message_count > 1 && <Tag tone="primary">{thread.message_count} msgs</Tag>}
                     {thread.unread_count > 0 && <Tag tone="warning">{thread.unread_count} unread</Tag>}
                   </div>
-                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{thread.summary || "No preview available."}</p>
+                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground transition-all group-hover:line-clamp-4">{thread.summary || "No preview available."}</p>
                 </div>
 
                 <div className="flex items-center justify-between gap-2 md:justify-end">
