@@ -9,12 +9,17 @@ import { Btn, PageHeader, Panel, PanelHead, Tag } from "@/components/kit.launchp
 
 const supabase = createClient();
 
-type SyncState = {
+type EmailAccount = {
+  id: string;
   provider: string;
   provider_account_id: string;
-  last_sync_at: string | null;
+  mailbox_address: string;
+  primary_email: string | null;
+  display_name: string | null;
+  aliases: string[];
   status: string;
-  last_error: string | null;
+  is_default: boolean;
+  last_sync_at: string | null;
 };
 
 function fmt(value?: string | null) {
@@ -30,7 +35,7 @@ function fmt(value?: string | null) {
 
 export default function ConnectionsPage() {
   const { organisation } = useApp();
-  const [syncState, setSyncState] = useState<SyncState | null>(null);
+  const [accounts, setAccounts] = useState<EmailAccount[]>([]);
   const [emailCount, setEmailCount] = useState(0);
   const [threadCount, setThreadCount] = useState(0);
   const [databaseHealthy, setDatabaseHealthy] = useState(false);
@@ -40,13 +45,13 @@ export default function ConnectionsPage() {
     if (!organisation?.id) return;
     setLoading(true);
 
-    const [syncRes, emailRes, threadRes, dbRes] = await Promise.all([
+    const [accountRes, emailRes, threadRes, dbRes] = await Promise.all([
       supabase
-        .from("crm_email_sync_state")
-        .select("provider,provider_account_id,last_sync_at,status,last_error")
+        .from("crm_email_accounts")
+        .select("id,provider,provider_account_id,mailbox_address,primary_email,display_name,aliases,status,is_default,last_sync_at")
         .eq("organisation_id", organisation.id)
-        .eq("provider", "zoho")
-        .maybeSingle(),
+        .order("is_default", { ascending: false })
+        .order("mailbox_address"),
       supabase
         .from("crm_emails")
         .select("id", { count: "exact", head: true })
@@ -62,7 +67,7 @@ export default function ConnectionsPage() {
         .maybeSingle(),
     ]);
 
-    setSyncState((syncRes.data as SyncState | null) || null);
+    setAccounts((accountRes.data || []) as EmailAccount[]);
     setEmailCount(emailRes.count || 0);
     setThreadCount(threadRes.count || 0);
     setDatabaseHealthy(Boolean(dbRes.data?.id));
@@ -73,7 +78,6 @@ export default function ConnectionsPage() {
     refresh();
   }, [refresh]);
 
-  const zohoConnected = Boolean(syncState);
   const productionConnected = typeof window !== "undefined" && window.location.hostname === "crm.supertelque.com";
 
   const cards = [
@@ -81,15 +85,15 @@ export default function ConnectionsPage() {
       title: "Supabase Database",
       icon: Database,
       connected: databaseHealthy,
-      detail: databaseHealthy ? "crm-project-board is responding" : "Database check failed",
-      meta: "Primary CRM database",
+      detail: databaseHealthy ? "Primary CRM database is responding" : "Database check failed",
+      meta: "Live organisation-scoped data",
     },
     {
-      title: "Zoho Mail",
+      title: "Email",
       icon: Mail,
-      connected: zohoConnected,
-      detail: zohoConnected ? `${emailCount.toLocaleString()} emails · ${threadCount.toLocaleString()} threads` : "No Zoho sync state found",
-      meta: zohoConnected ? `Last sync: ${fmt(syncState?.last_sync_at)}` : "Email archive unavailable",
+      connected: accounts.some((account) => account.status === "connected"),
+      detail: `${accounts.length} mailbox${accounts.length === 1 ? "" : "es"} · ${emailCount.toLocaleString()} emails`,
+      meta: `${threadCount.toLocaleString()} conversation threads`,
     },
     {
       title: "Production App",
@@ -106,7 +110,7 @@ export default function ConnectionsPage() {
         variant="operations"
         eyebrow="Workspace"
         title="Connections"
-        desc="Live status of the systems currently connected to this CRM."
+        desc="Live status of systems and email accounts connected to this CRM."
         actions={
           <Btn variant="outline" size="sm" onClick={refresh} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -129,11 +133,7 @@ export default function ConnectionsPage() {
             <h2 className="mt-4 text-base font-semibold">{card.title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{card.detail}</p>
             <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              {card.connected ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-              ) : (
-                <AlertCircle className="h-3.5 w-3.5 text-destructive" />
-              )}
+              {card.connected ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <AlertCircle className="h-3.5 w-3.5 text-destructive" />}
               <span>{card.meta}</span>
             </div>
           </Panel>
@@ -141,25 +141,47 @@ export default function ConnectionsPage() {
       </div>
 
       <Panel>
-        <PanelHead title="Connection model" hint="One CRM, one database, shared workflows" />
+        <PanelHead title={`Connected mailboxes (${accounts.length})`} hint="Each account keeps its own provider identity and sync state" />
+        <div className="divide-y divide-border">
+          {accounts.length === 0 ? (
+            <div className="p-4 text-sm text-muted-foreground">No email accounts are registered yet.</div>
+          ) : accounts.map((account) => (
+            <div key={account.id} className="grid gap-3 px-4 py-4 md:grid-cols-[1fr_180px_180px] md:items-center">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-semibold">{account.display_name || account.mailbox_address}</p>
+                  {account.is_default ? <Tag tone="primary">Default</Tag> : null}
+                </div>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{account.mailbox_address}</p>
+                {account.aliases?.length ? <p className="mt-1 text-[11px] text-muted-foreground">Aliases: {account.aliases.join(", ")}</p> : null}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                <p className="font-medium text-foreground">{account.provider.toUpperCase()}</p>
+                <p>{account.status}</p>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                <p>Last sync</p>
+                <p className="mt-0.5 text-foreground">{fmt(account.last_sync_at)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel>
+        <PanelHead title="Connection model" hint="One CRM, one database, multiple mailboxes" />
         <div className="grid gap-3 p-4 md:grid-cols-3">
           <div className="rounded-xl border border-border bg-surface p-4">
-            <p className="text-sm font-semibold">Zoho Mail → CRM</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Imported conversations are threaded, searchable and can create or link revenue pipeline deals.
-            </p>
+            <p className="text-sm font-semibold">Email → CRM</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Each mailbox is stored separately while contacts, companies and pipeline links remain shared.</p>
           </div>
           <div className="rounded-xl border border-border bg-surface p-4">
             <p className="text-sm font-semibold">CRM → Supabase</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Contacts, companies, deals, projects, tasks, messages and documents share the same organisation-scoped database.
-            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">All live records are organisation-scoped and protected by role-based RLS.</p>
           </div>
           <div className="rounded-xl border border-border bg-surface p-4">
             <p className="text-sm font-semibold">Vercel → CRM UI</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              The production application is deployed as the single interface at crm.supertelque.com.
-            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">The production application remains the single interface at crm.supertelque.com.</p>
           </div>
         </div>
       </Panel>
