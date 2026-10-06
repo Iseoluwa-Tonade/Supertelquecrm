@@ -5,6 +5,8 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const type = searchParams.get("type");
+  const rawNext = searchParams.get("next");
+  const nextPath = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
   if (type === "recovery") {
     const supabaseResponse = NextResponse.next({ request });
     const supabase = createServerClient(
@@ -77,7 +79,7 @@ export async function GET(request: NextRequest) {
         } else if (!profile.registration_complete) {
           redirectUrl = `${origin}/profile`;
         } else {
-          redirectUrl = `${origin}/overview`;
+          redirectUrl = nextPath ? `${origin}${nextPath}` : `${origin}/overview`;
         }
       }
     }
