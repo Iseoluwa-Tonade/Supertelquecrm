@@ -12,6 +12,8 @@ import {
   Inbox,
   Mail,
   RefreshCw,
+  Plus,
+  X,
   Search,
   Send,
   ShieldAlert,
@@ -21,7 +23,7 @@ import { useRouter } from "next/navigation";
 
 import { useApp } from "@/lib/AppContext";
 import { createClient } from "@/lib/supabase/client";
-import { Btn, DropdownSelect, PageHeader, Panel, PanelHead, Tag } from "@/components/kit.launchpad";
+import { Btn, DropdownSelect, Field, Input, PageHeader, Panel, PanelHead, Tag } from "@/components/kit.launchpad";
 
 const supabase = createClient();
 
@@ -99,7 +101,8 @@ function peer(thread: ThreadSummary) {
 
 export default function EmailsPage() {
   const router = useRouter();
-  const { organisation } = useApp();
+  const { organisation, profile } = useApp();
+  const canManage = profile?.role === "admin" || profile?.role === "manager";
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [accounts, setAccounts] = useState<EmailAccount[]>([]);
   const [accountId, setAccountId] = useState("");
@@ -115,6 +118,16 @@ export default function EmailsPage() {
   const [columns, setColumns] = useState<ColumnKey[]>(["peer","subject","preview","mailbox","category","messages","unread","date"]);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualDirection, setManualDirection] = useState("inbound");
+  const [manualFrom, setManualFrom] = useState("");
+  const [manualTo, setManualTo] = useState("");
+  const [manualSubject, setManualSubject] = useState("");
+  const [manualBody, setManualBody] = useState("");
+  const [manualName, setManualName] = useState("");
 
   const pageSize = 50;
 
@@ -217,6 +230,60 @@ export default function EmailsPage() {
     setOffset(0);
   }
 
+  async function syncMail() {
+    if (!canManage) return;
+    setSyncing(true);
+    setSyncMessage("");
+    try {
+      const response = await fetch("/api/email-sync", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) {
+        setSyncMessage(data?.error || "Email sync failed");
+        return;
+      }
+      const results = Array.isArray(data.results) ? data.results : [];
+      const added = results.reduce((sum: number, row: any) => sum + Number(row.new_emails || row.inserted || 0), 0);
+      const contacts = results.reduce((sum: number, row: any) => sum + Number(row.new_contacts || 0), 0);
+      const companies = results.reduce((sum: number, row: any) => sum + Number(row.new_companies || 0), 0);
+      setSyncMessage(added ? `${added} new email${added === 1 ? "" : "s"} · ${contacts} contacts · ${companies} companies` : "Mail is up to date");
+      await Promise.all([loadAccounts(), loadCounts(), loadThreads()]);
+    } catch {
+      setSyncMessage("Email sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function addManualEmail() {
+    if (!canManage || !manualFrom.trim() || !manualTo.trim() || !manualBody.trim()) return;
+    setManualSaving(true);
+    try {
+      const response = await fetch("/api/emails/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          direction: manualDirection,
+          from: manualFrom.trim(),
+          to: manualTo.trim(),
+          subject: manualSubject.trim(),
+          body: manualBody.replace(/[—–]/g, "-"),
+          contact_name: manualName.trim() || undefined,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setSyncMessage(data?.error || "Could not add manual email");
+        return;
+      }
+      setManualOpen(false);
+      setManualFrom(""); setManualTo(""); setManualSubject(""); setManualBody(""); setManualName("");
+      await Promise.all([loadAccounts(), loadCounts(), loadThreads()]);
+      router.push("/emails/" + data.thread_id);
+    } finally {
+      setManualSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -225,17 +292,17 @@ export default function EmailsPage() {
         title="Email"
         desc="Search, filter and sort every conversation across all connected mailboxes."
         actions={
-          <Btn
-            variant="outline"
-            size="sm"
-            onClick={() => { loadAccounts(); loadCounts(); loadThreads(); }}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Btn>
+          <div className="flex flex-wrap gap-2">
+            {canManage ? <Btn variant="outline" size="sm" onClick={() => setManualOpen(true)}><Plus className="h-4 w-4" /> Manual email</Btn> : null}
+            {canManage ? <Btn variant="primary" size="sm" onClick={syncMail} disabled={syncing}><RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />{syncing ? "Syncing…" : "Sync mail"}</Btn> : null}
+            <Btn variant="outline" size="sm" onClick={() => { loadAccounts(); loadCounts(); loadThreads(); }} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh view
+            </Btn>
+          </div>
         }
       />
+
+      {syncMessage ? <div className="rounded-xl border border-border bg-surface px-4 py-3 text-sm text-muted-foreground">{syncMessage}</div> : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         {CATEGORIES.map((item, index) => {
@@ -423,6 +490,25 @@ export default function EmailsPage() {
           </div>
         </div>
       </Panel>
+      {manualOpen ? (
+        <div className="fixed inset-0 z-80 grid place-items-center bg-black/45 p-4" onClick={() => setManualOpen(false)}>
+          <div className="w-full max-w-2xl rounded-2xl border border-border bg-popover shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div><p className="label-tag text-primary">Manual source</p><h2 className="mt-1 text-lg font-semibold">Add email to CRM</h2><p className="mt-1 text-xs text-muted-foreground">This uses the same contact, company and thread logic as MCP email.</p></div>
+              <button type="button" onClick={() => setManualOpen(false)} className="grid h-9 w-9 place-items-center rounded-xl hover:bg-surface-raised"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="grid gap-4 p-5 sm:grid-cols-2">
+              <Field label="Direction"><DropdownSelect value={manualDirection} onChange={setManualDirection} ariaLabel="Email direction" placeholder="Direction" options={[{ value: "inbound", label: "Inbound" }, { value: "outbound", label: "Outbound" }]} /></Field>
+              <Field label="Contact name"><Input value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder="Optional" /></Field>
+              <Field label="From"><Input type="email" value={manualFrom} onChange={(e) => setManualFrom(e.target.value)} placeholder="sender@company.com" /></Field>
+              <Field label="To"><Input type="email" value={manualTo} onChange={(e) => setManualTo(e.target.value)} placeholder="recipient@company.com" /></Field>
+              <div className="sm:col-span-2"><Field label="Subject"><Input value={manualSubject} onChange={(e) => setManualSubject(e.target.value)} /></Field></div>
+              <div className="sm:col-span-2"><Field label="Message"><textarea value={manualBody} onChange={(e) => setManualBody(e.target.value.replace(/[—–]/g, "-"))} rows={10} className="w-full rounded-xl border border-border bg-input px-3 py-3 text-sm leading-6 outline-none focus:border-primary/60" /></Field></div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-border px-5 py-4"><Btn onClick={() => setManualOpen(false)}>Cancel</Btn><Btn variant="primary" onClick={addManualEmail} disabled={manualSaving || !manualFrom.trim() || !manualTo.trim() || !manualBody.trim()}>{manualSaving ? "Saving…" : "Add email"}</Btn></div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
