@@ -44,7 +44,19 @@ export async function rawMcpRequest(
   const contentType = response.headers.get("content-type") || "";
   let payload: any = null;
   if (text) {
-    payload = contentType.includes("text/event-stream") ? parseSse(text) : JSON.parse(text);
+    if (contentType.includes("text/event-stream")) {
+      try {
+        payload = parseSse(text);
+      } catch {
+        payload = null;
+      }
+    } else {
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+    }
   }
 
   return {
@@ -158,10 +170,38 @@ export async function discoverOAuth(serverUrl: string) {
 
   if (!authorizationServer) throw new Error("MCP OAuth metadata did not specify an authorization server");
 
-  const authMetadataUrl = `${String(authorizationServer).replace(/\/$/, "")}/.well-known/oauth-authorization-server`;
-  const authResponse = await fetch(authMetadataUrl, { cache: "no-store" });
-  if (!authResponse.ok) throw new Error("Could not read MCP authorization-server metadata");
-  const authMetadata = await authResponse.json();
+  const issuer = String(authorizationServer).replace(/\/$/, "");
+  const issuerUrl = new URL(issuer);
+  const metadataCandidates = [
+    `${issuer}/.well-known/oauth-authorization-server`,
+    `${issuerUrl.origin}/.well-known/oauth-authorization-server${issuerUrl.pathname === "/" ? "" : issuerUrl.pathname}`,
+    `${issuer}/.well-known/openid-configuration`,
+    `${issuerUrl.origin}/.well-known/openid-configuration${issuerUrl.pathname === "/" ? "" : issuerUrl.pathname}`,
+  ];
+
+  let authMetadata: any = null;
+  let metadataError = "";
+  for (const candidate of [...new Set(metadataCandidates)]) {
+    try {
+      const authResponse = await fetch(candidate, { cache: "no-store" });
+      if (!authResponse.ok) {
+        metadataError = `${candidate} returned ${authResponse.status}`;
+        continue;
+      }
+      const candidateMetadata = await authResponse.json();
+      if (candidateMetadata?.authorization_endpoint && candidateMetadata?.token_endpoint) {
+        authMetadata = candidateMetadata;
+        break;
+      }
+      metadataError = `${candidate} did not include OAuth endpoints`;
+    } catch (error) {
+      metadataError = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  if (!authMetadata) {
+    throw new Error(`Could not read MCP authorization-server metadata${metadataError ? ": " + metadataError : ""}`);
+  }
 
   return {
     authType: "oauth" as const,
