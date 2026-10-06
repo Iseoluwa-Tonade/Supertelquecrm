@@ -168,7 +168,7 @@ export default function InventoryPage() {
           <PanelHead title="Record stock movement" />
           <form onSubmit={addMovement} className="grid gap-3 p-4 md:grid-cols-4">
             <DropdownSelect value={moveItem} onChange={setMoveItem} ariaLabel="Inventory item" placeholder="Select item" options={[{ value: "", label: "Select item" }, ...items.map((i) => ({ value: i.id, label: `${i.sku} — ${i.name}` }))]} />
-            <DropdownSelect value={moveType} onChange={setMoveType} ariaLabel="Movement type" options={[{ value: "inbound", label: "Inbound" }, { value: "outbound", label: "Outbound" }, { value: "adjustment", label: "Adjustment (+/-)" }]} />
+            <DropdownSelect value={moveType} onChange={setMoveType} ariaLabel="Movement type" placeholder="Choose movement" options={[{ value: "inbound", label: "Inbound" }, { value: "outbound", label: "Outbound" }, { value: "adjustment", label: "Adjustment (+/-)" }]} />
             <Input type="number" step="0.01" value={moveQty} onChange={(e) => setMoveQty(e.target.value)} placeholder="Quantity" required />
             <Input value={moveRef} onChange={(e) => setMoveRef(e.target.value)} placeholder="Reference (optional)" />
             <div className="md:col-span-4 flex justify-end"><Btn type="submit" variant="primary">Save movement</Btn></div>
