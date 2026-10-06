@@ -151,7 +151,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
               <p className="label-tag mb-2 px-2 text-crm-sidebar-muted/80">{section.group}</p>
               <ul className="space-y-0.5">
                 {section.items.map((item) => {
-                  const active = pathname === item.to || pathname === item.to + "/";
+                  const active = pathname === item.to || pathname.startsWith(item.to + "/");
                   return (
                     <li key={item.to}>
                       <Link
@@ -227,7 +227,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
                     <p className="label-tag mb-2 px-2 text-crm-sidebar-muted/80">{section.group}</p>
                     <ul className="space-y-0.5">
                       {section.items.map((item) => {
-                        const active = pathname === item.to || pathname === item.to + "/";
+                        const active = pathname === item.to || pathname.startsWith(item.to + "/");
                         return (
                           <li key={item.to}>
                             <Link
