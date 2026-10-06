@@ -146,22 +146,53 @@ export async function POST(request: NextRequest) {
     const scopes = discovery.resourceMetadata?.scopes_supported || metadata.scopes_supported || ["mcp"];
     const scope = Array.isArray(scopes) ? scopes.join(" ") : String(scopes || "mcp");
 
-    const registration = await fetch(registrationEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_name: "Supertelque CRM",
-        redirect_uris: [redirectUri],
-        grant_types: ["authorization_code", "refresh_token"],
-        token_endpoint_auth_method: "client_secret_basic",
-        scope,
-      }),
-      cache: "no-store",
-    });
+    async function registerClient(tokenEndpointAuthMethod: "none" | "client_secret_basic") {
+      const response = await fetch(registrationEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_name: "Supertelque CRM",
+          redirect_uris: [redirectUri],
+          grant_types: ["authorization_code", "refresh_token"],
+          response_types: ["code"],
+          token_endpoint_auth_method: tokenEndpointAuthMethod,
+          scope,
+        }),
+        cache: "no-store",
+      });
+      let payload: any = {};
+      try { payload = await response.json(); } catch {}
+      return { response, payload };
+    }
 
-    const registered = await registration.json();
+    let registrationAttempt = await registerClient("none");
+    if (!registrationAttempt.response.ok || !registrationAttempt.payload?.client_id) {
+      registrationAttempt = await registerClient("client_secret_basic");
+    }
+
+    const registration = registrationAttempt.response;
+    const registered = registrationAttempt.payload;
     if (!registration.ok || !registered.client_id) {
-      throw new Error(registered.error_description || registered.error || "MCP OAuth client registration failed");
+      // Some Zoho MCP URLs already carry their secure API key and can be used
+      // directly without a second client registration.
+      try {
+        const listed = await listRemoteTools(serverUrl, null);
+        await supabase.from("crm_mcp_connections").update({
+          auth_type: "none",
+          status: "connected",
+          tools_cache: listed.tools,
+          last_connected_at: new Date().toISOString(),
+          last_error: null,
+          updated_at: new Date().toISOString(),
+        }).eq("id", connection.id);
+        return NextResponse.json({ connected: true, connection_id: connection.id, tools: listed.tools });
+      } catch {}
+
+      throw new Error(
+        registered?.error_description ||
+        registered?.error ||
+        "MCP OAuth client registration failed. Confirm the Zoho MCP URL is copied exactly from Zoho MCP Console and that the server is enabled."
+      );
     }
 
     const pkce = await createPkcePair();
