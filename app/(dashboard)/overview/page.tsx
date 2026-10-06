@@ -3,10 +3,11 @@
 import { useApp } from "@/lib/AppContext";
 import { money, label, dateLabel, daysUntil, dueLabel, statusTitle, statusColor, formatCompact, todayIso } from "@/lib/utils";
 import { Panel, PanelHead, PageHeader, Tag, Avatar, Btn } from "@/components/kit.launchpad";
-import { ArrowUpRight, Sparkles, TrendingUp, Clock, CheckCircle2, Calendar, Activity, Filter, Mail, MessageSquare, FolderKanban, ListTodo, Users, FileText, ReceiptText, Landmark, ShieldCheck, FileBarChart, Settings, Building2, Contact, Plug } from "lucide-react";
+import { ArrowUpRight, ArrowRight, Sparkles, TrendingUp, Clock, CheckCircle2, Calendar, Activity, Filter, Mail, MessageSquare, FolderKanban, ListTodo, Users, FileText, ReceiptText, Landmark, ShieldCheck, FileBarChart, Settings, Building2, Contact, Plug } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { canSeeView } from "@/lib/access";
 
 const priorityColor: Record<string, string> = {
   high: "var(--color-crm-rose)",
@@ -76,31 +77,124 @@ export default function OverviewPage() {
 
   const winRate = deals.length > 0 ? Math.round((wonDeals.length / deals.length) * 100) : 0;
 
-  const workspaceModules = [
-    { href: "/emails", label: "Email", value: emailThreadCount + " threads", icon: Mail },
-    { href: "/messages", label: "Messages", value: unreadMessages + " unread", icon: MessageSquare },
-    { href: "/notifications", label: "Notifications", value: notifications.filter((n) => !n.read_at).length + " unread", icon: Calendar },
-    { href: "/pipeline", label: "Pipeline", value: deals.length + " deals", icon: TrendingUp },
-    { href: "/sales", label: "Sales", value: wonDeals.length + " won", icon: TrendingUp },
-    { href: "/clients", label: "Companies", value: companyCount + " companies", icon: Building2 },
-    { href: "/contacts", label: "Contacts", value: contactCount + " contacts", icon: Contact },
-    { href: "/pricing", label: "Pricing", value: services.length + " services", icon: Sparkles },
-    { href: "/projects", label: "Projects", value: projects.length + " projects", icon: FolderKanban },
-    { href: "/tasks", label: "Tasks", value: tasks.length + " tasks", icon: ListTodo },
-    { href: "/my-tasks", label: "My Tasks", value: tasks.filter((t) => t.assigned_to === profile?.user_id).length + " assigned", icon: CheckCircle2 },
-    { href: "/focus", label: "Focus", value: (overdue + dueSoon) + " attention", icon: Clock },
-    { href: "/activity", label: "Activity", value: activities.length + " events", icon: Activity },
-    { href: "/documents", label: "Documents", value: documents.length + " files", icon: FileText },
-    { href: "/inventory", label: "Inventory", value: inventoryCount + " items", icon: FolderKanban },
-    { href: "/invoicing", label: "Invoicing", value: invoiceCount + " invoices", icon: ReceiptText },
-    { href: "/accounting", label: "Accounting", value: financeEntryCount + " entries", icon: Landmark },
-    { href: "/approvals", label: "Approvals", value: pendingApprovals + " pending", icon: ShieldCheck },
-    { href: "/reports", label: "Reports", value: reportCount + " reports", icon: FileBarChart },
-    { href: "/team", label: "Team", value: teamProfiles.length + " members", icon: Users },
-    { href: "/connections", label: "Connections", value: emailAccountCount + " mailboxes", icon: Plug },
-    { href: "/profile", label: "Profile", value: profile?.display_name || "Account", icon: Users },
-    { href: "/settings", label: "Settings", value: organisation?.name || "Workspace", icon: Settings },
-  ];
+  const unreadNotifications = notifications.filter((n) => !n.read_at).length;
+  const visible = (id: string) => canSeeView(profile, organisation, id);
+
+  const moduleGroups = [
+    {
+      title: "Command center",
+      description: "What needs attention now",
+      modules: [
+        { id: "focus", href: "/focus", label: "Focus board", value: (overdue + dueSoon) + " attention", icon: Clock },
+        { id: "activity", href: "/activity", label: "Activity log", value: activities.length + " events", icon: Activity },
+        { id: "notifications", href: "/notifications", label: "Notifications", value: unreadNotifications + " unread", icon: Calendar },
+      ],
+    },
+    {
+      title: "CRM & communication",
+      description: "Who you are working with and every conversation",
+      modules: [
+        { id: "clients", href: "/clients", label: "Companies", value: companyCount + " companies", icon: Building2 },
+        { id: "contacts", href: "/contacts", label: "Contacts", value: contactCount + " contacts", icon: Contact },
+        { id: "emails", href: "/emails", label: "Email", value: emailThreadCount + " threads", icon: Mail },
+        { id: "messages", href: "/messages", label: "Messages", value: unreadMessages + " unread", icon: MessageSquare },
+      ],
+    },
+    {
+      title: "Revenue",
+      description: "Turn relationships and conversations into revenue",
+      modules: [
+        { id: "pipeline", href: "/pipeline", label: "Pipeline", value: deals.length + " deals", icon: TrendingUp },
+        { id: "sales", href: "/sales", label: "Sales", value: wonDeals.length + " won", icon: TrendingUp },
+        { id: "pricing", href: "/pricing", label: "Pricing", value: services.length + " services", icon: Sparkles },
+      ],
+    },
+    {
+      title: "Delivery",
+      description: "Move won work into execution",
+      modules: [
+        { id: "projects", href: "/projects", label: "Projects", value: projects.length + " projects", icon: FolderKanban },
+        { id: "tasks", href: "/tasks", label: "Task scheduling", value: tasks.length + " tasks", icon: ListTodo },
+        { id: "my-tasks", href: "/my-tasks", label: "My tasks", value: tasks.filter((t) => t.assigned_to === profile?.user_id).length + " assigned", icon: CheckCircle2 },
+        { id: "documents", href: "/documents", label: "Documents", value: documents.length + " files", icon: FileText },
+        { id: "inventory", href: "/inventory", label: "Inventory", value: inventoryCount + " items", icon: FolderKanban },
+      ],
+    },
+    {
+      title: "Finance & reporting",
+      description: "Bill, account for, and report on completed work",
+      modules: [
+        { id: "invoicing", href: "/invoicing", label: "Invoicing", value: invoiceCount + " invoices", icon: ReceiptText },
+        { id: "accounting", href: "/accounting", label: "Accounting", value: financeEntryCount + " entries", icon: Landmark },
+        { id: "reports", href: "/reports", label: "Reports", value: reportCount + " reports", icon: FileBarChart },
+      ],
+    },
+    {
+      title: "Workspace & automation",
+      description: "People, approvals, integrations, and administration",
+      modules: [
+        { id: "approvals", href: "/approvals", label: "Approvals", value: pendingApprovals + " pending", icon: ShieldCheck },
+        { id: "team", href: "/team", label: "Team & invites", value: teamProfiles.length + " members", icon: Users },
+        { id: "connections", href: "/connections", label: "Connections", value: emailAccountCount + " mailboxes", icon: Plug },
+        { id: "profile", href: "/profile", label: "My profile", value: profile?.display_name || "Account", icon: Users },
+        { id: "settings", href: "/settings", label: "Settings", value: organisation?.name || "Workspace", icon: Settings },
+      ],
+    },
+  ].map((group) => ({
+    ...group,
+    modules: group.modules.filter((module) => visible(module.id)),
+  })).filter((group) => group.modules.length > 0);
+
+  const workflowStages = [
+    {
+      id: "clients",
+      step: "01",
+      title: "Relationships",
+      detail: `${companyCount} companies · ${contactCount} contacts`,
+      href: "/clients",
+      icon: Building2,
+    },
+    {
+      id: "emails",
+      step: "02",
+      title: "Communicate",
+      detail: `${emailThreadCount} email threads · ${unreadMessages} unread messages`,
+      href: "/emails",
+      icon: Mail,
+    },
+    {
+      id: "pipeline",
+      step: "03",
+      title: "Revenue",
+      detail: `${activeDeals.length} active deals · ${money(openValue)} pipeline`,
+      href: "/pipeline",
+      icon: TrendingUp,
+    },
+    {
+      id: "projects",
+      step: "04",
+      title: "Deliver",
+      detail: `${projects.length} projects · ${tasks.length} tasks`,
+      href: "/projects",
+      icon: FolderKanban,
+    },
+    {
+      id: "invoicing",
+      step: "05",
+      title: "Bill & account",
+      detail: `${invoiceCount} invoices · ${financeEntryCount} ledger entries`,
+      href: "/invoicing",
+      icon: ReceiptText,
+    },
+    {
+      id: "reports",
+      step: "06",
+      title: "Review & improve",
+      detail: `${reportCount} reports · ${pendingApprovals} approvals`,
+      href: "/reports",
+      icon: FileBarChart,
+    },
+  ].filter((stage) => visible(stage.id));
 
   const stats = [
     { label: "Pipeline value", value: money(openValue), delta: `${activeDeals.length} active deals`, sub: `Avg ${money(avgDealSize)}`, icon: TrendingUp, color: "text-primary" },
@@ -149,7 +243,7 @@ export default function OverviewPage() {
     <div className="space-y-6">
       <PageHeader variant="overview"
         eyebrow="SuperTelque CRM"
-        title="Operations dashboard"
+        title="Business command center"
 actions={
           <>
             <Link href="/pipeline" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-surface-raised">
@@ -160,23 +254,67 @@ actions={
       />
 
       <Panel>
-        <PanelHead title="Workspace" hint="Every CRM module from one control center" />
-        <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {workspaceModules.map((module) => (
-            <Link
-              key={module.href}
-              href={module.href}
-              className="group rounded-xl border border-border bg-surface p-3 transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
-                  <module.icon className="h-4 w-4" />
-                </span>
-                <ArrowUpRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+        <PanelHead
+          title="Operating flow"
+          hint="One shared CRM record moves through every stage"
+        />
+        <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-6">
+          {workflowStages.map((stage, index) => (
+            <div key={stage.step} className="relative">
+              <Link
+                href={stage.href}
+                className="group block h-full rounded-xl border border-border bg-surface p-4 transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold tracking-[.16em] text-muted-foreground">{stage.step}</span>
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <stage.icon className="h-4 w-4" />
+                  </span>
+                </div>
+                <p className="mt-4 text-sm font-semibold text-foreground">{stage.title}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{stage.detail}</p>
+              </Link>
+              {index < workflowStages.length - 1 ? (
+                <ArrowRight className="absolute -right-2.5 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 rounded-full bg-background p-1 text-muted-foreground xl:block" />
+              ) : null}
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+          Companies and contacts connect to conversations; conversations connect to deals; won deals move into delivery; delivery connects to invoices, accounting, and reporting.
+        </div>
+      </Panel>
+
+      <Panel>
+        <PanelHead title="Workspace" hint="Modules grouped by the work they support" />
+        <div className="space-y-6 p-4">
+          {moduleGroups.map((group) => (
+            <section key={group.title}>
+              <div className="mb-3 flex items-end justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{group.description}</p>
+                </div>
               </div>
-              <p className="mt-3 text-sm font-semibold text-foreground">{module.label}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{module.value}</p>
-            </Link>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                {group.modules.map((module) => (
+                  <Link
+                    key={module.href}
+                    href={module.href}
+                    className="group rounded-xl border border-border bg-surface p-3 transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                        <module.icon className="h-4 w-4" />
+                      </span>
+                      <ArrowUpRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                    </div>
+                    <p className="mt-3 text-sm font-semibold text-foreground">{module.label}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{module.value}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       </Panel>

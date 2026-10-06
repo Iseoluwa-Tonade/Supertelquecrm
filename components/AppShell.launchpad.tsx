@@ -46,21 +46,27 @@ type NavItem = {
 
 const NAV: { group: string; items: NavItem[] }[] = [
   {
-    group: "Overview",
+    group: "Command center",
     items: [
       { to: "/overview", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/focus", label: "Focus board", icon: Activity },
       { to: "/activity", label: "Activity log", icon: Activity },
       { to: "/notifications", label: "Notifications", icon: Bell },
-      { to: "/messages", label: "Messages", icon: MessageSquare },
-      { to: "/emails", label: "Email", icon: Mail },
-      { to: "/connections", label: "Connections", icon: Plug },
     ],
-  },  {
+  },
+  {
+    group: "CRM & communication",
+    items: [
+      { to: "/clients", label: "Companies", icon: Building2 },
+      { to: "/contacts", label: "Contacts", icon: Contact },
+      { to: "/emails", label: "Email", icon: Mail },
+      { to: "/messages", label: "Messages", icon: MessageSquare },
+    ],
+  },
+  {
     group: "Revenue",
     items: [
       { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
-      { to: "/clients", label: "Companies", icon: Building2 },
-      { to: "/contacts", label: "Contacts", icon: Contact },
       { to: "/sales", label: "Sales", icon: TrendingUp },
       { to: "/pricing", label: "Pricing", icon: Calculator },
     ],
@@ -71,24 +77,24 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: "/projects", label: "Projects", icon: FolderKanban },
       { to: "/tasks", label: "Task scheduling", icon: CalendarClock },
       { to: "/my-tasks", label: "My tasks", icon: CheckSquare },
-      { to: "/focus", label: "Focus board", icon: Activity },
       { to: "/documents", label: "Documents", icon: Files },
       { to: "/inventory", label: "Inventory", icon: Boxes },
     ],
   },
   {
-    group: "Finance",
+    group: "Finance & reporting",
     items: [
       { to: "/invoicing", label: "Invoicing", icon: ReceiptText },
       { to: "/accounting", label: "Accounting", icon: Landmark },
+      { to: "/reports", label: "Reports", icon: FileBarChart },
     ],
   },
   {
-    group: "Operations",
+    group: "Workspace & automation",
     items: [
       { to: "/approvals", label: "Approvals", icon: ShieldCheck },
-      { to: "/reports", label: "Reports", icon: FileBarChart },
       { to: "/team", label: "Team & invites", icon: Users },
+      { to: "/connections", label: "Connections", icon: Plug },
       { to: "/profile", label: "My profile", icon: Users },
       { to: "/settings", label: "Settings", icon: Settings },
     ],
@@ -278,7 +284,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
           <div className="relative hidden w-full max-w-sm items-center sm:flex">
             <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
             <input
-              placeholder="Search deals, clients, files…"
+              placeholder="Search CRM, email, deals, projects…"
               className="h-10 w-full rounded-xl border border-border bg-input pl-9 pr-14 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary/50"
             />
             <kbd className="num absolute right-2 rounded-full border border-border-strong bg-surface-raised px-1.5 py-0.5 text-[10px] text-muted-foreground">⌘K</kbd>

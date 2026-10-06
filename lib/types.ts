@@ -172,29 +172,34 @@ export const PROJECT_COLUMNS: Column[] = [
 export const ROLES = ["admin", "manager", "owner", "viewer"] as const;
 
 export const NAV_VIEWS = [
-  { id: "overview", label: "Overview" },
-  { id: "activity", label: "Activity" },
+  { id: "overview", label: "Dashboard" },
+  { id: "focus", label: "Focus board" },
+  { id: "activity", label: "Activity log" },
   { id: "notifications", label: "Notifications" },
-  { id: "messages", label: "Messages" },
-  { id: "emails", label: "Email" },
-  { id: "connections", label: "Connections" },
-  { id: "pipeline", label: "Pipeline" },
-  { id: "clients", label: "Clients" },
+
+  { id: "clients", label: "Companies" },
   { id: "contacts", label: "Contacts" },
+  { id: "emails", label: "Email" },
+  { id: "messages", label: "Messages" },
+
+  { id: "pipeline", label: "Pipeline" },
   { id: "sales", label: "Sales" },
   { id: "pricing", label: "Pricing" },
+
   { id: "projects", label: "Projects" },
   { id: "tasks", label: "Task scheduling" },
   { id: "my-tasks", label: "My tasks" },
-  { id: "focus", label: "Focus" },
   { id: "documents", label: "Documents" },
   { id: "inventory", label: "Inventory" },
+
   { id: "invoicing", label: "Invoicing" },
   { id: "accounting", label: "Accounting" },
-  { id: "approvals", label: "Approvals" },
   { id: "reports", label: "Reports" },
-  { id: "team", label: "Team" },
-  { id: "profile", label: "My Profile" },
+
+  { id: "approvals", label: "Approvals" },
+  { id: "team", label: "Team & invites" },
+  { id: "connections", label: "Connections" },
+  { id: "profile", label: "My profile" },
   { id: "settings", label: "Settings" },
 ] as const;
 
