@@ -11,7 +11,7 @@ import { Panel, PanelHead, PageHeader, Tag, Btn, Avatar, DropdownSelect } from "
 const supabase = createClient();
 
 export default function MessagesPage() {
-  const { session, profile, messages, teamProfiles, messageThreadWith, messageThreadEmail,
+  const { session, profile, organisation, messages, teamProfiles, messageThreadWith, messageThreadEmail,
     setMessageThreadWith, setMessageThreadEmail, loadMessages, loadTeamProfiles } = useApp();
   const { flash } = useToast();
   const [composeOpen, setComposeOpen] = useState(false);
@@ -45,6 +45,7 @@ export default function MessagesPage() {
   const sendMessage = useCallback(async (recipientId: string, recipientEmail: string, body: string) => {
     if (!session) return;
     const { error } = await supabase.from("crm_messages").insert({
+      organisation_id: organisation?.id || null,
       sender_id: session.user.id,
       sender_email: session.user.email || "",
       recipient_id: recipientId,
@@ -56,7 +57,7 @@ export default function MessagesPage() {
     setReplyBody("");
     setNewBody("");
     setComposeOpen(false);
-  }, [session, loadMessages, flash]);
+  }, [session, organisation?.id, loadMessages, flash]);
 
   const markRead = useCallback(async (counterpartId: string) => {
     if (!myId) return;
@@ -123,11 +124,14 @@ export default function MessagesPage() {
               const unread = thread.messages.filter((msg) => msg.recipient_id === myId && !msg.read_at).length;
               return (
                 <button key={thread.id} onClick={() => { setMessageThreadWith(thread.id); setMessageThreadEmail(thread.email); setComposeOpen(false); markRead(thread.id); }}
-                  className={`w-full flex items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-raised ${messageThreadWith === thread.id ? "bg-primary/5" : ""}`}>
+                  title={last?.body || "No message content"}
+                  className={`group w-full flex items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-raised ${messageThreadWith === thread.id ? "bg-primary/5" : ""}`}>
                   <Avatar initials={(thread.email || "T").slice(0, 2).toUpperCase()} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground">{thread.email || "Team member"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{(last?.body || "").slice(0, 60)}</p>
+                    <p className="line-clamp-1 text-xs text-muted-foreground transition-all group-hover:line-clamp-4 group-hover:whitespace-pre-wrap">
+                      {last?.body || "No message content"}
+                    </p>
                   </div>
                   {unread > 0 && (
                     <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-warning px-1.5 text-[11px] font-bold text-warning-foreground">
