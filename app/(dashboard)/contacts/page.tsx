@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowDownAZ, ArrowUpAZ, Columns3, Mail, Phone, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { useApp } from "@/lib/AppContext";
@@ -47,6 +48,7 @@ function fmt(value?: string | null) {
 
 export default function ContactsPage() {
   const { profile, organisation } = useApp();
+  const searchParams = useSearchParams();
   const { flash } = useToast();
   const canManage = profile?.role === "admin" || profile?.role === "manager";
 
@@ -68,6 +70,11 @@ export default function ContactsPage() {
   const [phone, setPhone] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [companyId, setCompanyId] = useState("");
+
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    if (q) setQuery(q);
+  }, [searchParams]);
 
   useEffect(() => {
     try {
