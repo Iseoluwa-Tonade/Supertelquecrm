@@ -3,7 +3,7 @@
 import { useApp } from "@/lib/AppContext";
 import { money, label, dateLabel, daysUntil, dueLabel, statusTitle, statusColor, formatCompact, todayIso } from "@/lib/utils";
 import { Panel, PanelHead, PageHeader, Tag, Avatar, Btn } from "@/components/kit.launchpad";
-import { ArrowUpRight, Sparkles, TrendingUp, Clock, CheckCircle2, Calendar, Activity, Filter } from "lucide-react";
+import { ArrowUpRight, Sparkles, TrendingUp, Clock, CheckCircle2, Calendar, Activity, Filter, Mail, MessageSquare, FolderKanban, ListTodo, Users, FileText, ReceiptText, Landmark, ShieldCheck, FileBarChart, Settings, Building2, Contact } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -14,7 +14,12 @@ const priorityColor: Record<string, string> = {
 };
 
 export default function OverviewPage() {
-  const { items, activities, documents, messages, changeRequests, profile } = useApp();
+  const { items, activities, documents, messages, changeRequests, profile, teamProfiles } = useApp();
+  const deals = items.filter((item) => item.type === "deal");
+  const projects = items.filter((item) => item.type === "project");
+  const tasks = items.filter((item) => item.type === "task");
+  const clientCount = new Set(items.map((item) => item.company).filter(Boolean)).size;
+
   const role = profile?.role || "viewer";
   const isManager = role === "manager" || role === "admin";
   const [pipelineView, setPipelineView] = useState<"bar" | "pie">("bar");
@@ -35,6 +40,24 @@ export default function OverviewPage() {
   const myDeals = activeItems.filter((item) => item.assigned_to === profile?.user_id);
 
   const winRate = items.length > 0 ? Math.round((closedItems.length / items.length) * 100) : 0;
+
+  const workspaceModules = [
+    { href: "/emails", label: "Zoho Email", value: "3,419 threads", icon: Mail },
+    { href: "/messages", label: "Messages", value: unreadMessages + " unread", icon: MessageSquare },
+    { href: "/pipeline", label: "Pipeline", value: deals.length + " deals", icon: TrendingUp },
+    { href: "/clients", label: "Clients", value: clientCount + " accounts", icon: Building2 },
+    { href: "/contacts", label: "Contacts", value: teamProfiles.length + " visible", icon: Contact },
+    { href: "/projects", label: "Projects", value: projects.length + " projects", icon: FolderKanban },
+    { href: "/tasks", label: "Tasks", value: tasks.length + " tasks", icon: ListTodo },
+    { href: "/activity", label: "Activity", value: activities.length + " events", icon: Activity },
+    { href: "/documents", label: "Documents", value: documents.length + " files", icon: FileText },
+    { href: "/approvals", label: "Approvals", value: pendingApprovals + " pending", icon: ShieldCheck },
+    { href: "/invoicing", label: "Invoicing", value: deals.length + " source deals", icon: ReceiptText },
+    { href: "/accounting", label: "Accounting", value: "Finance", icon: Landmark },
+    { href: "/reports", label: "Reports", value: items.length + " records", icon: FileBarChart },
+    { href: "/team", label: "Team", value: teamProfiles.length + " members", icon: Users },
+    { href: "/settings", label: "Settings", value: "Configure", icon: Settings },
+  ];
 
   const stats = [
     { label: "Pipeline value", value: money(openValue), delta: `${activeItems.length} active deals`, sub: `Avg ${money(avgDealSize)}`, icon: TrendingUp, color: "text-primary" },
@@ -92,6 +115,28 @@ actions={
           </>
         }
       />
+
+      <Panel>
+        <PanelHead title="Workspace" hint="Every CRM module from one control center" />
+        <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {workspaceModules.map((module) => (
+            <Link
+              key={module.href}
+              href={module.href}
+              className="group rounded-xl border border-border bg-surface p-3 transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <module.icon className="h-4 w-4" />
+                </span>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-foreground">{module.label}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{module.value}</p>
+            </Link>
+          ))}
+        </div>
+      </Panel>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((s) => (
