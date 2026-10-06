@@ -102,7 +102,6 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
         status: colId,
         notes: "",
         owner,
-        priority: "medium",
       });
       if (error) { flash(error.message); return; }
       await loadRemoteItems();
