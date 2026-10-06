@@ -48,7 +48,7 @@ function fmt(value?: string | null) {
 export default function ContactsPage() {
   const { profile, organisation } = useApp();
   const { flash } = useToast();
-  const canManage = profile?.role === "admin" || profile?.role === "manager";
+  const canManage = profile?.role === "admin" || profile?.role === "manager" || profile?.role === "owner";
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);

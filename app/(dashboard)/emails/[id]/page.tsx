@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Paperclip, Send, Inbox, TrendingUp, Sparkles, MailPlus, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft, CheckCircle2, ExternalLink, Inbox, Lightbulb, MailPlus, Paperclip,
+  Pencil, Save, Send, Sparkles, TrendingUp,
+} from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/AppContext";
@@ -19,9 +22,9 @@ type Thread = {
   message_count: number;
   board_item_id: string | null;
 };
-
 type ThreadAi = {
   summary: string | null;
+  insight: string | null;
   next_action: string | null;
   needs_reply: boolean;
   suggested_to: string | null;
@@ -33,7 +36,6 @@ type ThreadAi = {
   error: string | null;
   analyzed_at: string | null;
 };
-
 type EmailRow = {
   id: string;
   direction: "inbound" | "outbound" | "system";
@@ -52,12 +54,12 @@ type EmailRow = {
 function fmt(value?: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleString([], {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+    year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
   });
+}
+
+function cleanDraft(value: string) {
+  return value.replace(/[—–]/g, "-").replace(/\n{3,}/g, "\n\n");
 }
 
 export default function EmailThreadPage() {
@@ -67,68 +69,115 @@ export default function EmailThreadPage() {
   const { flash } = useToast();
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const canManage = profile?.role === "admin" || profile?.role === "manager";
+  const canEditAi = canManage || profile?.role === "owner";
+
   const [thread, setThread] = useState<Thread | null>(null);
   const [messages, setMessages] = useState<EmailRow[]>([]);
   const [ai, setAi] = useState<ThreadAi | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingDraft, setEditingDraft] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [openingZoho, setOpeningZoho] = useState(false);
+  const [draftTo, setDraftTo] = useState("");
+  const [draftSubject, setDraftSubject] = useState("");
+  const [draftBody, setDraftBody] = useState("");
 
-  useEffect(() => {
+  async function loadThread() {
     if (!id) return;
-    let cancelled = false;
+    setLoading(true);
+    const [threadRes, messageRes, aiRes] = await Promise.all([
+      supabase.from("crm_email_threads")
+        .select("id,subject,last_message_at,message_count,board_item_id")
+        .eq("id", id).maybeSingle(),
+      supabase.from("crm_emails")
+        .select("id,direction,from_address,from_name,to_addresses,subject,summary,body_text,received_at,sent_at,folder_name,has_attachments")
+        .eq("thread_id", id)
+        .order("received_at", { ascending: true, nullsFirst: false })
+        .order("sent_at", { ascending: true, nullsFirst: false }),
+      supabase.from("crm_email_thread_ai")
+        .select("summary,insight,next_action,needs_reply,suggested_to,suggested_subject,suggested_body,rationale,model,status,error,analyzed_at")
+        .eq("thread_id", id).maybeSingle(),
+    ]);
 
-    (async () => {
-      setLoading(true);
-      const [threadRes, messageRes, aiRes] = await Promise.all([
-        supabase.from("crm_email_threads").select("id,subject,last_message_at,message_count,board_item_id").eq("id", id).maybeSingle(),
-        supabase
-          .from("crm_emails")
-          .select("id,direction,from_address,from_name,to_addresses,subject,summary,body_text,received_at,sent_at,folder_name,has_attachments")
-          .eq("thread_id", id)
-          .order("received_at", { ascending: true, nullsFirst: false }),
-        supabase
-          .from("crm_email_thread_ai")
-          .select("summary,next_action,needs_reply,suggested_to,suggested_subject,suggested_body,rationale,model,status,error,analyzed_at")
-          .eq("thread_id", id)
-          .maybeSingle(),
-      ]);
+    let nextMessages = (messageRes.data || []) as EmailRow[];
+    if (nextMessages.some((message) => !message.body_text)) {
+      try {
+        const hydrate = await fetch(`/api/email-threads/${id}/hydrate`, { method: "POST" });
+        if (hydrate.ok) {
+          const refreshed = await supabase.from("crm_emails")
+            .select("id,direction,from_address,from_name,to_addresses,subject,summary,body_text,received_at,sent_at,folder_name,has_attachments")
+            .eq("thread_id", id)
+            .order("received_at", { ascending: true, nullsFirst: false })
+            .order("sent_at", { ascending: true, nullsFirst: false });
+          if (!refreshed.error) nextMessages = (refreshed.data || []) as EmailRow[];
+        }
+      } catch {}
+    }
 
-      let nextMessages = (messageRes.data || []) as EmailRow[];
+    const nextAi = (aiRes.data as ThreadAi | null) || null;
+    setThread((threadRes.data as Thread | null) || null);
+    setMessages(nextMessages);
+    setAi(nextAi);
+    setDraftTo(nextAi?.suggested_to || "");
+    setDraftSubject(nextAi?.suggested_subject || "");
+    setDraftBody(cleanDraft(nextAi?.suggested_body || ""));
+    setLoading(false);
+  }
 
-      if (nextMessages.some((message) => !message.body_text)) {
-        try {
-          const hydrate = await fetch(`/api/email-threads/${id}/hydrate`, { method: "POST" });
-          if (hydrate.ok) {
-            const refreshed = await supabase
-              .from("crm_emails")
-              .select("id,direction,from_address,from_name,to_addresses,subject,summary,body_text,received_at,sent_at,folder_name,has_attachments")
-              .eq("thread_id", id)
-              .order("received_at", { ascending: true, nullsFirst: false });
-            if (!refreshed.error) nextMessages = (refreshed.data || []) as EmailRow[];
-          }
-        } catch {}
+  useEffect(() => { loadThread(); }, [id]);
+
+  async function saveSuggestedEmail(silent = false) {
+    if (!id || !organisation?.id || !canEditAi || !ai) return false;
+    setSavingDraft(true);
+    const body = cleanDraft(draftBody).trim();
+    const { error } = await supabase.from("crm_email_thread_ai").update({
+      suggested_to: draftTo.trim().toLowerCase() || null,
+      suggested_subject: draftSubject.trim() || null,
+      suggested_body: body || null,
+      needs_reply: Boolean(body && draftTo.trim()),
+      updated_at: new Date().toISOString(),
+    }).eq("organisation_id", organisation.id).eq("thread_id", id);
+    setSavingDraft(false);
+    if (error) {
+      if (!silent) flash(error.message);
+      return false;
+    }
+    setAi({ ...ai, suggested_to: draftTo.trim() || null, suggested_subject: draftSubject.trim() || null, suggested_body: body || null, needs_reply: Boolean(body && draftTo.trim()) });
+    if (!silent) flash("Suggested email updated");
+    return true;
+  }
+
+  async function openInZoho() {
+    if (!id || !draftTo.trim() || !draftBody.trim()) return;
+    const popup = window.open("about:blank", "_blank");
+    setOpeningZoho(true);
+    try {
+      if (ai) await saveSuggestedEmail(true);
+      const response = await fetch(`/api/email-threads/${id}/zoho-draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: draftTo.trim(),
+          subject: draftSubject.trim() || thread?.subject || "",
+          content: cleanDraft(draftBody).trim(),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        popup?.close();
+        flash(data?.error || "Could not create Zoho draft");
+        return;
       }
-
-      if (!cancelled) {
-        setThread((threadRes.data as Thread | null) || null);
-        setMessages(nextMessages);
-        setAi((aiRes.data as ThreadAi | null) || null);
-        setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [id]);
-
-  function openSuggestedEmail() {
-    if (!ai?.suggested_to || !ai?.suggested_body) return;
-    const subject = ai.suggested_subject || thread?.subject || "";
-    const mailto = `mailto:${encodeURIComponent(ai.suggested_to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(ai.suggested_body)}`;
-    window.location.href = mailto;
+      if (popup) popup.location.href = data.open_url || "https://mail.zoho.com/";
+      else window.open(data.open_url || "https://mail.zoho.com/", "_blank", "noopener,noreferrer");
+      flash("Draft saved in Zoho Mail");
+    } finally {
+      setOpeningZoho(false);
+    }
   }
 
   async function createPipelineDeal() {
     if (!thread || !profile || !organisation?.id || !canManage) return;
-
     const firstInbound = messages.find((message) => message.direction === "inbound");
     const sender = firstInbound?.from_address || "";
     const domain = sender.includes("@") ? sender.split("@")[1] : "";
@@ -136,43 +185,34 @@ export default function EmailThreadPage() {
       ? domain.split(".")[0].replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
       : firstInbound?.from_name || "Email prospect";
 
-    const { data, error } = await supabase
-      .from("crm_board_items")
-      .insert({
-        organisation_id: organisation.id,
-        type: "deal",
-        title: thread.subject || "Email opportunity",
-        company,
-        owner: profile.display_name || profile.email || "Owner",
-        assigned_to: profile.user_id,
-        priority: "medium",
-        value: 0,
-        due: null,
-        status: "responded_email",
-        notes: "Created from Zoho email conversation",
-        visibility: "team",
-      })
-      .select("id")
-      .single();
+    const { data, error } = await supabase.from("crm_board_items").insert({
+      organisation_id: organisation.id,
+      user_id: profile.user_id,
+      type: "deal",
+      title: thread.subject || "Email opportunity",
+      company,
+      owner: profile.display_name || profile.email || "Owner",
+      assigned_to: profile.user_id,
+      priority: "medium",
+      value: 0,
+      due: null,
+      status: "responded_email",
+      notes: "Created from email conversation",
+      visibility: "team",
+    }).select("id").single();
 
-    if (error || !data?.id) {
-      flash(error?.message || "Could not create deal");
-      return;
-    }
-
-    const { error: linkError } = await supabase
-      .from("crm_email_threads")
-      .update({ board_item_id: data.id })
-      .eq("id", thread.id);
-
-    if (linkError) {
-      flash(linkError.message);
-      return;
-    }
-
+    if (error || !data?.id) return flash(error?.message || "Could not create deal");
+    const { error: linkError } = await supabase.from("crm_email_threads").update({ board_item_id: data.id }).eq("id", thread.id);
+    if (linkError) return flash(linkError.message);
     setThread({ ...thread, board_item_id: data.id });
     router.push("/pipeline/" + data.id);
   }
+
+  const intelligence = [
+    { title: "Summary", icon: Sparkles, value: ai?.summary || "No AI summary yet. Existing cached mail is not sent to AI. A new email will trigger analysis." },
+    { title: "AI insight", icon: Lightbulb, value: ai?.insight || "No new-email insight yet." },
+    { title: "Next action", icon: CheckCircle2, value: ai?.next_action || "No recommended action yet." },
+  ];
 
   return (
     <div className="space-y-6">
@@ -182,81 +222,77 @@ export default function EmailThreadPage() {
 
       <PageHeader
         variant="revenue"
-        eyebrow="Email"
+        eyebrow="Email conversation"
         title={thread?.subject || "Email conversation"}
-        desc={thread ? thread.message_count + " message" + (thread.message_count === 1 ? "" : "s") + " in this thread" : "Conversation"}
-        actions={
-          <div className="flex items-center gap-2">
-            {thread?.board_item_id ? (
-              <Btn size="sm" variant="outline" onClick={() => router.push("/pipeline/" + thread.board_item_id)}>
-                <TrendingUp className="h-4 w-4" /> Linked deal
-              </Btn>
-            ) : canManage ? (
-              <Btn size="sm" variant="primary" onClick={createPipelineDeal}>
-                <TrendingUp className="h-4 w-4" /> Create pipeline deal
-              </Btn>
-            ) : null}
-            <Tag tone="success">Threaded</Tag>
-          </div>
-        }
+        desc={thread ? `${thread.message_count} message${thread.message_count === 1 ? "" : "s"} in one thread` : "Conversation"}
+        actions={<div className="flex items-center gap-2">
+          {thread?.board_item_id ? (
+            <Btn size="sm" variant="outline" onClick={() => router.push("/pipeline/" + thread.board_item_id)}><TrendingUp className="h-4 w-4" /> Linked deal</Btn>
+          ) : canManage ? (
+            <Btn size="sm" variant="primary" onClick={createPipelineDeal}><TrendingUp className="h-4 w-4" /> Create deal</Btn>
+          ) : null}
+          <Tag tone="success">Threaded</Tag>
+        </div>}
       />
+
+      <div className="grid gap-3 xl:grid-cols-4">
+        {intelligence.map((item) => (
+          <div key={item.title} className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.12em] text-muted-foreground">
+              <item.icon className="h-4 w-4 text-primary" /> {item.title}
+            </div>
+            <p className="mt-3 line-clamp-5 whitespace-pre-wrap text-sm leading-6 text-foreground/85">{item.value}</p>
+          </div>
+        ))}
+
+        <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.12em] text-primary"><MailPlus className="h-4 w-4" /> Suggested email</div>
+            {ai?.status === "ready" ? <Tag tone="success">AI current</Tag> : <Tag tone="neutral">Waiting</Tag>}
+          </div>
+          {draftBody ? (
+            <>
+              <p className="mt-3 line-clamp-1 text-xs text-muted-foreground">To: {draftTo || "—"}</p>
+              <p className="mt-1 line-clamp-1 text-sm font-semibold">{draftSubject || thread?.subject || "(no subject)"}</p>
+              <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-5 text-muted-foreground">{draftBody}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {canEditAi ? <Btn size="sm" variant="outline" onClick={() => setEditingDraft((value) => !value)}><Pencil className="h-3.5 w-3.5" /> Edit</Btn> : null}
+                {canManage ? <Btn size="sm" variant="primary" onClick={openInZoho} disabled={openingZoho}><ExternalLink className="h-3.5 w-3.5" />{openingZoho ? "Creating draft…" : "Open in Zoho"}</Btn> : null}
+              </div>
+            </>
+          ) : <p className="mt-3 text-sm leading-6 text-muted-foreground">No reply is currently suggested.</p>}
+        </div>
+      </div>
+
+      {editingDraft ? (
+        <Panel>
+          <PanelHead title="Edit suggested email" hint="Saved edits are used when the Zoho draft is created" />
+          <div className="grid gap-4 p-4">
+            <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">To
+              <input value={draftTo} onChange={(e) => setDraftTo(e.target.value)} className="h-10 rounded-xl border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">Subject
+              <input value={draftSubject} onChange={(e) => setDraftSubject(e.target.value)} className="h-10 rounded-xl border border-border bg-input px-3 text-sm text-foreground outline-none focus:border-primary/60" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">Email body
+              <textarea value={draftBody} onChange={(e) => setDraftBody(cleanDraft(e.target.value))} rows={12} className="w-full rounded-xl border border-border bg-input px-3 py-3 font-sans text-sm leading-6 text-foreground outline-none focus:border-primary/60" />
+            </label>
+            <div className="flex justify-end gap-2">
+              <Btn onClick={() => setEditingDraft(false)}>Close</Btn>
+              <Btn variant="primary" onClick={() => saveSuggestedEmail(false)} disabled={savingDraft}><Save className="h-4 w-4" />{savingDraft ? "Saving…" : "Save draft"}</Btn>
+            </div>
+          </div>
+        </Panel>
+      ) : null}
 
       <Panel>
         <PanelHead
-          title="AI thread intelligence"
-          hint={ai?.analyzed_at ? "Updated " + fmt(ai.analyzed_at) : "Runs only after new email arrives"}
-          action={ai?.status === "ready" ? <Tag tone="success">Current</Tag> : ai?.status === "error" ? <Tag tone="danger">Needs attention</Tag> : <Tag tone="neutral">Waiting</Tag>}
+          title="Conversation"
+          hint={thread?.last_message_at ? "Last activity " + fmt(thread.last_message_at) : undefined}
+          action={ai?.analyzed_at ? <span className="text-xs text-muted-foreground">AI updated {fmt(ai.analyzed_at)}</span> : null}
         />
-        <div className="grid gap-4 p-4 lg:grid-cols-2">
-          <div className="rounded-xl border border-border bg-surface p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Thread summary
-            </div>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-              {ai?.summary || (ai?.error ? ai.error : "No AI analysis yet. Configure OpenAI in Settings; the next new email in this thread will trigger analysis.")}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-surface p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <CheckCircle2 className="h-4 w-4 text-primary" />
-              Next action
-            </div>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-              {ai?.next_action || "No suggested action yet."}
-            </p>
-            {ai?.rationale ? <p className="mt-3 text-xs leading-5 text-muted-foreground">{ai.rationale}</p> : null}
-          </div>
-
-          {ai?.needs_reply && ai.suggested_body ? (
-            <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 lg:col-span-2">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Suggested email</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    To: {ai.suggested_to || "—"} · Subject: {ai.suggested_subject || thread?.subject || "—"}
-                  </p>
-                </div>
-                <Btn variant="primary" size="sm" onClick={openSuggestedEmail}>
-                  <MailPlus className="h-4 w-4" />
-                  Open suggested email
-                </Btn>
-              </div>
-              <div className="mt-4 whitespace-pre-wrap rounded-xl border border-border bg-background p-4 text-sm leading-6">
-                {ai.suggested_body}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </Panel>
-
-      <Panel>
-        <PanelHead title="Conversation" hint={thread?.last_message_at ? "Last activity " + fmt(thread.last_message_at) : undefined} />
         <div className="space-y-4 p-4">
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading conversation…</p>
-          ) : messages.length === 0 ? (
+          {loading ? <p className="text-sm text-muted-foreground">Loading conversation…</p> : messages.length === 0 ? (
             <p className="text-sm text-muted-foreground">No messages are available in this thread.</p>
           ) : messages.map((message) => (
             <article key={message.id} className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
@@ -266,31 +302,14 @@ export default function EmailThreadPage() {
                     {message.direction === "outbound" ? <Send className="h-4 w-4" /> : <Inbox className="h-4 w-4" />}
                   </span>
                   <div>
-                    <p className="text-sm font-semibold">
-                      {message.from_name || message.from_address || (message.direction === "outbound" ? "You" : "Unknown sender")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      To: {(message.to_addresses || []).join(", ") || "—"}
-                    </p>
+                    <p className="text-sm font-semibold">{message.from_name || message.from_address || (message.direction === "outbound" ? "You" : "Unknown sender")}</p>
+                    <p className="text-xs text-muted-foreground">To: {(message.to_addresses || []).join(", ") || "—"}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">{fmt(message.received_at || message.sent_at)}</p>
-                  <Tag tone={message.direction === "outbound" ? "success" : "primary"} className="mt-1">
-                    {message.folder_name || message.direction}
-                  </Tag>
-                </div>
+                <div className="text-right"><p className="text-xs text-muted-foreground">{fmt(message.received_at || message.sent_at)}</p><Tag tone={message.direction === "outbound" ? "success" : "primary"} className="mt-1">{message.folder_name || message.direction}</Tag></div>
               </div>
-
-              <div className="mt-4 whitespace-pre-wrap text-sm leading-6 text-foreground/90">
-                {message.body_text || message.summary || "Loading the full message from Zoho MCP…"}
-              </div>
-
-              {message.has_attachments && (
-                <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-                  <Paperclip className="h-3.5 w-3.5" /> Attachment metadata available
-                </div>
-              )}
+              <div className="mt-4 whitespace-pre-wrap text-sm leading-6 text-foreground/90">{message.body_text || message.summary || "Full body will be fetched from Zoho MCP when available."}</div>
+              {message.has_attachments ? <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground"><Paperclip className="h-3.5 w-3.5" /> Attachment metadata available</div> : null}
             </article>
           ))}
         </div>

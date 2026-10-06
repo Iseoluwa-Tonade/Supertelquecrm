@@ -31,6 +31,7 @@ type ThreadRow = {
 
 type Analysis = {
   summary: string | null;
+  insight: string | null;
   next_action: string | null;
   needs_reply: boolean;
   suggested_to: string | null;
@@ -60,11 +61,14 @@ function parseJson(text: string): Analysis {
   const parsed = JSON.parse(clean);
   return {
     summary: typeof parsed.summary === "string" ? parsed.summary.trim() || null : null,
+    insight: typeof parsed.insight === "string" ? parsed.insight.trim() || null : null,
     next_action: typeof parsed.next_action === "string" ? parsed.next_action.trim() || null : null,
     needs_reply: Boolean(parsed.needs_reply),
     suggested_to: typeof parsed.suggested_to === "string" ? parsed.suggested_to.trim() || null : null,
     suggested_subject: typeof parsed.suggested_subject === "string" ? parsed.suggested_subject.trim() || null : null,
-    suggested_body: typeof parsed.suggested_body === "string" ? parsed.suggested_body.trim() || null : null,
+    suggested_body: typeof parsed.suggested_body === "string"
+      ? parsed.suggested_body.replace(/[—–]/g, "-").replace(/\n{3,}/g, "\n\n").trim() || null
+      : null,
     rationale: typeof parsed.rationale === "string" ? parsed.rationale.trim() || null : null,
     contact_name: typeof parsed.contact_name === "string" ? parsed.contact_name.trim() || null : null,
     contact_job_title: typeof parsed.contact_job_title === "string" ? parsed.contact_job_title.trim() || null : null,
@@ -196,14 +200,19 @@ export async function analyzeEmailThreadIfChanged(
   if (!apiKey) return { analyzed: false, reason: "api_key_unavailable" };
 
   const system = [
-    "You analyze B2B/business email conversations for a CRM.",
-    "Return ONLY valid JSON, no markdown.",
-    "Never invent facts. Only extract a name, title, phone, or company when explicitly present in the email text/signature.",
-    "Decide whether a reply is genuinely needed. If not, set needs_reply false and suggested fields null.",
-    "Keep the summary concise but useful for a salesperson or operator.",
-    "next_action must be a specific recommended action, not generic advice.",
-    "If a reply is needed, write a concise professional suggested reply that responds to the latest inbound message and preserves the conversation context.",
-    "JSON keys exactly: summary,next_action,needs_reply,suggested_to,suggested_subject,suggested_body,rationale,contact_name,contact_job_title,contact_phone,company_name.",
+    "You analyze B2B and business email conversations for a CRM.",
+    "Return ONLY valid JSON, with no markdown or commentary outside the JSON.",
+    "Never invent facts. Only extract names, job titles, phone numbers, company names, commitments, dates, and commercial facts that are explicitly present in the email thread.",
+    "summary must be a concise factual recap of the thread.",
+    "insight must identify the most useful business signal, risk, intent, objection, urgency, or opportunity in one short paragraph.",
+    "next_action must be one specific recommended action. Do not give generic advice.",
+    "Decide whether a reply is genuinely needed. If not, set needs_reply false and all suggested email fields to null.",
+    "If a reply is needed, write a clean professional business email that directly responds to the latest inbound message.",
+    "The suggested email must have a natural greeting, short paragraphs, a clear ask or next step, and a professional closing.",
+    "Do not use Markdown in suggested_body.",
+    "Never use an em dash or en dash. Use commas, periods, colons, parentheses, or a normal hyphen instead.",
+    "Do not be overly salesy, repetitive, or vague.",
+    "JSON keys exactly: summary,insight,next_action,needs_reply,suggested_to,suggested_subject,suggested_body,rationale,contact_name,contact_job_title,contact_phone,company_name.",
   ].join(" ");
 
   const user = [
@@ -225,7 +234,33 @@ export async function analyzeEmailThreadIfChanged(
           { role: "system", content: [{ type: "input_text", text: system }] },
           { role: "user", content: [{ type: "input_text", text: user }] },
         ],
-        max_output_tokens: 1200,
+        text: {
+          format: {
+            type: "json_schema",
+            name: "email_thread_intelligence",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                summary: { type: ["string", "null"] },
+                insight: { type: ["string", "null"] },
+                next_action: { type: ["string", "null"] },
+                needs_reply: { type: "boolean" },
+                suggested_to: { type: ["string", "null"] },
+                suggested_subject: { type: ["string", "null"] },
+                suggested_body: { type: ["string", "null"] },
+                rationale: { type: ["string", "null"] },
+                contact_name: { type: ["string", "null"] },
+                contact_job_title: { type: ["string", "null"] },
+                contact_phone: { type: ["string", "null"] },
+                company_name: { type: ["string", "null"] }
+              },
+              required: ["summary","insight","next_action","needs_reply","suggested_to","suggested_subject","suggested_body","rationale","contact_name","contact_job_title","contact_phone","company_name"]
+            }
+          }
+        },
+        max_output_tokens: 1400,
         store: false,
       }),
       cache: "no-store",
@@ -256,6 +291,7 @@ export async function analyzeEmailThreadIfChanged(
         thread_id: threadId,
         last_message_id: latest.provider_message_id,
         summary: analysis.summary,
+        insight: analysis.insight,
         next_action: analysis.next_action,
         needs_reply: analysis.needs_reply,
         suggested_to: analysis.suggested_to,

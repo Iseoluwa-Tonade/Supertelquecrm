@@ -25,7 +25,7 @@ type Company = {
 export default function CompaniesPage() {
   const { profile, organisation } = useApp();
   const { flash } = useToast();
-  const canManage = profile?.role === "admin" || profile?.role === "manager";
+  const canManage = profile?.role === "admin" || profile?.role === "manager" || profile?.role === "owner";
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [contactCounts, setContactCounts] = useState<Record<string, number>>({});

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -97,6 +98,18 @@ function stripHtml(value: string) {
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function normalizedSubject(value: unknown) {
+  let subject = String(value || "").trim();
+  while (/^(re|fw|fwd)\s*:/i.test(subject)) subject = subject.replace(/^(re|fw|fwd)\s*:\s*/i, "");
+  return subject.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function syntheticThreadId(accountId: string, externalEmail: string, subject: string, messageId: string) {
+  const basis = `${accountId}|${externalEmail}|${normalizedSubject(subject) || "(no subject)"}`;
+  if (!externalEmail && !subject) return `message:${messageId}`;
+  return `synthetic:${createHash("sha256").update(basis).digest("hex").slice(0, 32)}`;
 }
 
 const FREE_DOMAINS = new Set([
@@ -261,7 +274,7 @@ export async function POST() {
       .select("*")
       .eq("organisation_id", profile.organisation_id)
       .eq("provider", "zoho")
-      .eq("status", "connected")
+      .in("status", ["connected", "attention"])
       .order("created_at");
 
     if (connectionError) throw connectionError;
@@ -325,6 +338,15 @@ export async function POST() {
             `zoho-${accountId}`,
           ).toLowerCase();
 
+          const { data: priorSync } = await supabase
+            .from("crm_email_sync_state")
+            .select("last_sync_at,sync_cursor")
+            .eq("organisation_id", profile.organisation_id)
+            .eq("provider", "zoho")
+            .eq("provider_account_id", accountId)
+            .maybeSingle();
+          const initialImport = !priorSync?.last_sync_at;
+
           const { error: accountError } = await supabase
             .from("crm_email_accounts")
             .upsert({
@@ -362,22 +384,28 @@ export async function POST() {
             const folderName = String(folder.folderName || folder.folderType || "Other");
             if (!folderId) continue;
 
-            const emailResult = await callRemoteTool(
-              connection.server_url,
-              emailsTool.name,
-              buildArgs(emailsTool, { accountId }, {
-                fields: "summary,sentDateInGMT,subject,messageId,threadCount,toAddress,folderId,ccAddress,threadId,hasAttachment,size,sender,receivedTime,fromAddress,status",
-                folderId,
-                limit: 50,
-                start: 1,
-                sortBy: "date",
-                sortorder: false,
-                status: "all",
-              }),
-              accessToken,
-            );
-
-            const rawMessages = asArray(emailResult);
+            const rawMessages: any[] = [];
+            const pageSize = 100;
+            const maxPages = initialImport ? 25 : 1;
+            for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
+              const emailResult = await callRemoteTool(
+                connection.server_url,
+                emailsTool.name,
+                buildArgs(emailsTool, { accountId }, {
+                  fields: "summary,sentDateInGMT,subject,messageId,threadCount,toAddress,folderId,ccAddress,threadId,hasAttachment,size,sender,receivedTime,fromAddress,status",
+                  folderId,
+                  limit: pageSize,
+                  start: pageIndex * pageSize + 1,
+                  sortBy: "date",
+                  sortorder: false,
+                  status: "all",
+                }),
+                accessToken,
+              );
+              const pageRows = asArray(emailResult);
+              rawMessages.push(...pageRows);
+              if (pageRows.length < pageSize) break;
+            }
             const messageIds = rawMessages
               .map((row: any) => String(row.messageId || row.message_id || row.id || ""))
               .filter(Boolean);
@@ -399,7 +427,6 @@ export async function POST() {
             for (const row of rawMessages) {
               const messageId = String(row.messageId || row.message_id || row.id || "");
               if (!messageId) continue;
-              const providerThreadId = String(row.threadId || row.thread_id || `message:${messageId}`);
               const fromAddress = extractAddresses(row.fromAddress || row.sender)[0] || null;
               const toAddresses = extractAddresses(row.toAddress || row.to);
               const ccAddresses = extractAddresses(row.ccAddress || row.cc);
@@ -410,6 +437,14 @@ export async function POST() {
                 (fromAddress && aliases.includes(fromAddress.toLowerCase()))
                   ? "outbound"
                   : "inbound";
+              const externalEmail = direction === "inbound"
+                ? (fromAddress && !aliases.includes(fromAddress.toLowerCase()) ? fromAddress.toLowerCase() : "")
+                : (toAddresses.find((email: string) => !aliases.includes(email.toLowerCase())) || "").toLowerCase();
+              const providerThreadId = String(
+                row.threadId ||
+                row.thread_id ||
+                syntheticThreadId(accountId, externalEmail, String(row.subject || ""), messageId)
+              );
 
               threadPayload.set(providerThreadId, {
                 organisation_id: profile.organisation_id,
@@ -473,10 +508,10 @@ export async function POST() {
               const isNew = !prior;
               if (isNew) {
                 newEmails++;
-                if (message.thread_id) newThreadIds.add(String(message.thread_id));
+                if (!initialImport && message.thread_id) newThreadIds.add(String(message.thread_id));
               }
 
-              if (contentTool && (isNew || !prior?.body_text) && bodyFetches < 20) {
+              if (contentTool && (isNew || !prior?.body_text) && bodyFetches < (initialImport ? 10 : 50)) {
                 try {
                   const contentResult = await callRemoteTool(
                     connection.server_url,
@@ -565,7 +600,7 @@ export async function POST() {
               provider: "zoho",
               provider_account_id: accountId,
               last_sync_at: new Date().toISOString(),
-              sync_cursor: { mode: "latest-50-per-folder", mcp_connection_id: connection.id },
+              sync_cursor: { mode: initialImport ? "initial-mcp-cache" : "incremental-mcp", mcp_connection_id: connection.id, initial_import_complete: true },
               status: "idle",
               last_error: null,
               mcp_connection_id: connection.id,
