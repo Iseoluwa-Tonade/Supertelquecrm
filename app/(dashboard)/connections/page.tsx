@@ -292,7 +292,7 @@ export default function ConnectionsPage() {
         desc="Live systems, mailboxes, and Model Context Protocol connections for this CRM."
         actions={
           <div className="flex gap-2">
-            {canManage && mcpConnections.some((connection) => connection.provider === "zoho" && connection.status === "connected") ? (
+            {canManage && mcpConnections.some((connection) => connection.provider === "zoho" && ["connected","attention"].includes(connection.status)) ? (
               <Btn variant="primary" size="sm" onClick={syncMailNow} disabled={syncingMail}>
                 <Mail className="h-4 w-4" />
                 {syncingMail ? "Syncing mail…" : "Sync mail now"}
@@ -509,7 +509,7 @@ export default function ConnectionsPage() {
                       disabled={connecting === connection.id}
                     >
                       <RefreshCw className={`h-3.5 w-3.5 ${connecting === connection.id ? "animate-spin" : ""}`} />
-                      Tools
+                      {connection.status === "attention" ? "Retry" : "Tools"}
                     </Btn>
                     <Btn size="sm" variant="danger" onClick={() => removeConnection(connection)}>
                       <Trash2 className="h-3.5 w-3.5" />
