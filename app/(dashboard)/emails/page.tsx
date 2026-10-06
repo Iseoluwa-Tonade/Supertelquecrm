@@ -235,7 +235,7 @@ export default function EmailsPage() {
     setSyncing(true);
     setSyncMessage("");
     try {
-      const response = await fetch("/api/email-sync", { method: "POST" });
+      const response = await fetch("/api/email-sync/mcp", { method: "POST" });
       const data = await response.json();
       if (!response.ok) {
         setSyncMessage(data?.error || "Email sync failed");
