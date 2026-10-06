@@ -3,9 +3,10 @@
 import { useApp } from "@/lib/AppContext";
 import { money, label, dateLabel, daysUntil, dueLabel, statusTitle, statusColor, formatCompact, todayIso } from "@/lib/utils";
 import { Panel, PanelHead, PageHeader, Tag, Avatar, Btn } from "@/components/kit.launchpad";
-import { ArrowUpRight, Sparkles, TrendingUp, Clock, CheckCircle2, Calendar, Activity, Filter, Mail, MessageSquare, FolderKanban, ListTodo, Users, FileText, ReceiptText, Landmark, ShieldCheck, FileBarChart, Settings, Building2, Contact } from "lucide-react";
+import { ArrowUpRight, Sparkles, TrendingUp, Clock, CheckCircle2, Calendar, Activity, Filter, Mail, MessageSquare, FolderKanban, ListTodo, Users, FileText, ReceiptText, Landmark, ShieldCheck, FileBarChart, Settings, Building2, Contact, Plug } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 const priorityColor: Record<string, string> = {
   high: "var(--color-crm-rose)",
@@ -13,16 +14,30 @@ const priorityColor: Record<string, string> = {
   low: "var(--color-crm-blue)",
 };
 
+const supabase = createClient();
+
 export default function OverviewPage() {
-  const { items, activities, documents, messages, changeRequests, profile, teamProfiles } = useApp();
+  const { items, activities, documents, messages, changeRequests, profile, teamProfiles, organisation } = useApp();
   const deals = items.filter((item) => item.type === "deal");
   const projects = items.filter((item) => item.type === "project");
   const tasks = items.filter((item) => item.type === "task");
-  const clientCount = new Set(items.map((item) => item.company).filter(Boolean)).size;
 
   const role = profile?.role || "viewer";
   const isManager = role === "manager" || role === "admin";
   const [pipelineView, setPipelineView] = useState<"bar" | "pie">("bar");
+  const [contactCount, setContactCount] = useState(0);
+  const [companyCount, setCompanyCount] = useState(0);
+
+  useEffect(() => {
+    if (!organisation?.id) return;
+    Promise.all([
+      supabase.from("crm_contacts").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
+      supabase.from("crm_companies").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
+    ]).then(([contacts, companies]) => {
+      setContactCount(contacts.count || 0);
+      setCompanyCount(companies.count || 0);
+    });
+  }, [organisation?.id]);
 
   const doneStatuses = ["project_done", "project_delivered", "project_closed"];
   const activeItems = items.filter((item) => !doneStatuses.includes(item.status));
@@ -45,8 +60,8 @@ export default function OverviewPage() {
     { href: "/emails", label: "Zoho Email", value: "3,419 threads", icon: Mail },
     { href: "/messages", label: "Messages", value: unreadMessages + " unread", icon: MessageSquare },
     { href: "/pipeline", label: "Pipeline", value: deals.length + " deals", icon: TrendingUp },
-    { href: "/clients", label: "Clients", value: clientCount + " accounts", icon: Building2 },
-    { href: "/contacts", label: "Contacts", value: teamProfiles.length + " visible", icon: Contact },
+    { href: "/clients", label: "Companies", value: companyCount + " companies", icon: Building2 },
+    { href: "/contacts", label: "Contacts", value: contactCount + " contacts", icon: Contact },
     { href: "/projects", label: "Projects", value: projects.length + " projects", icon: FolderKanban },
     { href: "/tasks", label: "Tasks", value: tasks.length + " tasks", icon: ListTodo },
     { href: "/activity", label: "Activity", value: activities.length + " events", icon: Activity },
@@ -56,6 +71,7 @@ export default function OverviewPage() {
     { href: "/accounting", label: "Accounting", value: "Finance", icon: Landmark },
     { href: "/reports", label: "Reports", value: items.length + " records", icon: FileBarChart },
     { href: "/team", label: "Team", value: teamProfiles.length + " members", icon: Users },
+    { href: "/connections", label: "Connections", value: "3 live systems", icon: Plug },
     { href: "/settings", label: "Settings", value: "Configure", icon: Settings },
   ];
 
