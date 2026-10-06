@@ -99,7 +99,7 @@ export default function ReportsPage() {
       )}
 
       <Panel>
-        <PanelHead title={`All reports (${reports.length})`} hint="No seeded demo reports" />
+        <PanelHead title={`All reports (${reports.length})`} hint="Live report records" />
         <div className="divide-y divide-border">
           {reports.length === 0 ? (
             <div className="p-4 text-sm text-muted-foreground">No live reports yet.</div>
