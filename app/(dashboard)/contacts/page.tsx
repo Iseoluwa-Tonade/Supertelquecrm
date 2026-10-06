@@ -23,6 +23,7 @@ type Contact = {
   source: string;
   last_contacted_at: string | null;
   created_at: string;
+  updated_at: string;
   company?: Company | null;
 };
 
@@ -147,7 +148,7 @@ export default function ContactsPage() {
       if (sortKey === "company") { av = (a.company?.name || "").toLowerCase(); bv = (b.company?.name || "").toLowerCase(); }
       if (sortKey === "last_contacted") { av = a.last_contacted_at || ""; bv = b.last_contacted_at || ""; }
       if (sortKey === "threads") { av = threadCounts[a.id] || 0; bv = threadCounts[b.id] || 0; }
-      if (sortKey === "updated") { av = a.created_at || ""; bv = b.created_at || ""; }
+      if (sortKey === "updated") { av = a.updated_at || a.created_at || ""; bv = b.updated_at || b.created_at || ""; }
       const result = av < bv ? -1 : av > bv ? 1 : 0;
       return sortDir === "asc" ? result : -result;
     });
