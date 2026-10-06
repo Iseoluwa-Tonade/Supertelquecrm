@@ -1,37 +1,88 @@
 "use client";
 
+import Link from "next/link";
+import { Plug, UserRoundCog, Users } from "lucide-react";
+
 import { useApp } from "@/lib/AppContext";
-import { PageHeader, Panel, PanelHead } from "@/components/kit.launchpad";
+import { Btn, PageHeader, Panel, PanelHead, Tag } from "@/components/kit.launchpad";
 
 export default function SettingsPage() {
-  const { profile, organisation } = useApp();
+  const { profile, organisation, teamProfiles } = useApp();
+  const isAdmin = profile?.role === "admin";
 
   const settings = [
     { label: "Workspace name", value: organisation?.name || "—" },
-    { label: "Plan", value: "Professional" },
-    { label: "Member count", value: "—" },
+    { label: "Workspace type", value: organisation?.company_type || "—" },
+    { label: "Workspace email", value: organisation?.email || "—" },
+    { label: "Website", value: organisation?.website || "—" },
+    { label: "Member count", value: String(teamProfiles.length) },
     { label: "Your role", value: profile?.role || "—" },
+    { label: "Enabled modules", value: String(organisation?.enabled_features?.length || 0) },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader variant="operations"
+      <PageHeader
+        variant="operations"
         eyebrow="Operations"
         title="Settings"
-        desc="Workspace and account preferences."
+        desc="Workspace information, access and connected systems."
       />
 
-      <Panel>
-        <PanelHead title="Workspace" />
-        <div className="space-y-1 p-4 text-sm">
-          {settings.map((s) => (
-            <div key={s.label} className="grid grid-cols-[140px_1fr] gap-2 rounded-lg border border-border bg-surface p-2">
-              <span className="text-muted-foreground">{s.label}</span>
-              <span className="text-foreground">{s.value}</span>
+      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <Panel>
+          <PanelHead title="Workspace" />
+          <div className="space-y-2 p-4 text-sm">
+            {settings.map((setting) => (
+              <div key={setting.label} className="grid grid-cols-[150px_1fr] gap-3 rounded-xl border border-border bg-surface p-3">
+                <span className="text-muted-foreground">{setting.label}</span>
+                <span className="truncate font-medium text-foreground">{setting.value}</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <div className="space-y-4">
+          <Panel>
+            <PanelHead title="Administration" />
+            <div className="space-y-2 p-4">
+              <Link href="/team" className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-surface-raised">
+                <Users className="h-4 w-4 text-primary" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">Team & permissions</p>
+                  <p className="text-xs text-muted-foreground">{teamProfiles.length} registered members</p>
+                </div>
+                <Tag tone={isAdmin ? "success" : "neutral"}>{isAdmin ? "Manage" : "View"}</Tag>
+              </Link>
+
+              <Link href="/connections" className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-surface-raised">
+                <Plug className="h-4 w-4 text-primary" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">Connections</p>
+                  <p className="text-xs text-muted-foreground">Supabase, Zoho Mail and Vercel status</p>
+                </div>
+              </Link>
+
+              <Link href="/profile" className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-surface-raised">
+                <UserRoundCog className="h-4 w-4 text-primary" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">My profile</p>
+                  <p className="text-xs text-muted-foreground">{profile?.display_name || profile?.email || "Account"}</p>
+                </div>
+              </Link>
             </div>
-          ))}
+          </Panel>
+
+          <Panel>
+            <PanelHead title="Enabled modules" />
+            <div className="flex flex-wrap gap-2 p-4">
+              {(organisation?.enabled_features || []).map((feature) => (
+                <Tag key={feature} tone="neutral">{feature}</Tag>
+              ))}
+            </div>
+          </Panel>
         </div>
-      </Panel>
+      </div>
     </div>
   );
 }
