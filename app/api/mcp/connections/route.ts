@@ -138,6 +138,19 @@ export async function POST(request: NextRequest) {
     const scopes = discovery.resourceMetadata?.scopes_supported || metadata.scopes_supported || ["mcp"];
     const scope = Array.isArray(scopes) ? scopes.join(" ") : String(scopes || "mcp");
 
+    const supportedAuthMethods = Array.isArray(metadata.token_endpoint_auth_methods_supported)
+      ? metadata.token_endpoint_auth_methods_supported
+      : ["none"];
+    const tokenEndpointAuthMethod = supportedAuthMethods.includes("client_secret_basic")
+      ? "client_secret_basic"
+      : supportedAuthMethods.includes("none")
+        ? "none"
+        : supportedAuthMethods[0];
+
+    if (!tokenEndpointAuthMethod) {
+      throw new Error("MCP OAuth server does not advertise a supported token endpoint authentication method");
+    }
+
     const registration = await fetch(registrationEndpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -145,7 +158,7 @@ export async function POST(request: NextRequest) {
         client_name: "Supertelque CRM",
         redirect_uris: [redirectUri],
         grant_types: ["authorization_code", "refresh_token"],
-        token_endpoint_auth_method: "client_secret_basic",
+        token_endpoint_auth_method: tokenEndpointAuthMethod,
         scope,
       }),
       cache: "no-store",
@@ -174,7 +187,7 @@ export async function POST(request: NextRequest) {
         protected_resource: discovery.resourceMetadata,
         authorization_server: metadata,
         registration: {
-          token_endpoint_auth_method: registered.token_endpoint_auth_method || "client_secret_basic",
+          token_endpoint_auth_method: registered.token_endpoint_auth_method || tokenEndpointAuthMethod,
         },
       },
       status: "connecting",
