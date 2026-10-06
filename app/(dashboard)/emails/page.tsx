@@ -260,17 +260,41 @@ export default function EmailsPage() {
         <PanelHead
           title={category ? category + " conversations" : "All conversations"}
           hint={total.toLocaleString() + " threads"}
-          action={<Tag tone="success">Threaded</Tag>}
+          action={
+            <div className="flex items-center gap-2">
+              <Tag tone="success">Threaded</Tag>
+              <div className="relative">
+                <Btn variant="outline" size="sm" onClick={() => setColumnsOpen((open) => !open)}>
+                  <Columns3 className="h-4 w-4" /> Columns
+                </Btn>
+                {columnsOpen ? (
+                  <div className="absolute right-0 top-10 z-40 w-56 rounded-xl border border-border bg-popover p-2 shadow-xl">
+                    {(Object.keys(COLUMN_LABELS) as ColumnId[]).map((column) => (
+                      <label key={column} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-xs hover:bg-surface-raised">
+                        <input
+                          type="checkbox"
+                          checked={visibleColumns.includes(column)}
+                          disabled={column === "subject"}
+                          onChange={() => toggleColumn(column)}
+                        />
+                        <span>{COLUMN_LABELS[column]}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          }
         />
 
-        <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row">
+        <div className="grid gap-3 border-b border-border p-4 lg:grid-cols-[220px_minmax(260px,1fr)_170px_190px_auto]">
           <select
             value={accountId}
             onChange={(event) => {
               setAccountId(event.target.value);
               setOffset(0);
             }}
-            className="h-10 rounded-xl border border-border bg-input px-3 text-sm lg:w-64"
+            className="h-10 rounded-xl border border-border bg-input px-3 text-sm"
           >
             <option value="">All connected mailboxes</option>
             {accounts.map((account) => (
@@ -279,8 +303,9 @@ export default function EmailsPage() {
               </option>
             ))}
           </select>
+
           <form
-            className="relative flex-1"
+            className="relative"
             onSubmit={(event) => {
               event.preventDefault();
               setOffset(0);
@@ -296,63 +321,104 @@ export default function EmailsPage() {
             />
           </form>
 
-          {(activeQuery || category || accountId) && (
-            <Btn
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setQuery("");
-                setActiveQuery("");
-                setCategory("");
-                setAccountId("");
-                setOffset(0);
-              }}
-            >
-              Clear filters
-            </Btn>
-          )}
-        </div>
+          <select
+            value={attentionFilter}
+            onChange={(event) => {
+              setAttentionFilter(event.target.value);
+              setOffset(0);
+            }}
+            className="h-10 rounded-xl border border-border bg-input px-3 text-sm"
+          >
+            <option value="">All conversations</option>
+            <option value="unread">Unread only</option>
+            <        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] text-sm">
+            <thead>
+              <tr className="border-b border-border bg-surface-raised/40 text-xs text-muted-foreground">
+                {visibleColumns.includes("sender") && <th className="px-4 py-3 text-left font-medium">Sender / recipient</th>}
+                {visibleColumns.includes("subject") && <th className="px-4 py-3 text-left font-medium">Subject & preview</th>}
+                {visibleColumns.includes("mailbox") && <th className="px-4 py-3 text-left font-medium">Mailbox</th>}
+                {visibleColumns.includes("category") && <th className="px-4 py-3 text-left font-medium">Category</th>}
+                {visibleColumns.includes("messages") && <th className="px-4 py-3 text-right font-medium">Messages</th>}
+                {visibleColumns.includes("unread") && <th className="px-4 py-3 text-right font-medium">Unread</th>}
+                {visibleColumns.includes("attachments") && <th className="px-4 py-3 text-center font-medium">Attachment</th>}
+                {visibleColumns.includes("date") && <th className="px-4 py-3 text-left font-medium">Last activity</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                    Loading conversations…
+                  </td>
+                </tr>
+              ) : threads.length === 0 ? (
+                <tr>
+                  <td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                    No matching conversations found.
+                  </td>
+                </tr>
+              ) : threads.map((thread) => (
+                <tr
+                  key={thread.id}
+                  onClick={() => router.push("/emails/" + thread.id)}
+                  className="group cursor-pointer border-b border-border last:border-0 hover:bg-surface-raised/60"
+                >
+                  {visibleColumns.includes("sender") && (
+                    <td className="px-4 py-3 align-top">
+                      <p className="max-w-56 truncate font-semibold">{peer(thread)}</p>
+                      <p className="mt-0.5 max-w-56 truncate text-xs text-muted-foreground">
+                        {thread.from_address || thread.direction || "Conversation"}
+                      </p>
+                    </td>
+                  )}
 
-        <div className="divide-y divide-border">
-          {loading ? (
-            <div className="px-4 py-10 text-center text-sm text-muted-foreground">Loading conversations…</div>
-          ) : threads.length === 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-muted-foreground">No matching conversations found.</div>
-          ) : threads.map((thread, index) => (
-            <motion.button
-              key={thread.id}
-              type="button"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(index * 0.015, 0.25), duration: 0.22 }}
-              onClick={() => router.push(`/emails/${thread.id}`)}
-              className="group block w-full px-4 py-4 text-left transition-colors hover:bg-surface-raised/70"
-            >
-              <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)_150px] md:items-center">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{peer(thread)}</p>
-                  <p className="truncate text-xs text-muted-foreground">{thread.from_address || thread.direction || "Conversation"}</p>
-                  {thread.mailbox_address ? <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70">Mailbox: {thread.mailbox_address}</p> : null}
-                </div>
+                  {visibleColumns.includes("subject") && (
+                    <td className="px-4 py-3 align-top">
+                      <p className="max-w-xl truncate font-medium">{thread.subject || "(no subject)"}</p>
+                      <p className="mt-1 max-w-xl line-clamp-1 text-xs text-muted-foreground transition-all group-hover:line-clamp-4">
+                        {thread.summary || "No preview available."}
+                      </p>
+                    </td>
+                  )}
 
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium">{thread.subject || "(no subject)"}</p>
-                    {thread.message_count > 1 && <Tag tone="primary">{thread.message_count} msgs</Tag>}
-                    {thread.unread_count > 0 && <Tag tone="warning">{thread.unread_count} unread</Tag>}
-                  </div>
-                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground transition-all group-hover:line-clamp-4">{thread.summary || "No preview available."}</p>
-                </div>
+                  {visibleColumns.includes("mailbox") && (
+                    <td className="px-4 py-3 align-top text-xs text-muted-foreground">
+                      <span className="block max-w-52 truncate">{thread.mailbox_address || "—"}</span>
+                    </td>
+                  )}
 
-                <div className="flex items-center justify-between gap-2 md:justify-end">
-                  <Tag tone={thread.mailbox_category === "Inbox" ? "primary" : thread.mailbox_category === "Sent" ? "success" : "neutral"}>
-                    {thread.mailbox_category || "Other"}
-                  </Tag>
-                  <span className="whitespace-nowrap text-xs text-muted-foreground">{fmt(thread.last_message_at)}</span>
-                </div>
-              </div>
-            </motion.button>
-          ))}
+                  {visibleColumns.includes("category") && (
+                    <td className="px-4 py-3 align-top">
+                      <Tag tone={thread.mailbox_category === "Inbox" ? "primary" : thread.mailbox_category === "Sent" ? "success" : "neutral"}>
+                        {thread.mailbox_category || "Other"}
+                      </Tag>
+                    </td>
+                  )}
+
+                  {visibleColumns.includes("messages") && (
+                    <td className="px-4 py-3 text-right align-top num">{thread.message_count || 0}</td>
+                  )}
+
+                  {visibleColumns.includes("unread") && (
+                    <td className="px-4 py-3 text-right align-top">
+                      {thread.unread_count > 0 ? <Tag tone="warning">{thread.unread_count}</Tag> : <span className="text-muted-foreground">0</span>}
+                    </td>
+                  )}
+
+                  {visibleColumns.includes("attachments") && (
+                    <td className="px-4 py-3 text-center align-top">
+                      {thread.has_attachments ? <Paperclip className="mx-auto h-4 w-4 text-primary" /> : <span className="text-muted-foreground">—</span>}
+                    </td>
+                  )}
+
+                  {visibleColumns.includes("date") && (
+                    <td className="whitespace-nowrap px-4 py-3 align-top text-xs text-muted-foreground">{fmt(thread.last_message_at)}</td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <div className="flex items-center justify-between gap-3 p-4">
