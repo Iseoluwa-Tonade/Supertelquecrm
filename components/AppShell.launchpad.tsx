@@ -134,29 +134,29 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative flex h-screen w-full overflow-hidden bg-background text-foreground">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.12),transparent_28%),radial-gradient(circle_at_85%_10%,rgba(37,99,235,0.08),transparent_22%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_-6%,rgba(13,148,136,.08),transparent_28%),radial-gradient(circle_at_92%_0%,rgba(37,99,235,.05),transparent_24%)]" />
 
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "sticky top-0 z-30 hidden h-screen shrink-0 flex-col border-r border-border bg-[linear-gradient(180deg,rgba(17,26,40,.96),rgba(17,26,40,.92))] text-crm-sidebar-text shadow-[12px_0_30px_-26px_rgba(15,23,42,.6)] transition-[width] duration-200 md:flex",
-          "w-60",
+          "sticky top-0 z-30 hidden h-screen shrink-0 flex-col border-r border-white/8 bg-[radial-gradient(circle_at_12%_0%,rgba(45,212,191,.11),transparent_22%),linear-gradient(180deg,#101827_0%,#0b1220_72%)] text-crm-sidebar-text shadow-[18px_0_50px_-38px_rgba(2,8,23,.9)] md:flex",
+          "w-[264px]",
         )}
       >
-        <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-4">
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-[0_10px_20px_-14px_rgba(45,212,191,0.8)]">
-            <Command className="h-4 w-4" />
+        <div className="flex h-16 items-center gap-3 border-b border-white/8 px-4">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[13px] bg-[linear-gradient(135deg,#2dd4bf,#0d9488)] text-white shadow-[0_12px_28px_-14px_rgba(45,212,191,.72)] ring-1 ring-white/15">
+            <Command className="h-[17px] w-[17px]" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold leading-tight">{CURRENT_ORG.name}</p>
-            <p className="label-tag text-muted-foreground">{CURRENT_ORG.company_type || "workspace"}</p>
+            <p className="truncate text-[15px] font-semibold tracking-[-0.01em] leading-tight">{CURRENT_ORG.name}</p>
+            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[.16em] text-crm-sidebar-muted/70">{CURRENT_ORG.company_type || "workspace"}</p>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
           {navItems.map((section) => (
             <div key={section.group}>
-              <p className="label-tag mb-2 px-2 text-crm-sidebar-muted/80">{section.group}</p>
+              <p className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-[.17em] text-crm-sidebar-muted/55">{section.group}</p>
               <ul className="space-y-0.5">
                 {section.items.map((item) => {
                   const active = pathname === item.to || pathname.startsWith(item.to + "/");
@@ -166,16 +166,16 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
                         href={item.to}
                         title={item.label}
                         className={cn(
-                            "group relative flex items-center gap-2.5 rounded-xl px-2 py-2 text-sm transition-colors",
+                            "group relative flex min-h-10 items-center gap-3 rounded-[13px] px-3 py-2 text-[13px] font-medium transition-[background,color,transform,box-shadow] duration-200",
                           active
-                              ? "bg-white/10 text-white shadow-[0_8px_20px_-18px_rgba(255,255,255,0.6)]"
-                              : "text-crm-sidebar-muted hover:bg-white/8 hover:text-white",
+                              ? "bg-white/[.10] text-white shadow-[0_10px_26px_-18px_rgba(45,212,191,.65)] ring-1 ring-white/[.06]"
+                              : "text-crm-sidebar-muted hover:translate-x-0.5 hover:bg-white/[.055] hover:text-white",
                         )}
                       >
                         {active ? (
-                            <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-primary" />
+                            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_14px_rgba(45,212,191,.7)]" />
                         ) : null}
-                        <item.icon className="h-4 w-4 shrink-0" />
+                        <item.icon className="h-[17px] w-[17px] shrink-0 opacity-90" />
                         <span className="truncate">{item.label}</span>
                         {item.badge ? (
                             <span className="num ml-auto rounded-full bg-white/10 px-1.5 text-[10px] text-white">
@@ -212,9 +212,9 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 250 }}
-              className="fixed inset-y-0 left-0 z-50 flex h-screen w-60 flex-col border-r border-border bg-[linear-gradient(180deg,rgba(17,26,40,.96),rgba(17,26,40,.92))] text-crm-sidebar-text shadow-xl md:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex h-screen w-[272px] flex-col border-r border-white/8 bg-[radial-gradient(circle_at_12%_0%,rgba(45,212,191,.11),transparent_22%),linear-gradient(180deg,#101827_0%,#0b1220_72%)] text-crm-sidebar-text shadow-2xl md:hidden"
             >
-              <div className="flex h-14 items-center justify-between border-b border-white/10 px-4">
+              <div className="flex h-16 items-center justify-between border-b border-white/8 px-4">
                 <div className="flex items-center gap-2.5">
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-[0_10px_20px_-14px_rgba(45,212,191,0.8)]">
                     <Command className="h-4 w-4" />
@@ -229,7 +229,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
 
-              <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+              <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
                 {navItems.map((section) => (
                   <div key={section.group}>
                     <p className="label-tag mb-2 px-2 text-crm-sidebar-muted/80">{section.group}</p>
@@ -273,7 +273,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-background/75 px-4 backdrop-blur-xl md:px-6">
+        <header className="sticky top-0 z-20 flex h-[68px] items-center gap-3 border-b border-border/80 bg-background/82 px-4 shadow-[0_8px_24px_-22px_rgba(16,24,40,.25)] backdrop-blur-2xl md:px-6">
           <button
             onClick={() => setMobileOpen(true)}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border-strong bg-surface/80 text-muted-foreground shadow-sm hover:text-foreground md:hidden"
@@ -285,9 +285,9 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
             <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
             <input
               placeholder="Search CRM, email, deals, projects…"
-              className="h-10 w-full rounded-xl border border-border bg-input pl-9 pr-14 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary/50"
+              className="h-10 w-full rounded-[14px] border border-border/90 bg-surface/85 pl-9 pr-14 text-sm shadow-[0_1px_2px_rgba(16,24,40,.03)] outline-none placeholder:text-muted-foreground/65 hover:border-primary/25 focus:border-primary/45 focus:ring-4 focus:ring-primary/10"
             />
-            <kbd className="num absolute right-2 rounded-full border border-border-strong bg-surface-raised px-1.5 py-0.5 text-[10px] text-muted-foreground">⌘K</kbd>
+            <kbd className="num absolute right-2 rounded-md border border-border bg-surface-raised px-1.5 py-0.5 text-[10px] text-muted-foreground shadow-sm">⌘K</kbd>
           </div>
           <div className="ml-auto flex items-center gap-2">
             {/* <Tag tone="neutral" className="hidden sm:inline-flex">
@@ -295,7 +295,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
             </Tag> */}
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="grid h-10 w-10 place-items-center rounded-xl border border-border-strong bg-surface/80 text-muted-foreground shadow-sm hover:text-foreground"
+              className="grid h-10 w-10 place-items-center rounded-[13px] border border-border bg-surface/90 text-muted-foreground shadow-[0_1px_2px_rgba(16,24,40,.04)] hover:-translate-y-px hover:border-primary/25 hover:text-foreground"
               title="Toggle theme"
             >
               {theme === "dark" ? "☀️" : "🌙"}
@@ -303,7 +303,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
             <div className="relative">
               <button
                 onClick={() => setAccountOpen((open) => !open)}
-                className="flex h-10 items-center gap-2 rounded-xl border border-border-strong bg-surface/80 py-1 pl-1 pr-2.5 shadow-sm"
+                className="flex h-10 items-center gap-2 rounded-[13px] border border-border bg-surface/90 py-1 pl-1 pr-2.5 shadow-[0_1px_2px_rgba(16,24,40,.04)] hover:-translate-y-px hover:border-primary/25"
                 title="Account menu"
               >
                 <Avatar initials={initials} size="sm" tone="primary" />
@@ -337,7 +337,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
-          className="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8"
+          className="flex-1 overflow-y-auto px-4 py-6 md:px-7 lg:px-9"
         >
           <style>{`
             .page-stagger > * {
@@ -353,7 +353,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
             .page-stagger > *:nth-child(7) { animation-delay: 0.66s; }
             .page-stagger > *:nth-child(8) { animation-delay: 0.76s; }
           `}</style>
-          <div className="page-stagger">{children}</div>
+          <div className="page-stagger mx-auto w-full max-w-[1680px] pb-10">{children}</div>
         </motion.main>
       </div>
     </div>
