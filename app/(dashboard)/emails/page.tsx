@@ -17,7 +17,7 @@ import {
   ShieldAlert,
   SlidersHorizontal,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useApp } from "@/lib/AppContext";
 import { createClient } from "@/lib/supabase/client";
@@ -99,6 +99,7 @@ function peer(thread: ThreadSummary) {
 
 export default function EmailsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { organisation } = useApp();
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [accounts, setAccounts] = useState<EmailAccount[]>([]);
@@ -117,6 +118,15 @@ export default function EmailsPage() {
   const [loading, setLoading] = useState(true);
 
   const pageSize = 50;
+
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    if (q) {
+      setQuery(q);
+      setActiveQuery(q);
+      setOffset(0);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     try {
