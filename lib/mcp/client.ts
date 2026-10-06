@@ -44,7 +44,15 @@ export async function rawMcpRequest(
   const contentType = response.headers.get("content-type") || "";
   let payload: any = null;
   if (text) {
-    payload = contentType.includes("text/event-stream") ? parseSse(text) : JSON.parse(text);
+    if (contentType.includes("text/event-stream")) {
+      payload = parseSse(text);
+    } else {
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = { raw_text: text };
+      }
+    }
   }
 
   return {
