@@ -228,66 +228,132 @@ export default function ContactsPage() {
 
       <Panel>
         <PanelHead
-          title={`Contacts (${filtered.length})`}
+          title={"Contacts (" + filtered.length.toLocaleString() + ")"}
+          hint="Search, filter, sort and choose the columns you need"
           action={
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search contacts…"
-                className="h-9 w-56 rounded-xl border border-border bg-input pl-8 pr-3 text-xs outline-none focus:border-primary/50"
-              />
+              <Btn variant="outline" size="sm" onClick={() => setColumnsOpen((open) => !open)}>
+                <Columns3 className="h-4 w-4" /> Columns
+              </Btn>
+              {columnsOpen ? (
+                <div className="absolute right-0 top-10 z-40 w-56 rounded-xl border border-border bg-popover p-2 shadow-xl">
+                  {(Object.keys(COLUMN_LABELS) as ColumnId[]).map((column) => (
+                    <label key={column} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-xs hover:bg-surface-raised">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns.includes(column)}
+                        disabled={column === "contact"}
+                        onChange={() => toggleColumn(column)}
+                      />
+                      <span>{COLUMN_LABELS[column]}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
             </div>
           }
         />
 
-        <div className="divide-y divide-border">
-          {filtered.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              No contacts yet. {canManage ? "Add the first contact above." : ""}
-            </div>
-          ) : (
-            filtered.map((contact) => {
-              const displayName = contact.display_name || contact.email;
-              return (
-                <Link
-                  key={contact.id}
-                  href={`/contacts/${contact.id}`}
-                  className="grid gap-3 px-4 py-4 transition-colors hover:bg-surface-raised/60 md:grid-cols-[minmax(0,1fr)_220px_120px]"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <Avatar initials={displayName.slice(0, 2).toUpperCase()} size="md" />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {contact.job_title || "Contact"}{contact.company?.name ? ` · ${contact.company.name}` : ""}
-                      </p>
-                    </div>
-                  </div>
+        <div className="grid gap-3 border-b border-border p-4 lg:grid-cols-[minmax(260px,1fr)_180px_180px_180px_220px_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search name, email, company, title…"
+              className="h-10 w-full rounded-xl border border-border bg-input pl-9 pr-3 text-sm outline-none focus:border-primary/60"
+            />
+          </div>
 
-                  <div className="min-w-0 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5 truncate">
-                      <Mail className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{contact.email}</span>
-                    </div>
-                    {contact.phone ? (
-                      <div className="mt-1 flex items-center gap-1.5 truncate">
-                        <Phone className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{contact.phone}</span>
-                      </div>
-                    ) : null}
-                  </div>
+          <select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)} className="h-10 rounded-xl border border-border bg-input px-3 text-sm">
+            <option value="">All companies</option>
+            {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+          </select>
 
-                  <div className="flex items-center justify-end gap-2">
-                    <Tag tone={threadCounts[contact.id] ? "primary" : "neutral"}>
-                      {threadCounts[contact.id] || 0} email threads
-                    </Tag>
-                  </div>
-                </Link>
-              );
-            })
-          )}
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-10 rounded-xl border border-border bg-input px-3 text-sm">
+            <option value="">All statuses</option>
+            {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+
+          <select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)} className="h-10 rounded-xl border border-border bg-input px-3 text-sm">
+            <option value="">All sources</option>
+            {sources.map((source) => <option key={source} value={source}>{source}</option>)}
+          </select>
+
+          <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-10 rounded-xl border border-border bg-input px-3 text-sm">
+            <option value="updated_desc">Recently updated</option>
+            <option value="last_contacted_desc">Recently contacted</option>
+            <option value="threads_desc">Most email threads</option>
+            <option value="name_asc">Name A → Z</option>
+            <option value="name_desc">Name Z → A</option>
+            <option value="created_desc">Newest contacts</option>
+          </select>
+
+          <Btn variant="ghost" size="sm" onClick={resetView}>
+            <SlidersHorizontal className="h-4 w-4" /> Reset
+          </Btn>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[960px] text-sm">
+            <thead>
+              <tr className="border-b border-border bg-surface-raised/40 text-xs text-muted-foreground">
+                {visibleColumns.includes("contact") && <th className="px-4 py-3 text-left font-medium">Contact</th>}
+                {visibleColumns.includes("company") && <th className="px-4 py-3 text-left font-medium">Company</th>}
+                {visibleColumns.includes("email") && <th className="px-4 py-3 text-left font-medium">Email</th>}
+                {visibleColumns.includes("phone") && <th className="px-4 py-3 text-left font-medium">Phone</th>}
+                {visibleColumns.includes("job_title") && <th className="px-4 py-3 text-left font-medium">Job title</th>}
+                {visibleColumns.includes("status") && <th className="px-4 py-3 text-left font-medium">Status</th>}
+                {visibleColumns.includes("source") && <th className="px-4 py-3 text-left font-medium">Source</th>}
+                {visibleColumns.includes("threads") && <th className="px-4 py-3 text-right font-medium">Threads</th>}
+                {visibleColumns.includes("last_contacted") && <th className="px-4 py-3 text-left font-medium">Last contacted</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                    No contacts match the current filters.
+                  </td>
+                </tr>
+              ) : filtered.map((contact) => {
+                const displayName = contact.display_name || contact.email;
+                return (
+                  <tr key={contact.id} className="border-b border-border last:border-0 hover:bg-surface-raised/50">
+                    {visibleColumns.includes("contact") && (
+                      <td className="px-4 py-3">
+                        <Link href={"/contacts/" + contact.id} className="flex items-center gap-3 hover:text-primary">
+                          <Avatar initials={displayName.slice(0, 2).toUpperCase()} size="sm" />
+                          <div className="min-w-0">
+                            <p className="max-w-56 truncate font-semibold">{displayName}</p>
+                            <p className="text-[11px] text-muted-foreground">Open record</p>
+                          </div>
+                        </Link>
+                      </td>
+                    )}
+                    {visibleColumns.includes("company") && <td className="px-4 py-3 text-muted-foreground">{contact.company?.name || "—"}</td>}
+                    {visibleColumns.includes("email") && (
+                      <td className="px-4 py-3">
+                        <a href={"mailto:" + contact.email} className="inline-flex max-w-64 items-center gap-1.5 truncate text-muted-foreground hover:text-primary">
+                          <Mail className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{contact.email}</span>
+                        </a>
+                      </td>
+                    )}
+                    {visibleColumns.includes("phone") && (
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {contact.phone ? <a href={"tel:" + contact.phone} className="inline-flex items-center gap-1.5 hover:text-primary"><Phone className="h-3.5 w-3.5" />{contact.phone}</a> : "—"}
+                      </td>
+                    )}
+                    {visibleColumns.includes("job_title") && <td className="px-4 py-3 text-muted-foreground">{contact.job_title || "—"}</td>}
+                    {visibleColumns.includes("status") && <td className="px-4 py-3"><Tag tone={contact.status === "active" ? "success" : "neutral"}>{contact.status}</Tag></td>}
+                    {visibleColumns.includes("source") && <td className="px-4 py-3"><Tag tone={contact.source === "email" ? "primary" : "neutral"}>{contact.source}</Tag></td>}
+                    {visibleColumns.includes("threads") && <td className="px-4 py-3 text-right num">{threadCounts[contact.id] || 0}</td>}
+                    {visibleColumns.includes("last_contacted") && <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{fmt(contact.last_contacted_at)}</td>}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </Panel>
 
