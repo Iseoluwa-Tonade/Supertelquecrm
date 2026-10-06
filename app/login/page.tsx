@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, type FormEvent } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
@@ -25,10 +25,13 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const rawNext = searchParams.get("next");
-  const nextPath = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+  const [nextPath, setNextPath] = useState<string | null>(null);
   const supabase = createClient();
+
+  useEffect(() => {
+    const rawNext = new URLSearchParams(window.location.search).get("next");
+    setNextPath(rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null);
+  }, []);
 
   async function handleSignIn(e: FormEvent) {
     e.preventDefault();
