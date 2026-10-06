@@ -57,6 +57,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "A valid HTTPS MCP server URL is required" }, { status: 400 });
     }
 
+    await supabase
+      .from("crm_mcp_connections")
+      .delete()
+      .eq("organisation_id", profile.organisation_id)
+      .eq("provider", provider)
+      .eq("server_url", serverUrl)
+      .in("status", ["connecting", "attention"]);
+
     const { data: connection, error: insertError } = await supabase
       .from("crm_mcp_connections")
       .insert({
