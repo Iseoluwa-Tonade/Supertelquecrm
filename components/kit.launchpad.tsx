@@ -248,6 +248,7 @@ export function Btn({
   variant = "ghost",
   size = "md",
   className,
+  type = "button",
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "ghost" | "outline" | "danger";
@@ -255,6 +256,7 @@ export function Btn({
 }) {
   return (
     <button
+      type={type}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-[13px] font-semibold transition-[transform,background,border-color,box-shadow,color] duration-200 disabled:pointer-events-none disabled:opacity-50 active:translate-y-px",
         size === "sm" ? "h-[34px] px-3 text-xs" : "h-10 px-4 text-sm",
