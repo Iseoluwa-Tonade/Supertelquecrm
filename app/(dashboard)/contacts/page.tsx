@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Mail, Phone, Plus, Search, X } from "lucide-react";
+import { Columns3, Mail, Phone, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { useApp } from "@/lib/AppContext";
 import { createClient } from "@/lib/supabase/client";
@@ -27,8 +27,39 @@ type Contact = {
   source: string;
   last_contacted_at: string | null;
   created_at: string;
+  updated_at: string;
   company?: Company | null;
 };
+
+type ColumnId =
+  | "contact"
+  | "company"
+  | "email"
+  | "phone"
+  | "job_title"
+  | "status"
+  | "source"
+  | "threads"
+  | "last_contacted";
+
+const COLUMN_LABELS: Record<ColumnId, string> = {
+  contact: "Contact",
+  company: "Company",
+  email: "Email",
+  phone: "Phone",
+  job_title: "Job title",
+  status: "Status",
+  source: "Source",
+  threads: "Email threads",
+  last_contacted: "Last contacted",
+};
+
+const DEFAULT_COLUMNS: ColumnId[] = ["contact","company","email","job_title","threads","last_contacted"];
+
+function fmt(value?: string | null) {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" });
+}
 
 export default function ContactsPage() {
   const { profile, organisation } = useApp();
@@ -39,6 +70,12 @@ export default function ContactsPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [threadCounts, setThreadCounts] = useState<Record<string, number>>({});
   const [query, setQuery] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const [sort, setSort] = useState("updated_desc");
+  const [visibleColumns, setVisibleColumns] = useState<ColumnId[]>(DEFAULT_COLUMNS);
+  const [columnsOpen, setColumnsOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -51,10 +88,10 @@ export default function ContactsPage() {
   const loadData = useCallback(async () => {
     if (!organisation?.id) return;
 
-    const [contactRes, companyRes] = await Promise.all([
+    const [contactRes, companyRes, threadRes] = await Promise.all([
       supabase
         .from("crm_contacts")
-        .select("id,company_id,display_name,email,phone,job_title,status,source,last_contacted_at,created_at,crm_companies(id,name)")
+        .select("id,company_id,display_name,email,phone,job_title,status,source,last_contacted_at,created_at,updated_at,crm_companies(id,name)")
         .eq("organisation_id", organisation.id)
         .order("updated_at", { ascending: false }),
       supabase
@@ -62,6 +99,11 @@ export default function ContactsPage() {
         .select("id,name")
         .eq("organisation_id", organisation.id)
         .order("name", { ascending: true }),
+      supabase
+        .from("crm_email_threads")
+        .select("contact_id")
+        .eq("organisation_id", organisation.id)
+        .not("contact_id", "is", null),
     ]);
 
     const nextContacts = (contactRes.data || []).map((row: any) => ({
@@ -72,43 +114,68 @@ export default function ContactsPage() {
     setContacts(nextContacts);
     setCompanies((companyRes.data || []) as Company[]);
 
-    if (nextContacts.length > 0) {
-      const counts: Record<string, number> = {};
-      await Promise.all(
-        nextContacts.map(async (contact) => {
-          const { count } = await supabase
-            .from("crm_email_threads")
-            .select("id", { count: "exact", head: true })
-            .eq("organisation_id", organisation.id)
-            .eq("contact_id", contact.id);
-          counts[contact.id] = count || 0;
-        })
-      );
-      setThreadCounts(counts);
-    } else {
-      setThreadCounts({});
+    const counts: Record<string, number> = {};
+    for (const row of threadRes.data || []) {
+      const id = String((row as any).contact_id || "");
+      if (id) counts[id] = (counts[id] || 0) + 1;
     }
+    setThreadCounts(counts);
   }, [organisation?.id]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  const statuses = useMemo(() => [...new Set(contacts.map((contact) => contact.status).filter(Boolean))].sort(), [contacts]);
+  const sources = useMemo(() => [...new Set(contacts.map((contact) => contact.source).filter(Boolean))].sort(), [contacts]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return contacts;
-    return contacts.filter((contact) =>
-      [
+    const rows = contacts.filter((contact) => {
+      const matchesQuery = !q || [
         contact.display_name,
         contact.email,
         contact.phone,
         contact.job_title,
         contact.company?.name,
-      ]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(q))
-    );
-  }, [contacts, query]);
+        contact.status,
+        contact.source,
+      ].filter(Boolean).some((value) => String(value).toLowerCase().includes(q));
+
+      return matchesQuery
+        && (!companyFilter || contact.company_id === companyFilter)
+        && (!statusFilter || contact.status === statusFilter)
+        && (!sourceFilter || contact.source === sourceFilter);
+    });
+
+    return [...rows].sort((a, b) => {
+      if (sort === "name_asc") return (a.display_name || a.email).localeCompare(b.display_name || b.email);
+      if (sort === "name_desc") return (b.display_name || b.email).localeCompare(a.display_name || a.email);
+      if (sort === "threads_desc") return (threadCounts[b.id] || 0) - (threadCounts[a.id] || 0);
+      if (sort === "last_contacted_desc") return new Date(b.last_contacted_at || 0).getTime() - new Date(a.last_contacted_at || 0).getTime();
+      if (sort === "created_desc") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    });
+  }, [contacts, query, companyFilter, statusFilter, sourceFilter, sort, threadCounts]);
+
+  function toggleColumn(column: ColumnId) {
+    setVisibleColumns((current) => {
+      if (current.includes(column)) {
+        if (column === "contact") return current;
+        return current.filter((item) => item !== column);
+      }
+      return [...current, column];
+    });
+  }
+
+  function resetView() {
+    setQuery("");
+    setCompanyFilter("");
+    setStatusFilter("");
+    setSourceFilter("");
+    setSort("updated_desc");
+    setVisibleColumns(DEFAULT_COLUMNS);
+  }
 
   async function createContact() {
     if (!organisation?.id || !profile?.user_id || !canManage) return;
