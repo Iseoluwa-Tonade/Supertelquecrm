@@ -94,7 +94,7 @@ export default function LoginPage() {
     setError("");
     setUnverifiedEmail("");
     setResentMsg("");
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const siteUrl = window.location.origin;
     const { error: signUpError, data } = await supabase.auth.signUp({
       email,
       password,
@@ -141,7 +141,7 @@ export default function LoginPage() {
     setResetLoading(true);
     setError("");
     setResetSent(false);
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const siteUrl = window.location.origin;
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(target, {
       redirectTo: `${siteUrl}/auth/callback?type=recovery`,
     });
@@ -170,7 +170,7 @@ export default function LoginPage() {
     if (!target || resendCooldown > 0) return;
     setResending(true);
     setResentMsg("");
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const siteUrl = window.location.origin;
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: target,
@@ -191,7 +191,7 @@ export default function LoginPage() {
     }
     setOauthLoading(true);
     setError("");
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const siteUrl = window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
