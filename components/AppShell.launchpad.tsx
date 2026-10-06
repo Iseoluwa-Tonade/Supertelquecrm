@@ -99,6 +99,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: "/settings", label: "Settings", icon: Settings },
     ],
   },
+];
 
 export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
   const { profile, organisation, session, theme, setTheme, signOut, notifications } = useApp();
