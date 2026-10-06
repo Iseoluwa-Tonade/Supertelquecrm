@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 
 import { useApp } from "@/lib/AppContext";
 import { daysUntil, dueLabel, money, statusTitle, label } from "@/lib/utils";
@@ -41,7 +42,7 @@ export default function PipelinePage() {
           <PanelHead title="Pipeline board" hint="Primary opportunities from the current CRM dataset" />
           <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
             {topDeals.map((deal) => (
-              <div key={deal.id} className="rounded-lg border border-border bg-surface p-4">
+              <Link href={`/pipeline/${deal.id}`} key={deal.id} className="block rounded-lg border border-border bg-surface p-4 transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="num text-[10px] text-muted-foreground">{deal.id}</p>
@@ -60,7 +61,7 @@ export default function PipelinePage() {
                   <span>{statusTitle(deal.status)}</span>
                   <span>{dueLabel(deal.due)}</span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </Panel>
