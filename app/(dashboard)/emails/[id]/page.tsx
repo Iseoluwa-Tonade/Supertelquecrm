@@ -92,9 +92,25 @@ export default function EmailThreadPage() {
           .maybeSingle(),
       ]);
 
+      let nextMessages = (messageRes.data || []) as EmailRow[];
+
+      if (nextMessages.some((message) => !message.body_text)) {
+        try {
+          const hydrate = await fetch(`/api/email-threads/${id}/hydrate`, { method: "POST" });
+          if (hydrate.ok) {
+            const refreshed = await supabase
+              .from("crm_emails")
+              .select("id,direction,from_address,from_name,to_addresses,subject,summary,body_text,received_at,sent_at,folder_name,has_attachments")
+              .eq("thread_id", id)
+              .order("received_at", { ascending: true, nullsFirst: false });
+            if (!refreshed.error) nextMessages = (refreshed.data || []) as EmailRow[];
+          }
+        } catch {}
+      }
+
       if (!cancelled) {
         setThread((threadRes.data as Thread | null) || null);
-        setMessages((messageRes.data || []) as EmailRow[]);
+        setMessages(nextMessages);
         setAi((aiRes.data as ThreadAi | null) || null);
         setLoading(false);
       }
@@ -267,7 +283,7 @@ export default function EmailThreadPage() {
               </div>
 
               <div className="mt-4 whitespace-pre-wrap text-sm leading-6 text-foreground/90">
-                {message.body_text || message.summary || "Full body sync is pending for this message."}
+                {message.body_text || message.summary || "Loading the full message from Zoho MCP…"}
               </div>
 
               {message.has_attachments && (

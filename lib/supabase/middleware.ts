@@ -32,8 +32,9 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const publicProtocolRoute = pathname.startsWith("/api/mcp") || pathname.startsWith("/.well-known") || pathname.startsWith("/oauth");
+  const internalMachineRoute = pathname === "/api/internal/mcp-mail-pull" || pathname === "/api/internal/email-ai";
 
-  if (!user && !pathname.startsWith("/login") && !pathname.startsWith("/auth") && !pathname.startsWith("/onboarding") && !publicProtocolRoute) {
+  if (!user && !pathname.startsWith("/login") && !pathname.startsWith("/auth") && !pathname.startsWith("/onboarding") && !publicProtocolRoute && !internalMachineRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
