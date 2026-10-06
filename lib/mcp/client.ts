@@ -44,6 +44,7 @@ export async function rawMcpRequest(
   const contentType = response.headers.get("content-type") || "";
   let payload: any = null;
   if (text) {
+    // MCP OAuth challenges may be plain text.
     if (contentType.includes("text/event-stream")) {
       payload = parseSse(text);
     } else {
