@@ -16,8 +16,6 @@ import {
   Users,
   Calculator,
   Search,
-  PanelLeftClose,
-  PanelLeft,
   Command,
   Building2,
   Contact,
@@ -98,7 +96,6 @@ const NAV: { group: string; items: NavItem[] }[] = [
 export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
   const { profile, organisation, session, theme, setTheme, signOut, notifications } = useApp();
   const pathname = usePathname() || "/";
-  const [railOpen, setRailOpen] = React.useState(true);
   const [accountOpen, setAccountOpen] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
@@ -135,29 +132,23 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
       <aside
         className={cn(
           "sticky top-0 z-30 hidden h-screen shrink-0 flex-col border-r border-border bg-[linear-gradient(180deg,rgba(17,26,40,.96),rgba(17,26,40,.92))] text-crm-sidebar-text shadow-[12px_0_30px_-26px_rgba(15,23,42,.6)] transition-[width] duration-200 md:flex",
-          railOpen ? "w-60" : "w-16",
+          "w-60",
         )}
       >
         <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-4">
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-[0_10px_20px_-14px_rgba(45,212,191,0.8)]">
             <Command className="h-4 w-4" />
           </span>
-          {railOpen ? (
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold leading-tight">{CURRENT_ORG.name}</p>
-              <p className="label-tag text-muted-foreground">{CURRENT_ORG.company_type || "workspace"}</p>
-            </div>
-          ) : null}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold leading-tight">{CURRENT_ORG.name}</p>
+            <p className="label-tag text-muted-foreground">{CURRENT_ORG.company_type || "workspace"}</p>
+          </div>
         </div>
 
         <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
           {navItems.map((section) => (
             <div key={section.group}>
-              {railOpen ? (
-                <p className="label-tag mb-2 px-2 text-crm-sidebar-muted/80">{section.group}</p>
-              ) : (
-                <div className="mx-2 mb-2 h-px bg-white/10" />
-              )}
+              <p className="label-tag mb-2 px-2 text-crm-sidebar-muted/80">{section.group}</p>
               <ul className="space-y-0.5">
                 {section.items.map((item) => {
                   const active = pathname === item.to || pathname === item.to + "/";
@@ -177,8 +168,8 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
                             <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-primary" />
                         ) : null}
                         <item.icon className="h-4 w-4 shrink-0" />
-                        {railOpen ? <span className="truncate">{item.label}</span> : null}
-                        {railOpen && item.badge ? (
+                        <span className="truncate">{item.label}</span>
+                        {item.badge ? (
                             <span className="num ml-auto rounded-full bg-white/10 px-1.5 text-[10px] text-white">
                             {item.badge}
                           </span>
@@ -192,13 +183,6 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <button
-          onClick={() => setRailOpen((open) => !open)}
-          className="flex h-11 items-center gap-2.5 border-t border-white/10 px-4 text-xs text-crm-sidebar-muted hover:text-white"
-        >
-          {railOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-          {railOpen ? "Collapse" : null}
-        </button>
       </aside>
 
       {/* Mobile sidebar overlay */}
