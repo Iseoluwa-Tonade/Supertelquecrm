@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     const { data: connection, error: insertError } = await supabase
       .from("crm_mcp_connections")
-      .upsert({
+      .insert({
         organisation_id: profile.organisation_id,
         created_by: user.id,
         name,
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         status: "connecting",
         last_error: null,
         updated_at: new Date().toISOString(),
-      }, { onConflict: "organisation_id,server_url" })
+      })
       .select("*")
       .single();
 

@@ -96,7 +96,11 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
         title: "New " + view.slice(0, -1),
         type: view === "pipeline" ? "deal" : "project",
         company: "New account",
+        priority: "medium",
+        value: 0,
+        due: null,
         status: colId,
+        notes: "",
         owner,
       });
       if (error) { flash(error.message); return; }
@@ -108,6 +112,7 @@ export default function KanbanBoard({ view }: { view: "pipeline" | "projects" | 
         company: "New account",
         status: colId,
         owner,
+        priority: "medium",
       };
       const pending = changeRequests.filter((r) => r.status === "pending");
       if (pending.length > 0) { flash("You already have a pending change request"); return; }

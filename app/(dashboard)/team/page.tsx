@@ -60,7 +60,18 @@ export default function TeamPage() {
       body: { email: inviteEmail.trim(), role: inviteRole },
     });
     setInviting(false);
-    if (error) { flash(error.message); return; }
+    if (error) {
+      let detail = error.message;
+      try {
+        const response = (error as unknown as { context?: Response }).context;
+        if (response) {
+          const payload = await response.clone().json();
+          if (payload?.error) detail = payload.error;
+        }
+      } catch {}
+      flash(detail);
+      return;
+    }
     setInviteFormOpen(false);
     setInviteEmail("");
     await loadTeamProfiles();
