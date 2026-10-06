@@ -241,14 +241,23 @@ export default function ConnectionsPage() {
       const response = await fetch("/api/email-sync", { method: "POST" });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Email sync failed");
-      const totals = (json.results || []).reduce(
+      const rows = json.results || [];
+      const failures = rows.filter((row: any) => row.error);
+      const totals = rows.reduce(
         (acc: { newEmails: number; analyzed: number }, row: any) => ({
           newEmails: acc.newEmails + Number(row.new_emails || 0),
           analyzed: acc.analyzed + Number(row.ai_analyzed_threads || 0),
         }),
         { newEmails: 0, analyzed: 0 },
       );
-      setMessage(`Mail sync complete. ${totals.newEmails} new email${totals.newEmails === 1 ? "" : "s"} pulled; ${totals.analyzed} thread${totals.analyzed === 1 ? "" : "s"} analyzed by AI.`);
+      if (failures.length) {
+        setMessage(
+          `Mail sync failed for ${failures.length} connection${failures.length === 1 ? "" : "s"}: ` +
+          failures.map((row: any) => `${row.connection_name}: ${row.error}`).join(" · ")
+        );
+      } else {
+        setMessage(`Mail sync complete. ${totals.newEmails} new email${totals.newEmails === 1 ? "" : "s"} pulled; ${totals.analyzed} thread${totals.analyzed === 1 ? "" : "s"} analyzed by AI.`);
+      }
       await refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Email sync failed");
@@ -289,7 +298,7 @@ export default function ConnectionsPage() {
         desc="Live systems, mailboxes, and Model Context Protocol connections for this CRM."
         actions={
           <div className="flex gap-2">
-            {canManage && mcpConnections.some((connection) => connection.provider === "zoho" && connection.status === "connected") ? (
+            {canManage && mcpConnections.some((connection) => connection.provider === "zoho" && ["connected", "attention"].includes(connection.status)) ? (
               <Btn variant="primary" size="sm" onClick={syncMailNow} disabled={syncingMail}>
                 <Mail className="h-4 w-4" />
                 {syncingMail ? "Syncing mail…" : "Sync mail now"}
