@@ -127,6 +127,15 @@ export async function callRemoteTool(
   return result.payload?.result;
 }
 
+function oauthMetadataUrl(issuer: string) {
+  const url = new URL(issuer);
+  const issuerPath = url.pathname.replace(/\/$/, "");
+  url.pathname = `/.well-known/oauth-authorization-server${issuerPath}`;
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
 export async function discoverOAuth(serverUrl: string) {
   const probe = await rawMcpRequest(serverUrl, {
     jsonrpc: "2.0",
@@ -158,7 +167,7 @@ export async function discoverOAuth(serverUrl: string) {
 
   if (!authorizationServer) throw new Error("MCP OAuth metadata did not specify an authorization server");
 
-  const authMetadataUrl = `${String(authorizationServer).replace(/\/$/, "")}/.well-known/oauth-authorization-server`;
+  const authMetadataUrl = oauthMetadataUrl(String(authorizationServer));
   const authResponse = await fetch(authMetadataUrl, { cache: "no-store" });
   if (!authResponse.ok) throw new Error("Could not read MCP authorization-server metadata");
   const authMetadata = await authResponse.json();
