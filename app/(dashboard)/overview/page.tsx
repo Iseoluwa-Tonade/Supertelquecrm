@@ -246,7 +246,7 @@ export default function OverviewPage() {
         title="Business command center"
 actions={
           <>
-            <Link href="/pipeline" className="inline-flex h-10 items-center gap-2 rounded-[13px] border border-white/10 bg-white/10 px-4 text-sm font-semibold shadow-sm backdrop-blur transition-[transform,background,border-color] hover:-translate-y-px hover:bg-white/15">
+            <Link href="/pipeline" className="inline-flex h-10 items-center gap-2 rounded-[13px] border border-border bg-surface/80 px-4 text-sm font-semibold text-foreground shadow-sm backdrop-blur transition-[transform,background,border-color] hover:-translate-y-px hover:border-primary/25 hover:bg-surface-raised">
               <TrendingUp className="h-4 w-4" /> View pipeline
             </Link>
           </>
