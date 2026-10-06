@@ -238,14 +238,17 @@ export default function ConnectionsPage() {
     setSyncingMail(true);
     setMessage("");
     try {
-      const response = await fetch("/api/email-sync", { method: "POST" });
+      const response = await fetch("/api/email-sync/mcp", { method: "POST" });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Email sync failed");
       const totals = (json.results || []).reduce(
-        (acc: { newEmails: number; analyzed: number }, row: any) => ({
-          newEmails: acc.newEmails + Number(row.new_emails || 0),
-          analyzed: acc.analyzed + Number(row.ai_analyzed_threads || 0),
-        }),
+        (acc: { newEmails: number; analyzed: number }, row: any) => {
+          const accountRows = Array.isArray(row.accounts) ? row.accounts : [];
+          return {
+            newEmails: acc.newEmails + accountRows.reduce((sum: number, item: any) => sum + Number(item.new_emails || 0), 0),
+            analyzed: acc.analyzed + accountRows.reduce((sum: number, item: any) => sum + Number(item.ai?.analyzed || 0), 0),
+          };
+        },
         { newEmails: 0, analyzed: 0 },
       );
       setMessage(`Mail sync complete. ${totals.newEmails} new email${totals.newEmails === 1 ? "" : "s"} pulled; ${totals.analyzed} thread${totals.analyzed === 1 ? "" : "s"} analyzed by AI.`);
