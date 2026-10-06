@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Inbox, Send, Archive, Bell, ShieldAlert, Search, RefreshCw, Mail, FileText } from "lucide-react";
+import { Inbox, Send, Archive, Bell, ShieldAlert, Search, RefreshCw, Mail, FileText, Columns3, SlidersHorizontal, Paperclip } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useApp } from "@/lib/AppContext";
@@ -30,6 +30,21 @@ type ThreadSummary = {
   mailbox_address: string | null;
   mailbox_display_name: string | null;
 };
+
+type ColumnId = "sender" | "subject" | "mailbox" | "category" | "messages" | "unread" | "attachments" | "date";
+
+const COLUMN_LABELS: Record<ColumnId, string> = {
+  sender: "Sender / recipient",
+  subject: "Subject & preview",
+  mailbox: "Mailbox",
+  category: "Category",
+  messages: "Messages",
+  unread: "Unread",
+  attachments: "Attachments",
+  date: "Last activity",
+};
+
+const DEFAULT_COLUMNS: ColumnId[] = ["sender","subject","mailbox","category","messages","unread","date"];
 
 type EmailAccount = {
   id: string;
@@ -80,6 +95,10 @@ export default function EmailsPage() {
   const [query, setQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const [category, setCategory] = useState("");
+  const [attentionFilter, setAttentionFilter] = useState("");
+  const [sort, setSort] = useState("newest");
+  const [visibleColumns, setVisibleColumns] = useState<ColumnId[]>(DEFAULT_COLUMNS);
+  const [columnsOpen, setColumnsOpen] = useState(false);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -123,12 +142,19 @@ export default function EmailsPage() {
     let request = supabase
       .from("crm_email_thread_summaries")
       .select("*", { count: "exact" })
-      .eq("organisation_id", organisation.id)
-      .order("last_message_at", { ascending: false, nullsFirst: false })
-      .range(offset, offset + pageSize - 1);
+      .eq("organisation_id", organisation.id);
 
     if (accountId) request = request.eq("provider_account_id", accountId);
     if (category) request = request.eq("mailbox_category", category);
+    if (attentionFilter === "unread") request = request.gt("unread_count", 0);
+    if (attentionFilter === "attachments") request = request.eq("has_attachments", true);
+
+    if (sort === "oldest") request = request.order("last_message_at", { ascending: true, nullsFirst: false });
+    else if (sort === "subject") request = request.order("subject", { ascending: true, nullsFirst: false });
+    else if (sort === "messages") request = request.order("message_count", { ascending: false, nullsFirst: false });
+    else request = request.order("last_message_at", { ascending: false, nullsFirst: false });
+
+    request = request.range(offset, offset + pageSize - 1);
 
     if (activeQuery) {
       const safe = activeQuery.replace(/[,%()]/g, " ").trim();
@@ -145,7 +171,7 @@ export default function EmailsPage() {
       setTotal(count || 0);
     }
     setLoading(false);
-  }, [organisation?.id, accountId, category, activeQuery, offset]);
+  }, [organisation?.id, accountId, category, attentionFilter, sort, activeQuery, offset]);
 
   useEffect(() => { loadAccounts(); }, [loadAccounts]);
   useEffect(() => { loadCounts(); }, [loadCounts]);
@@ -153,6 +179,26 @@ export default function EmailsPage() {
 
   const page = Math.floor(offset / pageSize) + 1;
   const pages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total]);
+
+  function toggleColumn(column: ColumnId) {
+    setVisibleColumns((current) => {
+      if (current.includes(column)) {
+        if (column === "subject") return current;
+        return current.filter((item) => item !== column);
+      }
+      return [...current, column];
+    });
+  }
+
+  function clearFilters() {
+    setQuery("");
+    setActiveQuery("");
+    setCategory("");
+    setAccountId("");
+    setAttentionFilter("");
+    setSort("newest");
+    setOffset(0);
+  }
 
   return (
     <div className="space-y-6">
