@@ -183,6 +183,7 @@ export function BoardItemPage({ kind }: { kind: ItemKind }) {
                 value={item.priority}
                 onChange={() => {}}
                 ariaLabel="Priority"
+                placeholder="Select priority"
                 options={["high","medium","low"].map((value) => ({ value, label: label(value) }))}
                 className={isViewer ? "pointer-events-none opacity-70" : ""}
               />
