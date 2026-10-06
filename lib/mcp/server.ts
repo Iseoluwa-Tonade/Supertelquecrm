@@ -3,11 +3,13 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 export const CRM_MCP_TOOLS = [
   {
     name: "crm_overview",
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     description: "Get live CRM counts and pipeline totals for the signed-in workspace.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
     name: "search_contacts",
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     description: "Search CRM contacts by name, email, phone, or job title.",
     inputSchema: {
       type: "object",
@@ -20,6 +22,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "list_companies",
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     description: "List CRM companies, optionally filtered by a search query.",
     inputSchema: {
       type: "object",
@@ -32,6 +35,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "list_pipeline",
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     description: "List revenue pipeline deals from the CRM.",
     inputSchema: {
       type: "object",
@@ -44,6 +48,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "search_email_threads",
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     description: "Search CRM email conversations by subject.",
     inputSchema: {
       type: "object",
@@ -56,6 +61,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "get_email_thread",
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     description: "Get the messages in one CRM email conversation thread.",
     inputSchema: {
       type: "object",
@@ -66,6 +72,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "create_task",
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     description: "Create a CRM task. This is a write action.",
     inputSchema: {
       type: "object",
@@ -82,6 +89,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "update_pipeline_item",
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     description: "Update the status, priority, due date, value, or notes of a CRM deal/project/task. This is a write action.",
     inputSchema: {
       type: "object",
