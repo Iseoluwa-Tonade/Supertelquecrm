@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { AppProvider, useApp } from "@/lib/AppContext";
 import { ToastProvider } from "@/components/Toast";
-import DetailPanel from "@/components/DetailPanel";
 import { AppShellLaunchpad } from "@/components/AppShell.launchpad";
 import { canSeeView } from "@/lib/access";
 import { createClient } from "@/lib/supabase/client";
@@ -13,7 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 const supabase = createClient();
 
 function DashboardInner({ children }: { children: React.ReactNode }) {
-  const { session, loading, profile, organisation, selectedId } = useApp();
+  const { session, loading, profile, organisation } = useApp();
   const router = useRouter();
   const pathname = usePathname();
   const currentView = pathname.split("/").filter(Boolean)[0] || "overview";
@@ -83,7 +82,6 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   return (
     <>
       <AppShellLaunchpad>{children}</AppShellLaunchpad>
-      {selectedId ? <DetailPanel /> : null}
     </>
   );
 }
