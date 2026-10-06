@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Paperclip, Send, Inbox, TrendingUp } from "lucide-react";
+import { ArrowLeft, Paperclip, Send, Inbox, TrendingUp, Sparkles, MailPlus, CheckCircle2 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { useApp } from "@/lib/AppContext";
@@ -18,6 +18,20 @@ type Thread = {
   last_message_at: string | null;
   message_count: number;
   board_item_id: string | null;
+};
+
+type ThreadAi = {
+  summary: string | null;
+  next_action: string | null;
+  needs_reply: boolean;
+  suggested_to: string | null;
+  suggested_subject: string | null;
+  suggested_body: string | null;
+  rationale: string | null;
+  model: string | null;
+  status: string;
+  error: string | null;
+  analyzed_at: string | null;
 };
 
 type EmailRow = {
@@ -55,6 +69,7 @@ export default function EmailThreadPage() {
   const canManage = profile?.role === "admin" || profile?.role === "manager";
   const [thread, setThread] = useState<Thread | null>(null);
   const [messages, setMessages] = useState<EmailRow[]>([]);
+  const [ai, setAi] = useState<ThreadAi | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,24 +78,37 @@ export default function EmailThreadPage() {
 
     (async () => {
       setLoading(true);
-      const [threadRes, messageRes] = await Promise.all([
+      const [threadRes, messageRes, aiRes] = await Promise.all([
         supabase.from("crm_email_threads").select("id,subject,last_message_at,message_count,board_item_id").eq("id", id).maybeSingle(),
         supabase
           .from("crm_emails")
           .select("id,direction,from_address,from_name,to_addresses,subject,summary,body_text,received_at,sent_at,folder_name,has_attachments")
           .eq("thread_id", id)
           .order("received_at", { ascending: true, nullsFirst: false }),
+        supabase
+          .from("crm_email_thread_ai")
+          .select("summary,next_action,needs_reply,suggested_to,suggested_subject,suggested_body,rationale,model,status,error,analyzed_at")
+          .eq("thread_id", id)
+          .maybeSingle(),
       ]);
 
       if (!cancelled) {
         setThread((threadRes.data as Thread | null) || null);
         setMessages((messageRes.data || []) as EmailRow[]);
+        setAi((aiRes.data as ThreadAi | null) || null);
         setLoading(false);
       }
     })();
 
     return () => { cancelled = true; };
   }, [id]);
+
+  function openSuggestedEmail() {
+    if (!ai?.suggested_to || !ai?.suggested_body) return;
+    const subject = ai.suggested_subject || thread?.subject || "";
+    const mailto = `mailto:${encodeURIComponent(ai.suggested_to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(ai.suggested_body)}`;
+    window.location.href = mailto;
+  }
 
   async function createPipelineDeal() {
     if (!thread || !profile || !organisation?.id || !canManage) return;
@@ -138,7 +166,7 @@ export default function EmailThreadPage() {
 
       <PageHeader
         variant="revenue"
-        eyebrow="Zoho Email"
+        eyebrow="Email"
         title={thread?.subject || "Email conversation"}
         desc={thread ? thread.message_count + " message" + (thread.message_count === 1 ? "" : "s") + " in this thread" : "Conversation"}
         actions={
@@ -156,6 +184,56 @@ export default function EmailThreadPage() {
           </div>
         }
       />
+
+      <Panel>
+        <PanelHead
+          title="AI thread intelligence"
+          hint={ai?.analyzed_at ? "Updated " + fmt(ai.analyzed_at) : "Runs only after new email arrives"}
+          action={ai?.status === "ready" ? <Tag tone="success">Current</Tag> : ai?.status === "error" ? <Tag tone="danger">Needs attention</Tag> : <Tag tone="neutral">Waiting</Tag>}
+        />
+        <div className="grid gap-4 p-4 lg:grid-cols-2">
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Thread summary
+            </div>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+              {ai?.summary || (ai?.error ? ai.error : "No AI analysis yet. Configure OpenAI in Settings; the next new email in this thread will trigger analysis.")}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              Next action
+            </div>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+              {ai?.next_action || "No suggested action yet."}
+            </p>
+            {ai?.rationale ? <p className="mt-3 text-xs leading-5 text-muted-foreground">{ai.rationale}</p> : null}
+          </div>
+
+          {ai?.needs_reply && ai.suggested_body ? (
+            <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 lg:col-span-2">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Suggested email</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    To: {ai.suggested_to || "—"} · Subject: {ai.suggested_subject || thread?.subject || "—"}
+                  </p>
+                </div>
+                <Btn variant="primary" size="sm" onClick={openSuggestedEmail}>
+                  <MailPlus className="h-4 w-4" />
+                  Open suggested email
+                </Btn>
+              </div>
+              <div className="mt-4 whitespace-pre-wrap rounded-xl border border-border bg-background p-4 text-sm leading-6">
+                {ai.suggested_body}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </Panel>
 
       <Panel>
         <PanelHead title="Conversation" hint={thread?.last_message_at ? "Last activity " + fmt(thread.last_message_at) : undefined} />
