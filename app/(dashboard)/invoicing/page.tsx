@@ -142,7 +142,7 @@ export default function InvoicingPage() {
             <Field label="Invoice number"><Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} required /></Field>
             <Field label="Client name"><Input value={clientName} onChange={(e) => setClientName(e.target.value)} required /></Field>
             <Field label="Client email"><Input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} /></Field>
-            <DropdownSelect value={currency} onChange={setCurrency} ariaLabel="Currency" options={[{ value: "USD", label: "USD" }, { value: "NGN", label: "NGN" }, { value: "GBP", label: "GBP" }, { value: "EUR", label: "EUR" }]} />
+            <DropdownSelect value={currency} onChange={setCurrency} ariaLabel="Currency" placeholder="Choose currency" options={[{ value: "USD", label: "USD" }, { value: "NGN", label: "NGN" }, { value: "GBP", label: "GBP" }, { value: "EUR", label: "EUR" }]} />
             <Field label="Issued"><Input type="date" value={issuedAt} onChange={(e) => setIssuedAt(e.target.value)} /></Field>
             <Field label="Due"><Input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} /></Field>
             <Field label="Amount"><Input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required /></Field>
@@ -179,7 +179,7 @@ export default function InvoicingPage() {
                   <td className="px-4 py-3 text-right num">{money(Number(inv.total_amount))}</td>
                   <td className="px-4 py-3 text-right num">{money(Number(inv.amount_paid))}</td>
                   <td className="px-4 py-3">
-                    <DropdownSelect value={inv.status} onChange={(value) => updateStatus(inv, value)} ariaLabel={`Status for ${inv.invoice_number}`} options={["draft","sent","partial","paid","overdue","void"].map((s) => ({ value: s, label: s.replace("_", " ") }))} className="h-8 text-xs" />
+                    <DropdownSelect value={inv.status} onChange={(value) => updateStatus(inv, value)} ariaLabel={`Status for ${inv.invoice_number}`} placeholder="Choose status" options={["draft","sent","partial","paid","overdue","void"].map((s) => ({ value: s, label: s.replace("_", " ") }))} className="h-8 text-xs" />
                   </td>
                 </tr>
               ))}
