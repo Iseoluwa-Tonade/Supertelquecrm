@@ -9,6 +9,6 @@ export async function GET(request: NextRequest) {
     resource: `${origin}/api/mcp`,
     authorization_servers: [`${authBase}/auth/v1`],
     bearer_methods_supported: ["header"],
-    scopes_supported: ["openid", "email", "profile"],
+    scopes_supported: ["email", "profile"],
   });
 }
