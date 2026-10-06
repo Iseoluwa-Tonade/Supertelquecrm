@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 
 import { useApp } from "@/lib/AppContext";
 import { money, dueLabel, daysUntil, label } from "@/lib/utils";
@@ -56,7 +57,7 @@ export default function ProjectsPage() {
           <PanelHead title="Active projects" hint="Delivery work currently in motion" />
           <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
             {visibleProjects.map((project) => (
-              <div key={project.id} className="rounded-lg border border-border bg-surface p-4">
+              <Link href={`/projects/${project.id}`} key={project.id} className="block rounded-lg border border-border bg-surface p-4 transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="num text-[10px] text-muted-foreground">{project.id}</p>
@@ -72,7 +73,7 @@ export default function ProjectsPage() {
                   <Tag tone="neutral">{project.type}</Tag>
                   <span>{dueLabel(project.due)}</span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </Panel>
