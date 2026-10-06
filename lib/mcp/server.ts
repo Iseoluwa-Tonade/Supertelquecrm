@@ -2,13 +2,24 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const CRM_MCP_TOOLS = [
   {
+    name: "profile",
+    title: "Current CRM profile",
+    description: "Return the authenticated user's Supertelque CRM workspace identity and role.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    _meta: { "openai/profile": true },
+  },
+  {
     name: "crm_overview",
+    title: "CRM overview",
     description: "Get live CRM counts and pipeline totals for the signed-in workspace.",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
     name: "search_contacts",
     description: "Search CRM contacts by name, email, phone, or job title.",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
       type: "object",
       properties: {
@@ -21,6 +32,7 @@ export const CRM_MCP_TOOLS = [
   {
     name: "list_companies",
     description: "List CRM companies, optionally filtered by a search query.",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
       type: "object",
       properties: {
@@ -33,6 +45,7 @@ export const CRM_MCP_TOOLS = [
   {
     name: "list_pipeline",
     description: "List revenue pipeline deals from the CRM.",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
       type: "object",
       properties: {
@@ -45,6 +58,7 @@ export const CRM_MCP_TOOLS = [
   {
     name: "search_email_threads",
     description: "Search CRM email conversations by subject.",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
       type: "object",
       properties: {
@@ -57,6 +71,7 @@ export const CRM_MCP_TOOLS = [
   {
     name: "get_email_thread",
     description: "Get the messages in one CRM email conversation thread.",
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
       type: "object",
       properties: { thread_id: { type: "string" } },
@@ -67,6 +82,7 @@ export const CRM_MCP_TOOLS = [
   {
     name: "create_task",
     description: "Create a CRM task. This is a write action.",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     inputSchema: {
       type: "object",
       properties: {
@@ -83,6 +99,7 @@ export const CRM_MCP_TOOLS = [
   {
     name: "update_pipeline_item",
     description: "Update the status, priority, due date, value, or notes of a CRM deal/project/task. This is a write action.",
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     inputSchema: {
       type: "object",
       properties: {
@@ -139,6 +156,29 @@ export async function executeCrmTool(
   toolName: string,
   args: Record<string, any>,
 ) {
+  if (toolName === "profile") {
+    const [{ data: profile, error: profileError }, { data: organisation, error: organisationError }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("user_id,email,display_name,role,status,organisation_id")
+        .eq("user_id", userId)
+        .eq("organisation_id", organisationId)
+        .single(),
+      supabase
+        .from("organisations")
+        .select("id,name,company_type")
+        .eq("id", organisationId)
+        .single(),
+    ]);
+    if (profileError) throw profileError;
+    if (organisationError) throw organisationError;
+    return {
+      content: [{ type: "text", text: JSON.stringify({ profile, organisation }, null, 2) }],
+      structuredContent: { profile, organisation },
+      _meta: { "openai/profile": true },
+    };
+  }
+
   if (toolName === "crm_overview") {
     const [contacts, companies, deals, projects, tasks, threads] = await Promise.all([
       supabase.from("crm_contacts").select("id", { count: "exact", head: true }).eq("organisation_id", organisationId),
