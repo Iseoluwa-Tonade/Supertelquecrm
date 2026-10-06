@@ -18,6 +18,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "search_contacts",
+    title: "Search contacts",
     description: "Search CRM contacts by name, email, phone, or job title.",
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
@@ -31,6 +32,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "list_companies",
+    title: "List companies",
     description: "List CRM companies, optionally filtered by a search query.",
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
@@ -44,6 +46,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "list_pipeline",
+    title: "List pipeline deals",
     description: "List revenue pipeline deals from the CRM.",
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
@@ -57,6 +60,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "search_email_threads",
+    title: "Search email threads",
     description: "Search CRM email conversations by subject.",
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
@@ -70,6 +74,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "get_email_thread",
+    title: "Get email thread",
     description: "Get the messages in one CRM email conversation thread.",
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
@@ -81,6 +86,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "create_task",
+    title: "Create task",
     description: "Create a CRM task. This is a write action.",
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     inputSchema: {
@@ -98,6 +104,7 @@ export const CRM_MCP_TOOLS = [
   },
   {
     name: "update_pipeline_item",
+    title: "Update pipeline item",
     description: "Update the status, priority, due date, value, or notes of a CRM deal/project/task. This is a write action.",
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     inputSchema: {
