@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { useApp } from "@/lib/AppContext";
 import { daysUntil, dueLabel, money, statusTitle, label } from "@/lib/utils";
-import { Avatar, Panel, PanelHead, PageHeader, Stat, Tag } from "@/components/kit.launchpad";
+import { Avatar, Btn, Panel, PanelHead, PageHeader, Stat, Tag } from "@/components/kit.launchpad";
 
 export default function PipelinePage() {
   const { items, profile } = useApp();
@@ -27,7 +27,14 @@ export default function PipelinePage() {
         eyebrow="Revenue"
         title="Deal pipeline"
         desc="The journey view is now presented with a cleaner Launchpad-style layout, while your current CRM data still drives the content."
-        actions={<Tag tone="neutral">{label(profile?.role || "viewer")}</Tag>}
+        actions={
+          <div className="flex items-center gap-2">
+            <Tag tone="neutral">{label(profile?.role || "viewer")}</Tag>
+            {(profile?.role === "admin" || profile?.role === "manager") ? (
+              <Link href="/sales"><Btn variant="primary" size="sm">New deal</Btn></Link>
+            ) : null}
+          </div>
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
