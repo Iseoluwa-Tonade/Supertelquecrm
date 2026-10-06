@@ -261,7 +261,7 @@ export async function POST() {
       .select("*")
       .eq("organisation_id", profile.organisation_id)
       .eq("provider", "zoho")
-      .eq("status", "connected")
+      .in("status", ["connected", "attention"])
       .order("created_at");
 
     if (connectionError) throw connectionError;
@@ -601,10 +601,21 @@ export async function POST() {
           ai_analyzed_threads: analyzedThreads,
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Zoho sync failed";
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === "string"
+              ? error
+              : (() => {
+                  try { return JSON.stringify(error); } catch { return "Zoho sync failed"; }
+                })();
+
+        // The MCP OAuth/tool connection can still be healthy even when a mailbox
+        // synchronization attempt fails. Keep it retryable and record the exact
+        // sync failure separately.
         await supabase.from("crm_mcp_connections").update({
-          status: "attention",
-          last_error: message,
+          status: "connected",
+          last_error: "Mail sync: " + message,
           updated_at: new Date().toISOString(),
         }).eq("id", connection.id);
 
