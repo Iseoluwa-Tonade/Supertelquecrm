@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Building2, Globe2, Plus, Search, X } from "lucide-react";
 
 import { useApp } from "@/lib/AppContext";
@@ -24,6 +25,7 @@ type Company = {
 
 export default function CompaniesPage() {
   const { profile, organisation } = useApp();
+  const searchParams = useSearchParams();
   const { flash } = useToast();
   const canManage = profile?.role === "admin" || profile?.role === "manager";
 
@@ -38,6 +40,12 @@ export default function CompaniesPage() {
   const [domain, setDomain] = useState("");
   const [website, setWebsite] = useState("");
   const [phone, setPhone] = useState("");
+
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    if (q) setQuery(q);
+  }, [searchParams]);
+
 
   const loadData = useCallback(async () => {
     if (!organisation?.id) return;
