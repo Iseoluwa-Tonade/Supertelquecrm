@@ -24,7 +24,7 @@ const OFFICE_PREVIEW_TYPES = [
 const TEXT_PREVIEW_EXTENSIONS = ["txt", "csv", "json", "md", "log"];
 
 export default function DocumentsPage() {
-  const { session, profile, documents, items, previewDoc, setPreviewDoc, loadDocuments, docFilterItem, setDocFilterItem } = useApp();
+  const { session, profile, organisation, documents, items, previewDoc, setPreviewDoc, loadDocuments, docFilterItem, setDocFilterItem } = useApp();
   const { flash } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -87,6 +87,7 @@ export default function DocumentsPage() {
       const { error: uploadError } = await supabase.storage.from("crm-documents").upload(path, file);
       if (uploadError) { flash(file.name + ": " + uploadError.message); continue; }
       const { error: dbError } = await supabase.from("crm_documents").insert({
+        organisation_id: organisation?.id || null,
         board_item_id: linkId || null,
         file_name: file.name,
         file_path: path,
@@ -100,7 +101,7 @@ export default function DocumentsPage() {
     await loadDocuments();
     if (fileInputRef.current) fileInputRef.current.value = "";
     flash(succeeded === 1 ? "Document uploaded" : succeeded + " documents uploaded");
-  }, [session, isViewer, supabase, loadDocuments, flash, linkId]);
+  }, [session, isViewer, organisation?.id, supabase, loadDocuments, flash, linkId]);
 
   const deleteDocument = useCallback(async (doc: CrmDocument) => {
     if (!confirm("Delete this document? This can't be undone.")) return;
