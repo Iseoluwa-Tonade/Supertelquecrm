@@ -246,7 +246,7 @@ export default function OverviewPage() {
         title="Business command center"
 actions={
           <>
-            <Link href="/pipeline" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-surface-raised">
+            <Link href="/pipeline" className="inline-flex h-10 items-center gap-2 rounded-[13px] border border-white/10 bg-white/10 px-4 text-sm font-semibold shadow-sm backdrop-blur transition-[transform,background,border-color] hover:-translate-y-px hover:bg-white/15">
               <TrendingUp className="h-4 w-4" /> View pipeline
             </Link>
           </>
@@ -258,21 +258,21 @@ actions={
           title="Operating flow"
           hint="One shared CRM record moves through every stage"
         />
-        <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-6">
+        <div className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-6">
           {workflowStages.map((stage, index) => (
             <div key={stage.step} className="relative">
               <Link
                 href={stage.href}
-                className="group block h-full rounded-xl border border-border bg-surface p-4 transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                className="group relative block h-full overflow-hidden rounded-[18px] border border-border/90 bg-[linear-gradient(180deg,rgba(255,255,255,.96),rgba(248,250,252,.9))] p-4 shadow-[0_8px_24px_-22px_rgba(16,24,40,.24)] transition-[transform,box-shadow,border-color] duration-200 before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary/30 before:to-transparent hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_18px_34px_-24px_rgba(16,24,40,.32)] dark:bg-[linear-gradient(180deg,rgba(22,33,50,.94),rgba(16,24,38,.92))]"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-semibold tracking-[.16em] text-muted-foreground">{stage.step}</span>
-                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <span className="grid h-10 w-10 place-items-center rounded-[14px] bg-primary/10 text-primary ring-1 ring-primary/10 transition-transform duration-200 group-hover:scale-105">
                     <stage.icon className="h-4 w-4" />
                   </span>
                 </div>
-                <p className="mt-4 text-sm font-semibold text-foreground">{stage.title}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{stage.detail}</p>
+                <p className="mt-4 text-[13px] font-semibold tracking-[-0.01em] text-foreground">{stage.title}</p>
+                <p className="mt-1 text-[11px] leading-5 text-muted-foreground">{stage.detail}</p>
               </Link>
               {index < workflowStages.length - 1 ? (
                 <ArrowRight className="absolute -right-2.5 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 rounded-full bg-background p-1 text-muted-foreground xl:block" />
@@ -280,14 +280,14 @@ actions={
             </div>
           ))}
         </div>
-        <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+        <div className="border-t border-border/80 bg-surface-raised/35 px-5 py-3 text-xs leading-5 text-muted-foreground">
           Companies and contacts connect to conversations; conversations connect to deals; won deals move into delivery; delivery connects to invoices, accounting, and reporting.
         </div>
       </Panel>
 
       <Panel>
         <PanelHead title="Workspace" hint="Modules grouped by the work they support" />
-        <div className="space-y-6 p-4">
+        <div className="space-y-7 p-5">
           {moduleGroups.map((group) => (
             <section key={group.title}>
               <div className="mb-3 flex items-end justify-between gap-3">
@@ -301,10 +301,10 @@ actions={
                   <Link
                     key={module.href}
                     href={module.href}
-                    className="group rounded-xl border border-border bg-surface p-3 transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                    className="group rounded-[17px] border border-border/90 bg-surface p-3.5 shadow-[0_8px_22px_-22px_rgba(16,24,40,.22)] transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_16px_30px_-22px_rgba(16,24,40,.28)]"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                      <span className="grid h-10 w-10 place-items-center rounded-[14px] bg-primary/10 text-primary ring-1 ring-primary/10 transition-transform duration-200 group-hover:scale-105">
                         <module.icon className="h-4 w-4" />
                       </span>
                       <ArrowUpRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
@@ -321,12 +321,12 @@ actions={
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((s) => (
-          <Panel key={s.label} className="p-4">
+          <Panel key={s.label} className="group overflow-hidden p-5">
             <div className="flex items-center justify-between">
               <p className="label-tag text-muted-foreground">{s.label}</p>
-              <s.icon className={`h-4 w-4 ${s.color} opacity-70`} />
+              <span className="grid h-9 w-9 place-items-center rounded-[13px] bg-surface-raised ring-1 ring-border/70"><s.icon className={`h-4 w-4 ${s.color}`} /></span>
             </div>
-            <p className="num mt-2 text-2xl font-semibold text-foreground">{s.value}</p>
+            <p className="num mt-3 text-[30px] font-semibold tracking-[-0.045em] text-foreground">{s.value}</p>
             <div className="mt-1 flex items-center gap-2">
               <span className="num text-xs text-muted-foreground">{s.delta}</span>
               <span className="text-[10px] text-muted-foreground/60">{s.sub}</span>
@@ -445,7 +445,7 @@ actions={
               { label: "Overdue", value: overdue, icon: Clock },
               { label: "My deals", value: myDeals.length, icon: Filter },
             ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2.5">
+              <div key={item.label} className="flex items-center justify-between rounded-[13px] border border-border/85 bg-surface-raised/45 px-3.5 py-3 transition-colors hover:bg-surface-raised/70">
                 <span className="text-sm text-muted-foreground">{item.label}</span>
                 <span className="num text-base font-semibold text-foreground">{item.value}</span>
               </div>
@@ -554,7 +554,7 @@ actions={
                 {pipelineStages.map((stage) => {
                   const pct = Math.round((stage.count / Math.max(activeDeals.length, 1)) * 100);
                   return (
-                    <div key={stage.status} className="rounded-lg border border-border bg-surface p-3">
+                    <div key={stage.status} className="rounded-[16px] border border-border/90 bg-surface p-3.5 shadow-[0_8px_20px_-22px_rgba(16,24,40,.22)]">
                       <div className="flex items-center gap-2">
                         <span className="h-2.5 w-2.5 rounded-full" style={{ background: stage.color }} />
                         <span className="truncate text-xs text-muted-foreground">{stage.title}</span>
