@@ -17,7 +17,7 @@ const priorityColor: Record<string, string> = {
 const supabase = createClient();
 
 export default function OverviewPage() {
-  const { items, activities, documents, messages, changeRequests, profile, teamProfiles, organisation } = useApp();
+  const { items, activities, documents, messages, notifications, changeRequests, services, profile, teamProfiles, organisation } = useApp();
   const deals = items.filter((item) => item.type === "deal");
   const projects = items.filter((item) => item.type === "project");
   const tasks = items.filter((item) => item.type === "task");
@@ -27,24 +27,44 @@ export default function OverviewPage() {
   const [pipelineView, setPipelineView] = useState<"bar" | "pie">("bar");
   const [contactCount, setContactCount] = useState(0);
   const [companyCount, setCompanyCount] = useState(0);
+  const [emailThreadCount, setEmailThreadCount] = useState(0);
+  const [emailAccountCount, setEmailAccountCount] = useState(0);
+  const [inventoryCount, setInventoryCount] = useState(0);
+  const [invoiceCount, setInvoiceCount] = useState(0);
+  const [financeEntryCount, setFinanceEntryCount] = useState(0);
+  const [reportCount, setReportCount] = useState(0);
 
   useEffect(() => {
     if (!organisation?.id) return;
     Promise.all([
       supabase.from("crm_contacts").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
       supabase.from("crm_companies").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
-    ]).then(([contacts, companies]) => {
+      supabase.from("crm_email_threads").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
+      supabase.from("crm_email_accounts").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
+      supabase.from("crm_inventory_items").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
+      supabase.from("crm_invoices").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
+      supabase.from("crm_finance_entries").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
+      supabase.from("crm_reports").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
+    ]).then(([contacts, companies, emailThreads, emailAccounts, inventory, invoices, financeEntries, reports]) => {
       setContactCount(contacts.count || 0);
       setCompanyCount(companies.count || 0);
+      setEmailThreadCount(emailThreads.count || 0);
+      setEmailAccountCount(emailAccounts.count || 0);
+      setInventoryCount(inventory.count || 0);
+      setInvoiceCount(invoices.count || 0);
+      setFinanceEntryCount(financeEntries.count || 0);
+      setReportCount(reports.count || 0);
     });
   }, [organisation?.id]);
 
   const doneStatuses = ["project_done", "project_delivered", "project_closed"];
   const activeItems = items.filter((item) => !doneStatuses.includes(item.status));
   const closedItems = items.filter((item) => doneStatuses.includes(item.status));
-  const openValue = activeItems.reduce((sum, item) => sum + Number(item.value || 0), 0);
-  const closedValue = closedItems.reduce((sum, item) => sum + Number(item.value || 0), 0);
-  const avgDealSize = activeItems.length > 0 ? Math.round(openValue / activeItems.length) : 0;
+  const activeDeals = deals.filter((item) => !["closed_won", "closed_lost"].includes(item.status));
+  const closedDeals = deals.filter((item) => ["closed_won", "closed_lost"].includes(item.status));
+  const wonDeals = deals.filter((item) => item.status === "closed_won");
+  const openValue = activeDeals.reduce((sum, item) => sum + Number(item.value || 0), 0);
+  const avgDealSize = activeDeals.length > 0 ? Math.round(openValue / activeDeals.length) : 0;
 
   const today = todayIso();
   const todayActivities = activities.filter((a) => a.activity_date === today);
@@ -52,39 +72,46 @@ export default function OverviewPage() {
   const pendingApprovals = changeRequests.filter((r) => r.status === "pending").length;
   const dueSoon = activeItems.filter((item) => daysUntil(item.due) >= 0 && daysUntil(item.due) <= 7).length;
   const overdue = activeItems.filter((item) => daysUntil(item.due) < 0).length;
-  const myDeals = activeItems.filter((item) => item.assigned_to === profile?.user_id);
+  const myDeals = activeDeals.filter((item) => item.assigned_to === profile?.user_id);
 
-  const winRate = items.length > 0 ? Math.round((closedItems.length / items.length) * 100) : 0;
+  const winRate = deals.length > 0 ? Math.round((wonDeals.length / deals.length) * 100) : 0;
 
   const workspaceModules = [
-    { href: "/emails", label: "Zoho Email", value: "3,419 threads", icon: Mail },
+    { href: "/emails", label: "Email", value: emailThreadCount + " threads", icon: Mail },
     { href: "/messages", label: "Messages", value: unreadMessages + " unread", icon: MessageSquare },
+    { href: "/notifications", label: "Notifications", value: notifications.filter((n) => !n.read_at).length + " unread", icon: Calendar },
     { href: "/pipeline", label: "Pipeline", value: deals.length + " deals", icon: TrendingUp },
+    { href: "/sales", label: "Sales", value: wonDeals.length + " won", icon: TrendingUp },
     { href: "/clients", label: "Companies", value: companyCount + " companies", icon: Building2 },
     { href: "/contacts", label: "Contacts", value: contactCount + " contacts", icon: Contact },
+    { href: "/pricing", label: "Pricing", value: services.length + " services", icon: Sparkles },
     { href: "/projects", label: "Projects", value: projects.length + " projects", icon: FolderKanban },
     { href: "/tasks", label: "Tasks", value: tasks.length + " tasks", icon: ListTodo },
+    { href: "/my-tasks", label: "My Tasks", value: tasks.filter((t) => t.assigned_to === profile?.user_id).length + " assigned", icon: CheckCircle2 },
+    { href: "/focus", label: "Focus", value: (overdue + dueSoon) + " attention", icon: Clock },
     { href: "/activity", label: "Activity", value: activities.length + " events", icon: Activity },
     { href: "/documents", label: "Documents", value: documents.length + " files", icon: FileText },
+    { href: "/inventory", label: "Inventory", value: inventoryCount + " items", icon: FolderKanban },
+    { href: "/invoicing", label: "Invoicing", value: invoiceCount + " invoices", icon: ReceiptText },
+    { href: "/accounting", label: "Accounting", value: financeEntryCount + " entries", icon: Landmark },
     { href: "/approvals", label: "Approvals", value: pendingApprovals + " pending", icon: ShieldCheck },
-    { href: "/invoicing", label: "Invoicing", value: deals.length + " source deals", icon: ReceiptText },
-    { href: "/accounting", label: "Accounting", value: "Finance", icon: Landmark },
-    { href: "/reports", label: "Reports", value: items.length + " records", icon: FileBarChart },
+    { href: "/reports", label: "Reports", value: reportCount + " reports", icon: FileBarChart },
     { href: "/team", label: "Team", value: teamProfiles.length + " members", icon: Users },
-    { href: "/connections", label: "Connections", value: "3 live systems", icon: Plug },
-    { href: "/settings", label: "Settings", value: "Configure", icon: Settings },
+    { href: "/connections", label: "Connections", value: emailAccountCount + " mailboxes", icon: Plug },
+    { href: "/profile", label: "Profile", value: profile?.display_name || "Account", icon: Users },
+    { href: "/settings", label: "Settings", value: organisation?.name || "Workspace", icon: Settings },
   ];
 
   const stats = [
-    { label: "Pipeline value", value: money(openValue), delta: `${activeItems.length} active deals`, sub: `Avg ${money(avgDealSize)}`, icon: TrendingUp, color: "text-primary" },
-    { label: "Win rate", value: `${winRate}%`, delta: `${closedItems.length} closed`, sub: `${items.length} total`, icon: Activity, color: "text-success" },
+    { label: "Pipeline value", value: money(openValue), delta: `${activeDeals.length} active deals`, sub: `Avg ${money(avgDealSize)}`, icon: TrendingUp, color: "text-primary" },
+    { label: "Win rate", value: `${winRate}%`, delta: `${wonDeals.length} won`, sub: `${deals.length} total deals`, icon: Activity, color: "text-success" },
     { label: "Due this week", value: String(dueSoon), delta: `${overdue} overdue`, sub: `Of ${activeItems.length} active`, icon: Clock, color: "text-warning" },
     { label: "Approvals", value: String(pendingApprovals), delta: isManager ? "Review queue" : "Awaiting", sub: `${changeRequests.length} total`, icon: CheckCircle2, color: "text-info" },
   ];
 
   const pipelineStages = useMemo(() => {
     const stageMap = new Map<string, { count: number; value: number; color: string }>();
-    for (const item of activeItems) {
+    for (const item of activeDeals) {
       const existing = stageMap.get(item.status) || { count: 0, value: 0, color: statusColor(item.status) };
       existing.count++;
       existing.value += Number(item.value || 0);
@@ -93,7 +120,7 @@ export default function OverviewPage() {
     return Array.from(stageMap.entries())
       .map(([status, data]) => ({ status, ...data, title: statusTitle(status) }))
       .sort((a, b) => b.count - a.count);
-  }, [activeItems]);
+  }, [activeDeals]);
 
   const maxStageCount = Math.max(...pipelineStages.map((s) => s.count), 1);
   const totalStageCount = pipelineStages.reduce((sum, stage) => sum + stage.count, 0);
@@ -126,7 +153,7 @@ export default function OverviewPage() {
 actions={
           <>
             <Link href="/pipeline" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-surface-raised">
-              <Sparkles className="h-4 w-4" /> Weekly digest
+              <TrendingUp className="h-4 w-4" /> View pipeline
             </Link>
           </>
         }
@@ -272,8 +299,8 @@ actions={
           <PanelHead title="At a glance" />
           <div className="space-y-2 p-4">
             {[
-              { label: "Active deals", value: activeItems.length, icon: TrendingUp },
-              { label: "Closed deals", value: closedItems.length, icon: CheckCircle2 },
+              { label: "Active deals", value: activeDeals.length, icon: TrendingUp },
+              { label: "Closed deals", value: closedDeals.length, icon: CheckCircle2 },
               { label: "Documents", value: documents.length, icon: Activity },
               { label: "Unread messages", value: unreadMessages, icon: ArrowUpRight },
               { label: "Today's activity", value: todayActivities.length, icon: Calendar },
@@ -295,7 +322,7 @@ actions={
           hint="Recent deals with key metrics"
           action={
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{activeItems.length} records</span>
+              <span className="text-xs text-muted-foreground">{activeDeals.length} records</span>
               <Link href="/pipeline">
                 <Btn size="sm">View all</Btn>
               </Link>
@@ -316,7 +343,7 @@ actions={
               </tr>
             </thead>
             <tbody>
-              {activeItems.slice(0, 10).map((item) => (
+              {activeDeals.slice(0, 10).map((item) => (
                 <tr key={item.id} className="border-b border-border last:border-0 hover:bg-surface-raised/40 transition-colors">
                   <td className="px-4 py-3 font-medium text-foreground">{item.company}</td>
                   <td className="px-4 py-3 text-muted-foreground">{item.title}</td>
@@ -387,7 +414,7 @@ actions={
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {pipelineStages.map((stage) => {
-                  const pct = Math.round((stage.count / activeItems.length) * 100);
+                  const pct = Math.round((stage.count / Math.max(activeDeals.length, 1)) * 100);
                   return (
                     <div key={stage.status} className="rounded-lg border border-border bg-surface p-3">
                       <div className="flex items-center gap-2">
