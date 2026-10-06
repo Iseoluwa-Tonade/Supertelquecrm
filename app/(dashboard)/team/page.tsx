@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { useCallback, useState, useEffect } from "react";
 import { label, cn } from "@/lib/utils";
 import { ROLES, NAV_VIEWS } from "@/lib/types";
+import { ROLE_DESCRIPTIONS, ROLE_LABELS, viewsForRole } from "@/lib/access";
 import type { InviteRequest, Profile } from "@/lib/types";
 import { PageHeader, Panel, PanelHead, Stat, Btn, Input, Avatar, Tag, DropdownSelect } from "@/components/kit.launchpad";
 import { Drawer } from "@/components/Drawer";
@@ -213,7 +214,7 @@ export default function TeamPage() {
                 onChange={setInviteRole}
                 ariaLabel="Role"
                 placeholder="Choose role"
-                options={ROLES.map((r) => ({ value: r, label: label(r) }))}
+                options={ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}
               />
             </div>
             <div className="flex justify-end pt-2">
@@ -248,14 +249,24 @@ export default function TeamPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <DropdownSelect
-                        value={p.role}
-                        onChange={(value) => updateRole(p.user_id, value)}
-                        ariaLabel={`Role for ${p.display_name || p.email || "team member"}`}
-                        placeholder="Choose role"
-                        options={ROLES.map((r) => ({ value: r, label: label(r) }))}
-                        className="h-8 text-xs"
-                      />
+                      {isSelf ? (
+                        <div>
+                          <Tag tone="primary">{ROLE_LABELS[p.role]}</Tag>
+                          <p className="mt-1 max-w-56 text-[10px] text-muted-foreground">Your own role cannot be changed here.</p>
+                        </div>
+                      ) : (
+                        <div>
+                          <DropdownSelect
+                            value={p.role}
+                            onChange={(value) => updateRole(p.user_id, value)}
+                            ariaLabel={`Role for ${p.display_name || p.email || "team member"}`}
+                            placeholder="Choose role"
+                            options={ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}
+                            className="h-8 text-xs"
+                          />
+                          <p className="mt-1 max-w-56 text-[10px] text-muted-foreground">{ROLE_DESCRIPTIONS[p.role]}</p>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{label(p.status || "active")}</td>
                     <td className="px-4 py-3">
@@ -476,12 +487,15 @@ function AccessControlCard({
   isSelf: boolean;
   updateViews: (userId: string, views: string[]) => Promise<void>;
 }) {
+  const roleViews = viewsForRole(member.role);
+  const roleViewSet = new Set<string>(roleViews);
   const restricted = Array.isArray(member.allowed_views) && member.allowed_views.length > 0;
-  const currentAllowed = new Set(member.allowed_views || NAV_VIEWS.map((v) => v.id));
-  const activeCount = restricted ? (member.allowed_views || []).length : NAV_VIEWS.length;
+  const currentAllowed = new Set((member.allowed_views || roleViews).filter((view) => roleViewSet.has(view)));
+  const activeCount = restricted ? currentAllowed.size : roleViews.length;
 
   const handleToggle = (viewId: string) => {
     if (isSelf) return;
+    if (!roleViewSet.has(viewId)) return;
     const next = new Set(currentAllowed);
     if (next.has(viewId)) {
       next.delete(viewId);
@@ -493,7 +507,7 @@ function AccessControlCard({
 
   const handleGrantAll = () => {
     if (isSelf) return;
-    updateViews(member.user_id, NAV_VIEWS.map((v) => v.id));
+    updateViews(member.user_id, roleViews);
   };
 
   const handleResetUnrestricted = () => {
@@ -556,7 +570,7 @@ function AccessControlCard({
           ) : (
             <p className="flex items-center gap-1.5">
               <Unlock className="h-4 w-4 shrink-0 text-success" />
-              <span><strong>Unrestricted Mode:</strong> Team member has access to all {NAV_VIEWS.length} pages allowed by their role.</span>
+              <span><strong>Unrestricted Mode:</strong> Team member has access to all {roleViews.length} pages allowed by their role.</span>
             </p>
           )}
         </div>
@@ -566,7 +580,7 @@ function AccessControlCard({
       <div className="flex items-center justify-between gap-2 border-b border-border pb-3 px-1">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
-          Page Grants ({activeCount} of {NAV_VIEWS.length})
+          Page Grants ({activeCount} of {roleViews.length})
         </span>
 
         {!isSelf && (
@@ -593,7 +607,7 @@ function AccessControlCard({
 
       {/* Page Permissions Toggles List */}
       <div className="space-y-2">
-        {NAV_VIEWS.map((entry) => {
+        {NAV_VIEWS.filter((entry) => roleViewSet.has(entry.id)).map((entry) => {
           const Icon = viewIconMap[entry.id] || LayoutDashboard;
           const isAllowed = !restricted || currentAllowed.has(entry.id);
 
