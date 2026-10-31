@@ -39,12 +39,6 @@ type DealRow = {
   value: number;
 };
 
-type ThreadRow = {
-  id: string;
-  subject: string | null;
-  message_count: number;
-  last_message_at: string | null;
-};
 
 function fmt(value?: string | null) {
   if (!value) return "—";
@@ -63,14 +57,13 @@ export default function CompanyDetailPage() {
   const [company, setCompany] = useState<CompanyRow | null>(null);
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [records, setRecords] = useState<DealRow[]>([]);
-  const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     if (!id || !organisation?.id) return;
     setLoading(true);
 
-    const [companyRes, contactRes, recordRes, threadRes] = await Promise.all([
+    const [companyRes, contactRes, recordRes] = await Promise.all([
       supabase
         .from("crm_companies")
         .select("id,organisation_id,name,domain,website,phone,address,status,source,notes")
@@ -89,19 +82,11 @@ export default function CompanyDetailPage() {
         .eq("organisation_id", organisation.id)
         .eq("company_id", id)
         .order("created_at", { ascending: false }),
-      supabase
-        .from("crm_email_threads")
-        .select("id,subject,message_count,last_message_at")
-        .eq("organisation_id", organisation.id)
-        .eq("company_id", id)
-        .order("last_message_at", { ascending: false })
-        .limit(20),
     ]);
 
     setCompany((companyRes.data as CompanyRow | null) || null);
     setContacts((contactRes.data || []) as ContactRow[]);
     setRecords((recordRes.data || []) as DealRow[]);
-    setThreads((threadRes.data || []) as ThreadRow[]);
     setLoading(false);
   }, [id, organisation?.id]);
 
@@ -210,23 +195,7 @@ export default function CompanyDetailPage() {
             </div>
           </Panel>
 
-          <Panel>
-            <PanelHead title={"Email conversations (" + threads.length + ")"} />
-            <div className="divide-y divide-border">
-              {threads.length === 0 ? (
-                <div className="p-6 text-center text-sm text-muted-foreground">No company email threads linked yet.</div>
-              ) : threads.map((thread) => (
-                <Link key={thread.id} href={"/emails/" + thread.id} className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-surface-raised">
-                  <Mail className="h-4 w-4 text-primary" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{thread.subject || "(no subject)"}</p>
-                    <p className="text-xs text-muted-foreground">{thread.message_count} messages</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{fmt(thread.last_message_at)}</span>
-                </Link>
-              ))}
-            </div>
-          </Panel>
+
         </div>
       </div>
     </div>

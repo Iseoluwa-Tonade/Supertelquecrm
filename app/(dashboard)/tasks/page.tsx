@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { TaskViews } from "@/components/TaskViews";
 import { CalendarClock, Send } from "lucide-react";
 
 import { useApp } from "@/lib/AppContext";
@@ -93,9 +94,10 @@ export default function TasksPage() {
       <PageHeader
         variant="delivery"
         eyebrow="Delivery"
-        title="Task scheduling"
+        title="Tasks"
         desc="Persistent team tasks connected to projects, people and the dashboard."
       />
+      <TaskViews active="team" />
 
       {canManage && (
         <Panel>

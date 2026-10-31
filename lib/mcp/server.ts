@@ -59,32 +59,6 @@ export const CRM_MCP_TOOLS = [
     },
   },
   {
-    name: "search_email_threads",
-    title: "Search email threads",
-    description: "Search CRM email conversations by subject.",
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string" },
-        limit: { type: "integer", minimum: 1, maximum: 100, default: 25 },
-      },
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "get_email_thread",
-    title: "Get email thread",
-    description: "Get the messages in one CRM email conversation thread.",
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    inputSchema: {
-      type: "object",
-      properties: { thread_id: { type: "string" } },
-      required: ["thread_id"],
-      additionalProperties: false,
-    },
-  },
-  {
     name: "create_task",
     title: "Create task",
     description: "Create a CRM task. This is a write action.",
@@ -187,13 +161,12 @@ export async function executeCrmTool(
   }
 
   if (toolName === "crm_overview") {
-    const [contacts, companies, deals, projects, tasks, threads] = await Promise.all([
+    const [contacts, companies, deals, projects, tasks] = await Promise.all([
       supabase.from("crm_contacts").select("id", { count: "exact", head: true }).eq("organisation_id", organisationId),
       supabase.from("crm_companies").select("id", { count: "exact", head: true }).eq("organisation_id", organisationId),
       supabase.from("crm_board_items").select("value,status", { count: "exact" }).eq("organisation_id", organisationId).eq("type", "deal"),
       supabase.from("crm_board_items").select("id", { count: "exact", head: true }).eq("organisation_id", organisationId).eq("type", "project"),
       supabase.from("crm_board_items").select("id", { count: "exact", head: true }).eq("organisation_id", organisationId).eq("type", "task"),
-      supabase.from("crm_email_threads").select("id", { count: "exact", head: true }).eq("organisation_id", organisationId),
     ]);
     const openDeals = (deals.data || []).filter((d: any) => !["closed_won","closed_lost"].includes(d.status));
     const pipelineValue = openDeals.reduce((sum: number, d: any) => sum + Number(d.value || 0), 0);
@@ -205,7 +178,6 @@ export async function executeCrmTool(
       pipelineValue,
       projects: projects.count || 0,
       tasks: tasks.count || 0,
-      emailThreads: threads.count || 0,
     });
   }
 
@@ -254,31 +226,6 @@ export async function executeCrmTool(
       .limit(limit);
     if (args.status) query = query.eq("status", String(args.status));
     const { data, error } = await query;
-    if (error) throw error;
-    return asText(data || []);
-  }
-
-  if (toolName === "search_email_threads") {
-    const limit = Math.min(Number(args.limit || 25), 100);
-    let query = supabase
-      .from("crm_email_threads")
-      .select("id,subject,last_message_at,message_count,provider,provider_account_id,board_item_id,contact_id,company_id")
-      .eq("organisation_id", organisationId)
-      .order("last_message_at", { ascending: false })
-      .limit(limit);
-    if (args.query) query = query.ilike("subject", `%${String(args.query)}%`);
-    const { data, error } = await query;
-    if (error) throw error;
-    return asText(data || []);
-  }
-
-  if (toolName === "get_email_thread") {
-    const { data, error } = await supabase
-      .from("crm_emails")
-      .select("id,direction,from_address,from_name,to_addresses,cc_addresses,subject,summary,body_text,sent_at,received_at,folder_name,has_attachments")
-      .eq("organisation_id", organisationId)
-      .eq("thread_id", String(args.thread_id))
-      .order("created_at", { ascending: true });
     if (error) throw error;
     return asText(data || []);
   }

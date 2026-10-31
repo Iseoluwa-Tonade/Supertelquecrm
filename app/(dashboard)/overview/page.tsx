@@ -28,8 +28,6 @@ export default function OverviewPage() {
   const [pipelineView, setPipelineView] = useState<"bar" | "pie">("bar");
   const [contactCount, setContactCount] = useState(0);
   const [companyCount, setCompanyCount] = useState(0);
-  const [emailThreadCount, setEmailThreadCount] = useState(0);
-  const [emailAccountCount, setEmailAccountCount] = useState(0);
   const [inventoryCount, setInventoryCount] = useState(0);
   const [invoiceCount, setInvoiceCount] = useState(0);
   const [financeEntryCount, setFinanceEntryCount] = useState(0);
@@ -40,17 +38,13 @@ export default function OverviewPage() {
     Promise.all([
       supabase.from("crm_contacts").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
       supabase.from("crm_companies").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
-      supabase.from("crm_email_threads").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
-      supabase.from("crm_email_accounts").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
       supabase.from("crm_inventory_items").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
       supabase.from("crm_invoices").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
       supabase.from("crm_finance_entries").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
       supabase.from("crm_reports").select("id", { count: "exact", head: true }).eq("organisation_id", organisation.id),
-    ]).then(([contacts, companies, emailThreads, emailAccounts, inventory, invoices, financeEntries, reports]) => {
+    ]).then(([contacts, companies, inventory, invoices, financeEntries, reports]) => {
       setContactCount(contacts.count || 0);
       setCompanyCount(companies.count || 0);
-      setEmailThreadCount(emailThreads.count || 0);
-      setEmailAccountCount(emailAccounts.count || 0);
       setInventoryCount(inventory.count || 0);
       setInvoiceCount(invoices.count || 0);
       setFinanceEntryCount(financeEntries.count || 0);
@@ -80,71 +74,6 @@ export default function OverviewPage() {
   const unreadNotifications = notifications.filter((n) => !n.read_at).length;
   const visible = (id: string) => canSeeView(profile, organisation, id);
 
-  const moduleGroups = [
-    {
-      title: "Command center",
-      description: "What needs attention now",
-      modules: [
-        { id: "focus", href: "/focus", label: "Focus board", value: (overdue + dueSoon) + " attention", icon: Clock },
-        { id: "activity", href: "/activity", label: "Activity log", value: activities.length + " events", icon: Activity },
-        { id: "notifications", href: "/notifications", label: "Notifications", value: unreadNotifications + " unread", icon: Calendar },
-      ],
-    },
-    {
-      title: "CRM & communication",
-      description: "Who you are working with and every conversation",
-      modules: [
-        { id: "clients", href: "/clients", label: "Companies", value: companyCount + " companies", icon: Building2 },
-        { id: "contacts", href: "/contacts", label: "Contacts", value: contactCount + " contacts", icon: Contact },
-        { id: "emails", href: "/emails", label: "Email", value: emailThreadCount + " threads", icon: Mail },
-        { id: "messages", href: "/messages", label: "Messages", value: unreadMessages + " unread", icon: MessageSquare },
-      ],
-    },
-    {
-      title: "Revenue",
-      description: "Turn relationships and conversations into revenue",
-      modules: [
-        { id: "pipeline", href: "/pipeline", label: "Pipeline", value: deals.length + " deals", icon: TrendingUp },
-        { id: "sales", href: "/sales", label: "Sales", value: wonDeals.length + " won", icon: TrendingUp },
-        { id: "pricing", href: "/pricing", label: "Pricing", value: services.length + " services", icon: Sparkles },
-      ],
-    },
-    {
-      title: "Delivery",
-      description: "Move won work into execution",
-      modules: [
-        { id: "projects", href: "/projects", label: "Projects", value: projects.length + " projects", icon: FolderKanban },
-        { id: "tasks", href: "/tasks", label: "Task scheduling", value: tasks.length + " tasks", icon: ListTodo },
-        { id: "my-tasks", href: "/my-tasks", label: "My tasks", value: tasks.filter((t) => t.assigned_to === profile?.user_id).length + " assigned", icon: CheckCircle2 },
-        { id: "documents", href: "/documents", label: "Documents", value: documents.length + " files", icon: FileText },
-        { id: "inventory", href: "/inventory", label: "Inventory", value: inventoryCount + " items", icon: FolderKanban },
-      ],
-    },
-    {
-      title: "Finance & reporting",
-      description: "Bill, account for, and report on completed work",
-      modules: [
-        { id: "invoicing", href: "/invoicing", label: "Invoicing", value: invoiceCount + " invoices", icon: ReceiptText },
-        { id: "accounting", href: "/accounting", label: "Accounting", value: financeEntryCount + " entries", icon: Landmark },
-        { id: "reports", href: "/reports", label: "Reports", value: reportCount + " reports", icon: FileBarChart },
-      ],
-    },
-    {
-      title: "Workspace & automation",
-      description: "People, approvals, integrations, and administration",
-      modules: [
-        { id: "approvals", href: "/approvals", label: "Approvals", value: pendingApprovals + " pending", icon: ShieldCheck },
-        { id: "team", href: "/team", label: "Team & invites", value: teamProfiles.length + " members", icon: Users },
-        { id: "connections", href: "/connections", label: "Connections", value: emailAccountCount + " mailboxes", icon: Plug },
-        { id: "profile", href: "/profile", label: "My profile", value: profile?.display_name || "Account", icon: Users },
-        { id: "settings", href: "/settings", label: "Settings", value: organisation?.name || "Workspace", icon: Settings },
-      ],
-    },
-  ].map((group) => ({
-    ...group,
-    modules: group.modules.filter((module) => visible(module.id)),
-  })).filter((group) => group.modules.length > 0);
-
   const workflowStages = [
     {
       id: "clients",
@@ -155,12 +84,12 @@ export default function OverviewPage() {
       icon: Building2,
     },
     {
-      id: "emails",
+      id: "messages",
       step: "02",
       title: "Communicate",
-      detail: `${emailThreadCount} email threads · ${unreadMessages} unread messages`,
-      href: "/emails",
-      icon: Mail,
+      detail: `${unreadMessages} unread team messages`,
+      href: "/messages",
+      icon: MessageSquare,
     },
     {
       id: "pipeline",
@@ -282,40 +211,6 @@ actions={
         </div>
         <div className="border-t border-border/80 bg-surface-raised/35 px-5 py-3 text-xs leading-5 text-muted-foreground">
           Companies and contacts connect to conversations; conversations connect to deals; won deals move into delivery; delivery connects to invoices, accounting, and reporting.
-        </div>
-      </Panel>
-
-      <Panel>
-        <PanelHead title="Workspace" hint="Modules grouped by the work they support" />
-        <div className="space-y-7 p-5">
-          {moduleGroups.map((group) => (
-            <section key={group.title}>
-              <div className="mb-3 flex items-end justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{group.description}</p>
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                {group.modules.map((module) => (
-                  <Link
-                    key={module.href}
-                    href={module.href}
-                    className="group rounded-[17px] border border-border/90 bg-surface p-3.5 shadow-[0_8px_22px_-22px_rgba(16,24,40,.22)] transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_16px_30px_-22px_rgba(16,24,40,.28)]"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="grid h-10 w-10 place-items-center rounded-[14px] bg-primary/10 text-primary ring-1 ring-primary/10 transition-transform duration-200 group-hover:scale-105">
-                        <module.icon className="h-4 w-4" />
-                      </span>
-                      <ArrowUpRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                    </div>
-                    <p className="mt-3 text-sm font-semibold text-foreground">{module.label}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{module.value}</p>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          ))}
         </div>
       </Panel>
 

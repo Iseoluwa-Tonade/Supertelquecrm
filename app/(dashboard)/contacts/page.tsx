@@ -28,7 +28,7 @@ type Contact = {
   company?: Company | null;
 };
 
-type ColumnKey = "name" | "email" | "phone" | "company" | "job_title" | "source" | "last_contacted" | "threads";
+type ColumnKey = "name" | "email" | "phone" | "company" | "job_title" | "source" | "last_contacted";
 
 const ALL_COLUMNS: Array<{ id: ColumnKey; label: string }> = [
   { id: "name", label: "Name" },
@@ -38,7 +38,6 @@ const ALL_COLUMNS: Array<{ id: ColumnKey; label: string }> = [
   { id: "job_title", label: "Job title" },
   { id: "source", label: "Source" },
   { id: "last_contacted", label: "Last contacted" },
-  { id: "threads", label: "Email threads" },
 ];
 
 function fmt(value?: string | null) {
@@ -54,14 +53,13 @@ export default function ContactsPage() {
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [threadCounts, setThreadCounts] = useState<Record<string, number>>({});
   const [query, setQuery] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortKey, setSortKey] = useState("updated");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [columns, setColumns] = useState<ColumnKey[]>(["name","email","company","job_title","source","last_contacted","threads"]);
+  const [columns, setColumns] = useState<ColumnKey[]>(["name","email","company","job_title","source","last_contacted"]);
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -117,18 +115,6 @@ export default function ContactsPage() {
     setContacts(nextContacts);
     setCompanies((companyRes.data || []) as Company[]);
 
-    if (nextContacts.length) {
-      const { data: linked } = await supabase
-        .from("crm_email_threads")
-        .select("contact_id")
-        .eq("organisation_id", organisation.id)
-        .not("contact_id", "is", null);
-      const counts: Record<string, number> = {};
-      for (const row of linked || []) counts[String(row.contact_id)] = (counts[String(row.contact_id)] || 0) + 1;
-      setThreadCounts(counts);
-    } else {
-      setThreadCounts({});
-    }
   }, [organisation?.id, flash]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -154,12 +140,11 @@ export default function ContactsPage() {
       if (sortKey === "name") { av = (a.display_name || a.email).toLowerCase(); bv = (b.display_name || b.email).toLowerCase(); }
       if (sortKey === "company") { av = (a.company?.name || "").toLowerCase(); bv = (b.company?.name || "").toLowerCase(); }
       if (sortKey === "last_contacted") { av = a.last_contacted_at || ""; bv = b.last_contacted_at || ""; }
-      if (sortKey === "threads") { av = threadCounts[a.id] || 0; bv = threadCounts[b.id] || 0; }
       if (sortKey === "updated") { av = a.updated_at || a.created_at || ""; bv = b.updated_at || b.created_at || ""; }
       const result = av < bv ? -1 : av > bv ? 1 : 0;
       return sortDir === "asc" ? result : -result;
     });
-  }, [contacts, query, companyFilter, sourceFilter, statusFilter, sortKey, sortDir, threadCounts]);
+  }, [contacts, query, companyFilter, sourceFilter, statusFilter, sortKey, sortDir]);
 
   function toggleColumn(id: ColumnKey) {
     setColumns((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
@@ -253,7 +238,6 @@ export default function ContactsPage() {
               { value: "name", label: "Name" },
               { value: "company", label: "Company" },
               { value: "last_contacted", label: "Last contacted" },
-              { value: "threads", label: "Email threads" },
             ]}
           />
 
@@ -296,7 +280,6 @@ export default function ContactsPage() {
                 {columns.includes("job_title") && <th className="px-4 py-3 text-left font-medium">Job title</th>}
                 {columns.includes("source") && <th className="px-4 py-3 text-left font-medium">Source</th>}
                 {columns.includes("last_contacted") && <th className="px-4 py-3 text-left font-medium">Last contacted</th>}
-                {columns.includes("threads") && <th className="px-4 py-3 text-right font-medium">Email threads</th>}
               </tr>
             </thead>
             <tbody>
@@ -318,7 +301,6 @@ export default function ContactsPage() {
                     {columns.includes("job_title") && <td className="px-4 py-3 text-muted-foreground">{contact.job_title || "—"}</td>}
                     {columns.includes("source") && <td className="px-4 py-3"><Tag tone={contact.source === "email" || contact.source === "zoho" ? "primary" : "neutral"}>{contact.source}</Tag></td>}
                     {columns.includes("last_contacted") && <td className="px-4 py-3 text-muted-foreground">{fmt(contact.last_contacted_at)}</td>}
-                    {columns.includes("threads") && <td className="px-4 py-3 text-right"><Tag tone={threadCounts[contact.id] ? "primary" : "neutral"}>{threadCounts[contact.id] || 0}</Tag></td>}
                   </tr>
                 );
               })}

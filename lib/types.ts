@@ -179,7 +179,6 @@ export const NAV_VIEWS = [
 
   { id: "clients", label: "Companies" },
   { id: "contacts", label: "Contacts" },
-  { id: "emails", label: "Email" },
   { id: "messages", label: "Messages" },
 
   { id: "pipeline", label: "Pipeline" },
@@ -270,7 +269,6 @@ export const FEATURE_LABELS: Record<string, string> = {
   activity: "Daily Activities",
   notifications: "Notifications",
   messages: "Internal Messages",
-  emails: "Email",
   connections: "Connections",
   pipeline: "Pipeline Board",
   clients: "Clients",

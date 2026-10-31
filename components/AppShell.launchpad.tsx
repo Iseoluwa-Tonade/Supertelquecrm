@@ -11,7 +11,6 @@ import {
   Activity,
   Files,
   MessageSquare,
-  Mail,
   ShieldCheck,
   Users,
   Calculator,
@@ -21,7 +20,6 @@ import {
   Contact,
   TrendingUp,
   CalendarClock,
-  CheckSquare,
   ReceiptText,
   Landmark,
   Boxes,
@@ -59,7 +57,6 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: "/clients", label: "Companies", icon: Building2 },
       { to: "/contacts", label: "Contacts", icon: Contact },
-      { to: "/emails", label: "Email", icon: Mail },
       { to: "/messages", label: "Messages", icon: MessageSquare },
     ],
   },
@@ -75,8 +72,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     group: "Delivery",
     items: [
       { to: "/projects", label: "Projects", icon: FolderKanban },
-      { to: "/tasks", label: "Task scheduling", icon: CalendarClock },
-      { to: "/my-tasks", label: "My tasks", icon: CheckSquare },
+      { to: "/tasks", label: "Tasks", icon: CalendarClock },
       { to: "/documents", label: "Documents", icon: Files },
       { to: "/inventory", label: "Inventory", icon: Boxes },
     ],
@@ -117,7 +113,8 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
     ? NAV.map((group) => ({
         ...group,
         items: group.items
-          .filter((item) => canSeeView(profile, organisation, item.to.slice(1)))
+          .filter((item) => canSeeView(profile, organisation, item.to.slice(1)) || (item.to === "/tasks" && canSeeView(profile, organisation, "my-tasks")))
+          .map((item) => item.to === "/tasks" && !canSeeView(profile, organisation, "tasks") ? { ...item, to: "/my-tasks" } : item)
           .map((item) =>
             item.to === "/notifications" && unreadNotifications > 0
               ? { ...item, badge: unreadNotifications }
@@ -207,7 +204,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
               <p className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-[.17em] text-crm-sidebar-muted/55">{section.group}</p>
               <ul className="space-y-0.5">
                 {section.items.map((item) => {
-                  const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                  const active = pathname === item.to || pathname.startsWith(item.to + "/") || (item.to === "/tasks" && pathname === "/my-tasks");
                   return (
                     <li key={item.to}>
                       <Link
@@ -283,7 +280,7 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
                     <p className="label-tag mb-2 px-2 text-crm-sidebar-muted/80">{section.group}</p>
                     <ul className="space-y-0.5">
                       {section.items.map((item) => {
-                        const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                        const active = pathname === item.to || pathname.startsWith(item.to + "/") || (item.to === "/tasks" && pathname === "/my-tasks");
                         return (
                           <li key={item.to}>
                             <Link
@@ -368,15 +365,12 @@ export function AppShellLaunchpad({ children }: { children: React.ReactNode }) {
                   </div>
 
                   {globalQuery.trim() ? (
-                    <div className="grid grid-cols-3 gap-1 border-b border-border p-2">
+                    <div className="grid grid-cols-2 gap-1 border-b border-border p-2">
                       <button type="button" onClick={() => goToSearch("/contacts")} className="rounded-xl px-3 py-2 text-left text-xs hover:bg-surface-raised">
                         <span className="font-semibold">Contacts</span><span className="block truncate text-muted-foreground">{globalQuery}</span>
                       </button>
                       <button type="button" onClick={() => goToSearch("/clients")} className="rounded-xl px-3 py-2 text-left text-xs hover:bg-surface-raised">
                         <span className="font-semibold">Companies</span><span className="block truncate text-muted-foreground">{globalQuery}</span>
-                      </button>
-                      <button type="button" onClick={() => goToSearch("/emails")} className="rounded-xl px-3 py-2 text-left text-xs hover:bg-surface-raised">
-                        <span className="font-semibold">Email</span><span className="block truncate text-muted-foreground">{globalQuery}</span>
                       </button>
                     </div>
                   ) : null}

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { TaskViews } from "@/components/TaskViews";
 import { Check, CircleDot, Clock, Play } from "lucide-react";
 
 import { useApp } from "@/lib/AppContext";
@@ -48,9 +49,10 @@ export default function MyTasksPage() {
       <PageHeader
         variant="delivery"
         eyebrow="Delivery"
-        title="My tasks"
+        title="Tasks"
         desc="Your assigned work from the shared CRM task system."
       />
+      <TaskViews active="mine" />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Panel className="p-4 text-center">

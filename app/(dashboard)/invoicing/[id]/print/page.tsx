@@ -74,7 +74,7 @@ export default function PrintInvoicePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 print:bg-white print:p-0">
+    <div className="invoice-document min-h-screen bg-background px-4 py-6 print:min-h-0 print:bg-white print:p-0">
       <div className="mx-auto max-w-4xl">
         <div className="mb-4 flex justify-end print:hidden">
           <Btn variant="primary" onClick={() => window.print()}>
@@ -83,7 +83,7 @@ export default function PrintInvoicePage() {
           </Btn>
         </div>
 
-        <article className="rounded-2xl border border-border bg-white p-8 text-slate-900 shadow-sm print:rounded-none print:border-0 print:shadow-none">
+        <article className="invoice-sheet rounded-2xl border border-border bg-white p-8 text-slate-900 shadow-sm print:rounded-none print:border-0 print:shadow-none">
           <header className="flex items-start justify-between gap-8 border-b border-slate-200 pb-8">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Invoice</p>
@@ -155,7 +155,7 @@ export default function PrintInvoicePage() {
           </section>
 
           <footer className="mt-12 border-t border-slate-200 pt-6 text-xs text-slate-500">
-            Generated from the live Supertelque CRM invoice record.
+            Thank you for your business.
           </footer>
         </article>
       </div>

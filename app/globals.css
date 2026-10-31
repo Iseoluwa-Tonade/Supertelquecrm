@@ -294,3 +294,15 @@ li[data-sonner-toast] {
     radial-gradient(circle at 88% 0%, rgba(96, 165, 250, 0.06), transparent 24%),
     linear-gradient(180deg, #0c1320 0%, var(--color-crm-bg) 72%);
 }
+
+@media print {
+  @page { size: auto; margin: 12mm; }
+  html, body { height: auto !important; overflow: visible !important; background: white !important; }
+  .invoice-document { min-height: 0 !important; padding: 0 !important; color: #0f172a; }
+  .invoice-sheet { padding: 0 !important; box-shadow: none !important; border: 0 !important; }
+  .invoice-sheet header, .invoice-sheet footer { break-inside: avoid; }
+  .invoice-sheet table { overflow: visible; }
+  .invoice-sheet thead { display: table-header-group; }
+}
+
+@media print { [data-sonner-toaster] { display: none !important; } }

@@ -79,6 +79,8 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
     return null;
   }
 
+  if (/^\/invoicing\/[^/]+\/print\/?$/.test(pathname)) return <>{children}</>;
+
   return (
     <>
       <AppShellLaunchpad>{children}</AppShellLaunchpad>

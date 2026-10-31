@@ -27,13 +27,6 @@ type ContactRow = {
   crm_companies: { id: string; name: string } | null;
 };
 
-type ThreadRow = {
-  id: string;
-  subject: string | null;
-  message_count: number;
-  last_message_at: string | null;
-  board_item_id: string | null;
-};
 
 type DealRow = {
   id: string;
@@ -63,7 +56,6 @@ export default function ContactDetailPage() {
   const canManage = profile?.role === "admin" || profile?.role === "manager";
 
   const [contact, setContact] = useState<ContactRow | null>(null);
-  const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [deals, setDeals] = useState<DealRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [creatingDeal, setCreatingDeal] = useState(false);
@@ -72,19 +64,13 @@ export default function ContactDetailPage() {
     if (!id || !organisation?.id) return;
     setLoading(true);
 
-    const [contactRes, threadRes, dealRes] = await Promise.all([
+    const [contactRes, dealRes] = await Promise.all([
       supabase
         .from("crm_contacts")
         .select("id,organisation_id,company_id,display_name,email,phone,job_title,status,source,notes,last_contacted_at,crm_companies(id,name)")
         .eq("organisation_id", organisation.id)
         .eq("id", id)
         .maybeSingle(),
-      supabase
-        .from("crm_email_threads")
-        .select("id,subject,message_count,last_message_at,board_item_id")
-        .eq("organisation_id", organisation.id)
-        .eq("contact_id", id)
-        .order("last_message_at", { ascending: false }),
       supabase
         .from("crm_board_items")
         .select("id,title,company,status,value")
@@ -94,7 +80,6 @@ export default function ContactDetailPage() {
     ]);
 
     setContact((contactRes.data as ContactRow | null) || null);
-    setThreads((threadRes.data || []) as ThreadRow[]);
     setDeals((dealRes.data || []) as DealRow[]);
     setLoading(false);
   }, [id, organisation?.id]);
@@ -134,12 +119,6 @@ export default function ContactDetailPage() {
       return flash(error?.message || "Could not create deal");
     }
 
-    await supabase
-      .from("crm_email_threads")
-      .update({ board_item_id: data.id })
-      .eq("organisation_id", organisation.id)
-      .eq("contact_id", contact.id)
-      .is("board_item_id", null);
 
     setCreatingDeal(false);
     router.push("/pipeline/" + data.id);
@@ -181,7 +160,7 @@ export default function ContactDetailPage() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
+      <div className="grid gap-4 lg:grid-cols-1">
         <div className="space-y-4">
           <Panel>
             <PanelHead title="Contact details" />
@@ -228,26 +207,7 @@ export default function ContactDetailPage() {
           </Panel>
         </div>
 
-        <Panel>
-          <PanelHead title={"Email conversations (" + threads.length + ")"} hint="Automatically linked by email address" />
-          <div className="divide-y divide-border">
-            {threads.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                No imported Zoho conversations match this contact yet.
-              </div>
-            ) : threads.map((thread) => (
-              <Link key={thread.id} href={"/emails/" + thread.id} className="block px-4 py-4 transition-colors hover:bg-surface-raised">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{thread.subject || "(no subject)"}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{thread.message_count} message{thread.message_count === 1 ? "" : "s"}</p>
-                  </div>
-                  <span className="whitespace-nowrap text-xs text-muted-foreground">{fmt(thread.last_message_at)}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </Panel>
+
       </div>
     </div>
   );

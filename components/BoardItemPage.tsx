@@ -1,16 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { ArrowLeft, FileText, Mail } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 
 import { useApp } from "@/lib/AppContext";
 import { label, money, dueLabel, formatBytes } from "@/lib/utils";
 import { Btn, PageHeader, Panel, PanelHead, Tag } from "@/components/kit.launchpad";
-import { createClient } from "@/lib/supabase/client";
 
-const supabase = createClient();
 
 type ItemKind = "deal" | "project" | "task";
 
@@ -23,28 +20,7 @@ export function BoardItemPage({ kind }: { kind: ItemKind }) {
   const id = params?.id;
   const item = items.find((row) => row.id === id && row.type === kind);
   const linkedDocs = documents.filter((doc) => doc.board_item_id === id);
-  const [linkedThreads, setLinkedThreads] = useState<LinkedThread[]>([]);
 
-  useEffect(() => {
-    if (!id || kind !== "deal") {
-      setLinkedThreads([]);
-      return;
-    }
-
-    let cancelled = false;
-    supabase
-      .from("crm_email_threads")
-      .select("id,subject,message_count,last_message_at")
-      .eq("board_item_id", id)
-      .order("last_message_at", { ascending: false })
-      .then(({ data }) => {
-        if (!cancelled) setLinkedThreads((data || []) as LinkedThread[]);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id, kind]);
 
   const backHref =
     kind === "deal" ? "/pipeline" :
@@ -128,7 +104,6 @@ export function BoardItemPage({ kind }: { kind: ItemKind }) {
             <div className="space-y-2 p-4">
               {kind === "deal" ? (
                 <>
-                  <Link href="/emails"><Btn className="w-full">Open related email</Btn></Link>
                   <Link href="/tasks"><Btn className="w-full">Open tasks</Btn></Link>
                 </>
               ) : null}
@@ -144,28 +119,7 @@ export function BoardItemPage({ kind }: { kind: ItemKind }) {
             </div>
           </Panel>
 
-          {kind === "deal" ? (
-            <Panel>
-              <PanelHead title={"Email conversations (" + linkedThreads.length + ")"} />
-              <div className="space-y-2 p-4">
-                {linkedThreads.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No email conversations linked yet.</p>
-                ) : (
-                  linkedThreads.map((thread) => (
-                    <Link
-                      key={thread.id}
-                      href={"/emails/" + thread.id}
-                      className="flex items-center gap-2 rounded-lg border border-border p-2.5 transition-colors hover:bg-surface-raised"
-                    >
-                      <Mail className="h-4 w-4 text-primary" />
-                      <span className="min-w-0 flex-1 truncate text-sm">{thread.subject || "(no subject)"}</span>
-                      <Tag tone="primary">{thread.message_count} msgs</Tag>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </Panel>
-          ) : null}
+
 
           <Panel>
             <PanelHead title={"Documents (" + linkedDocs.length + ")"} />
